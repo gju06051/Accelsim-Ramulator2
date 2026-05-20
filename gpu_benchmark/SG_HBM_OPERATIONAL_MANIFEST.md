@@ -1,4 +1,4 @@
-# SG-HBM Operational Benchmark Manifest
+# AccelSim + Ramulator2 Operational Benchmark Manifest
 
 Last updated: 2026-05-20
 
@@ -56,8 +56,8 @@ Total rows: 92
 
 ## Policy
 
-- Use `sg_hbm_benchmark_manifest_operational.tsv` for future SG-HBM trace
-  extraction, Ramulator replay, and AccelSim/Ramulator sweeps unless a narrower
+- Use `sg_hbm_benchmark_manifest_operational.tsv` for AccelSim + Ramulator2
+  sweeps, Ramulator replay generation, and trace extraction unless a narrower
   subset is explicitly needed.
 - Keep build-inventory manifests separate from operational manifests.
 - Add newly validated benchmarks to the operational manifest only after checking

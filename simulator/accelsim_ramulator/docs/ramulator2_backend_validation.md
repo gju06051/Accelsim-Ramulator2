@@ -3,7 +3,7 @@
 Date: 2026-05-19
 
 This note records the first Accel-Sim/GPGPU-Sim4 + Ramulator2 backend smoke
-validation for the SG-HBM integration repository.
+validation for the AccelSim + Ramulator2 integration repository.
 
 ## Build
 
@@ -233,7 +233,7 @@ proxy_lulesh        46.225 s
   partition 0 during Accel-Sim DRAM clock passes.
 - Ramulator2 `source_id` is currently fixed to 0 because the GEM5 frontend
   reports one core. This avoids out-of-range per-core stats and keeps HBM SID
-  semantics free for SG-HBM.
+  semantics free for future memory-mode experiments.
 - Writes are returned to Accel-Sim once Ramulator2 accepts them. Ramulator2's
   generic controller does not invoke write callbacks, matching the old
   GPGPUSim-Ramulator integration behavior.

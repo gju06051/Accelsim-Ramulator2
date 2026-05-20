@@ -1,7 +1,7 @@
-# SG-HBM Benchmark Exclusions
+# AccelSim + Ramulator2 Benchmark Exclusions
 
-This file tracks benchmarks intentionally excluded from the SG-HBM trace
-classification candidate set after AccelSim compatibility checks.
+This file tracks benchmarks intentionally excluded from the AccelSim +
+Ramulator2 operational candidate set after AccelSim compatibility checks.
 
 Last updated: 2026-05-20
 
@@ -22,7 +22,7 @@ Last updated: 2026-05-20
 - Keep these benchmarks in build-inventory manifests, such as
   `sg_hbm_benchmark_manifest_extra_built.tsv` or
   `sg_hbm_benchmark_manifest_more_suites_built.tsv`, if their binaries exist.
-- Exclude them from validated/candidate manifests used for SG-HBM trace
-  classification and AccelSim/Ramulator full-simulation sweeps.
+- Exclude them from validated/candidate manifests used for trace
+  classification and AccelSim + Ramulator2 full-simulation sweeps.
 - Reconsider them only if RED instruction support or the relevant AccelSim
   resource-model limitation is fixed.

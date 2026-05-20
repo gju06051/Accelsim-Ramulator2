@@ -1,7 +1,8 @@
 # External Simulator References
 
-This integration repo is intended to be used from the top-level StackGanged
-workspace.
+This integration layer is intended to run next to the AccelSim/GPGPU-Sim and
+Ramulator2 source trees. The all-in-one checkout already provides those trees
+under `simulator/`.
 
 ## Expected Layout
 
@@ -12,12 +13,12 @@ workspace.
 
 ## Current Known References
 
-These are recorded by the StackGanged superproject submodule pointers.
+The bundled simulator trees currently correspond to these working branches:
 
 ```text
 gpgpu-sim_distribution: branch dev
 ramulator2: branch hbm4-baseline
 ```
 
-Update this file whenever the integration code starts relying on a specific
-commit or API shape.
+Update this file whenever the bridge or overlay starts relying on a specific
+simulator commit or API shape.

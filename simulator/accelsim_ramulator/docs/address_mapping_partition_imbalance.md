@@ -3,7 +3,7 @@
 Last updated: 2026-05-20
 
 This note checks the apparent partition imbalance observed in early
-AccelSim + Ramulator2 SG-HBM experiments. The immediate concern was that
+AccelSim + Ramulator2 experiments. The immediate concern was that
 `polybench_atax`, `polybench_mvt`, and `polybench_gesummv` routed almost all
 accepted backend traffic to partition 0 in the bounded 50k-cycle smoke run.
 
@@ -139,7 +139,7 @@ For benchmark classification:
    phase behavior.
 3. Treat `CONSECUTIVE` mapping as useful for exposing channel-camping stress,
    but not as the only baseline.
-4. Use `IPOLY` as a sensitivity run to separate SG-HBM timing effects from
+4. Use `IPOLY` as a sensitivity run to separate HBM timing effects from
    address-mapping artifacts.
 
 ## AccelSim Partition vs Ramulator2 Channel
@@ -284,7 +284,7 @@ exceptions appeared in the stress logs.
 
 ## Recommended Experiment Policy
 
-For final SG-HBM baseline comparisons:
+For final AccelSim + Ramulator2 baseline comparisons:
 
 | Purpose | Mapping |
 | --- | --- |

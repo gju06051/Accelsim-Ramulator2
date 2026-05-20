@@ -11,7 +11,7 @@ environment variables.
 
 | File | Purpose |
 | --- | --- |
-| `operational_manifest.tsv` | Canonical validated benchmark list for AccelSim + Ramulator2 SG-HBM runs |
+| `operational_manifest.tsv` | Canonical validated benchmark list for AccelSim + Ramulator2 runs |
 | `operational_manifest_notes.md` | Source, class, suite, and validation notes for the manifest |
 | `exclusions.md` | Benchmarks excluded from the operational set and the reason for exclusion |
 
@@ -44,7 +44,7 @@ By default, the runner assumes the integration repo is placed under a workspace
 like this:
 
 ```text
-StackGanged/
+Accelsim-Ramulator/
   gpu_benchmark/
   simulator/
     accelsim_ramulator/
@@ -64,7 +64,8 @@ export SGRAM_GPGPU_BUILD=/path/to/gpgpu-sim_distribution/build/sgram_fixed
 
 ## Runner Preset
 
-The default runner preset is `stackganged_operational`, which loads
+The operational runner preset is still named `stackganged_operational` for
+compatibility with earlier scripts. It loads
 `benchmarks/operational_manifest.tsv`.
 
 List the distributable benchmark set without requiring an AccelSim build:

@@ -1,35 +1,43 @@
-# StackGanged All-In-One Artifact
+# AccelSim + Ramulator2 Integration Bundle
 
-This repository is a self-contained StackGanged / SG-HBM artifact bundle.  It
-vendors the simulator sources, the AccelSim + Ramulator2 bridge, and the
-validated benchmark binaries and inputs needed by the operational benchmark
-manifest.
+This repository packages an AccelSim/GPGPU-Sim and Ramulator2 integration in one
+checkout. The main purpose is to run CUDA workloads in AccelSim while routing
+memory requests through a Ramulator2-backed external memory backend.
 
-The intended checkout layout is:
+The repository vendors the simulator sources, the integration bridge, runtime
+libraries, helper scripts, and a validated benchmark manifest. Some historical
+script and environment names still use `sgram`; treat those as internal/legacy
+names for the memory-backend hook, not as the identity of this repository.
+
+The checkout layout is:
 
 ```text
-StackGanged-AllInOne/
+Accelsim-Ramulator/
   simulator/
-    gpgpu-sim_distribution/
-    ramulator2/
-    accelsim_ramulator/
+    gpgpu-sim_distribution/   # AccelSim/GPGPU-Sim source tree
+    ramulator2/               # Ramulator2 source tree and runtime library
+    accelsim_ramulator/       # bridge, overlays, configs, docs, runners
   gpu_benchmark/
-  scripts/
+    scripts/                  # benchmark build/run/trace helpers
+  scripts/                    # top-level layout checks and smoke tests
+  tools/                      # optional NVBit tooling used by trace helpers
 ```
 
 ## What Is Included
 
-- AccelSim/GPGPU-Sim source and the local `build/sgram_fixed` runtime library
-  used by the SG-HBM experiments.
-- Ramulator2 source and runtime library.
-- AccelSim + Ramulator2 integration repo with the Ramulator2 bridge, configs,
-  docs, and runner.
+- AccelSim/GPGPU-Sim source plus the packaged `build/sgram_fixed/libcudart.so`
+  runtime library used by the smoke runner.
+- Ramulator2 source plus the packaged `libramulator.so` runtime library.
+- AccelSim + Ramulator2 bridge code, overlay patch, configs, docs, and matrix
+  runner under `simulator/accelsim_ramulator`.
 - Operational benchmark manifest with 92 validated benchmarks.
 - Benchmark release binaries and the small input/data files referenced by the
   operational manifest.
+- NVBit tooling used by optional memory-trace helper scripts.
 
 ## What Is Not Included
 
+- Generated CMake build trees, object files, and intermediate build products.
 - NVBit trace dumps.
 - Ramulator replay outputs.
 - AccelSim result logs.
@@ -76,7 +84,7 @@ and enables Ramulator2 stats for unbounded runs.
 
 ## Environment
 
-The helper scripts set these paths automatically for the all-in-one layout:
+The helper scripts set these paths automatically for this all-in-one layout:
 
 ```bash
 export SGRAM_WORKSPACE_ROOT=$PWD
@@ -89,9 +97,12 @@ export SGRAM_GPGPU_BUILD=$PWD/simulator/gpgpu-sim_distribution/build/sgram_fixed
 If you move components elsewhere, set the same variables manually before using
 `simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py`.
 
+`SGRAM_*` is the current environment-variable prefix used by the bridge and
+runner. It is kept for compatibility with the existing code path.
+
 ## Benchmark Set
 
-The canonical manifest is:
+The canonical AccelSim + Ramulator2 operational manifest is:
 
 ```text
 simulator/accelsim_ramulator/benchmarks/operational_manifest.tsv
@@ -110,3 +121,7 @@ Known incompatible candidates are documented in:
 ```text
 simulator/accelsim_ramulator/benchmarks/exclusions.md
 ```
+
+The runner preset is still named `stackganged_operational` for compatibility
+with earlier scripts, but it refers to the AccelSim + Ramulator2 operational
+benchmark set above.

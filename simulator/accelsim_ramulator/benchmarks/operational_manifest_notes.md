@@ -1,4 +1,4 @@
-# SG-HBM Operational Benchmark Manifest
+# AccelSim + Ramulator2 Operational Benchmark Manifest
 
 Last updated: 2026-05-20
 
@@ -8,9 +8,10 @@ Canonical operational manifest:
 benchmarks/operational_manifest.tsv
 ```
 
-This is the distributable copy of the validated SG-HBM operational manifest.
-The large benchmark source/binary/data tree remains external and is located at
-runtime through `SGRAM_GPU_BENCHMARK_ROOT`.
+This is the distributable copy of the validated operational manifest used by
+the AccelSim + Ramulator2 runner. The large benchmark source/binary/data tree
+remains external and is located at runtime through
+`SGRAM_GPU_BENCHMARK_ROOT`.
 
 ## Sources
 
@@ -60,9 +61,9 @@ Total rows: 92
 
 ## Policy
 
-- Use `benchmarks/operational_manifest.tsv` for future SG-HBM trace
-  extraction, Ramulator replay, and AccelSim/Ramulator sweeps unless a narrower
-  subset is explicitly needed.
+- Use `benchmarks/operational_manifest.tsv` for AccelSim + Ramulator2 sweeps,
+  Ramulator replay generation, and trace extraction unless a narrower subset is
+  explicitly needed.
 - Keep build-inventory manifests separate from operational manifests.
 - Add newly validated benchmarks to the operational manifest only after checking
   that they do not hit known AccelSim unsupported instruction paths.

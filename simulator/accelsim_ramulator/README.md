@@ -1,21 +1,23 @@
-# Accel-Sim + Ramulator Integration for SG-HBM
+# AccelSim + Ramulator2 Integration Layer
 
-This repository contains the distributable integration layer for connecting
-Accel-Sim/GPGPU-Sim with Ramulator2 for StackGanged / SG-HBM experiments.
+This directory contains the integration layer that connects AccelSim/GPGPU-Sim
+memory partitions to Ramulator2. It is the main implementation area for this
+repository: bridge code, AccelSim overlay patches, Ramulator2 configs,
+validation scripts, benchmark runners, and notes live here.
 
-The simulator repositories themselves are kept outside this repo as sibling
-submodules of the top-level StackGanged project:
+The all-in-one checkout places the integration layer next to the simulator
+trees it drives:
 
 ```text
-StackGanged/
+Accelsim-Ramulator/
   simulator/
     gpgpu-sim_distribution/   # Accel-Sim/GPGPU-Sim fork
     ramulator2/               # Ramulator2 fork
     accelsim_ramulator/       # this integration repo
 ```
 
-For deployment outside the top-level `StackGanged` tree, keep this repository
-independent and point it at the local simulator and benchmark trees with:
+For another deployment layout, point the runner at the local simulator and
+benchmark trees with:
 
 ```bash
 export SGRAM_WORKSPACE_ROOT=/path/to/workspace
@@ -25,24 +27,27 @@ export SGRAM_RAMULATOR2_ROOT=/path/to/ramulator2
 export SGRAM_GPGPU_BUILD=/path/to/gpgpu-sim_distribution/build/sgram_fixed
 ```
 
-## Rule
+The `SGRAM_*` prefix and `sgram_backend_t` type name are legacy/internal names
+for the external memory-backend hook. The functional goal is AccelSim +
+Ramulator2 co-simulation.
 
-Do not make integration changes directly in the simulator submodules unless the
-change belongs to that simulator itself. Integration-specific code, build glue,
-patches, overlays, and experiment scripts live here.
+## Development Boundary
 
-## Planned Flow
+Keep integration-specific code here when possible:
 
-1. Keep `../gpgpu-sim_distribution` and `../ramulator2` clean.
-2. Store Accel-Sim overlay patches in `overlay/accelsim`.
-3. Store bridge code in `bridge`.
-4. Apply overlays only for experiment builds.
-5. Run HBM4 baseline first, then SG-HBM modes.
+- AccelSim patch/overlay glue lives in `overlay/accelsim`.
+- Ramulator2 C API bridge code lives in `bridge`.
+- Runtime configs live in `configs`.
+- Experiment and smoke runners live in `scripts`.
+- Benchmark manifests live in `benchmarks`.
 
-## Current Scaffolding
+Only edit `../gpgpu-sim_distribution` or `../ramulator2` directly when the
+change genuinely belongs to that simulator rather than the integration layer.
 
-The first Accel-Sim overlay adds an external memory backend hook and a fixed
-latency backend named `sgram_backend_t`.
+## Backend Flow
+
+The AccelSim overlay adds an external memory backend hook and a fixed-latency
+backend named `sgram_backend_t`.
 
 Apply it from this repo:
 
@@ -87,12 +92,12 @@ The fixed backend is not a performance model. It only validates the integration
 path:
 
 ```text
-Accel-Sim memory partition -> external backend -> completion return queue
+AccelSim memory partition -> external backend -> completion return queue
 ```
 
 The Ramulator2 backend uses the same path, but issues accepted requests into a
 shared Ramulator2 `Frontend=GEM5` + `MemorySystem=GenericDRAM` instance. Writes
-are returned to Accel-Sim after Ramulator2 accepts them, matching the practical
+are returned to AccelSim after Ramulator2 accepts them, matching the practical
 behavior of the older GPGPUSim-Ramulator integration where write callbacks were
 not invoked by Ramulator.
 
@@ -105,7 +110,7 @@ Reference and validation notes:
 Benchmark operation files:
 
 - `benchmarks/operational_manifest.tsv`: validated 92-benchmark operational set
-- `benchmarks/exclusions.md`: benchmarks excluded due to AccelSim compatibility
+- `benchmarks/exclusions.md`: benchmarks excluded for AccelSim compatibility
 - `benchmarks/README.md`: manifest usage and deployment notes
 
 List the packaged operational benchmark set:
@@ -114,7 +119,7 @@ List the packaged operational benchmark set:
 ./scripts/run_fixed_backend_matrix.py --list-benchmarks
 ```
 
-Run the default operational preset:
+Run the operational preset:
 
 ```bash
 ./scripts/run_fixed_backend_matrix.py \
@@ -132,10 +137,13 @@ Run the default operational preset:
   --out-dir results/operational_smoke
 ```
 
+The preset name `stackganged_operational` is kept for compatibility with earlier
+scripts. It loads `benchmarks/operational_manifest.tsv`.
+
 ## Milestones
 
 - M1: identify the Accel-Sim DRAM boundary and create a fixed-latency external backend stub. [scaffolded]
 - M2: link a minimal Ramulator2 wrapper and issue requests from the backend. [scaffolded]
 - M3: return completions to Accel-Sim memory partitions. [scaffolded]
 - M4: validate HBM4 baseline timing and queue behavior. [smoke-tested]
-- M5: add SG-HBM timing modes and experiment scripts.
+- M5: add additional Ramulator2 memory-mode configs and experiment scripts.

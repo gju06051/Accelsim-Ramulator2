@@ -4,7 +4,7 @@ Last updated: 2026-05-20
 
 This note summarizes the first performance-metric sanity check of the
 AccelSim + Ramulator2 runs. The goal is to identify which metrics are usable
-now and which parts need investigation before SG-HBM performance claims.
+now and which parts need investigation before AccelSim + Ramulator2 performance claims.
 
 ## Result Sets Checked
 
@@ -132,7 +132,7 @@ Examples:
 | `micro_mem_bw` | 1.000 | 0.811 | Streaming-like DRAM locality despite L2 misses |
 | `proxy_xsbench` | 0.115 | 0.112 | Low L2 miss rate does not guarantee row locality |
 
-For SG-HBM classification and performance explanation, use both cache-level and
+For benchmark classification and performance explanation, use both cache-level and
 DRAM-level locality metrics.
 
 ## Benchmarks To Investigate First
@@ -167,7 +167,7 @@ DRAM-level locality metrics.
    Use `polybench_atax`, `polybench_mvt`, `pannotia_color_max`,
    `micro_mem_bw`, and `proxy_xsbench`.
 
-4. For final SG-HBM comparison, avoid using `MAX_CYCLE_OK` absolute IPC as the
+4. For final AccelSim + Ramulator2 comparison, avoid using `MAX_CYCLE_OK` absolute IPC as the
    main claim. Use completed runs or fixed instruction/window sampling with
    explicit warmup and measurement windows.
 

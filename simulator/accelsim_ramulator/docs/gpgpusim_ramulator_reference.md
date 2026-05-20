@@ -11,7 +11,7 @@ Our target stack is different:
 
 - Accel-Sim / GPGPU-Sim 4.x-style tree
 - Ramulator2
-- SG-HBM / HBM4 experiments
+- HBM-family memory experiments
 
 So the old code should be treated as an integration pattern, not as code to port
 line-for-line.
@@ -231,7 +231,7 @@ ACTs/tFAW        = 8
   never called. The scaffold therefore returns writes to Accel-Sim after
   Ramulator2 accepts them.
 - `mem_fetch::get_sid()` in the old repo was used as Ramulator source ID. For
-  SG-HBM we should not reuse that meaning blindly because `SID` will later mean
+  this integration we should not reuse that meaning blindly because `SID` will later mean
   HBM stack/slice identity. Use partition/subpartition or shader/core source ID
   explicitly.
 - Ramulator2 request payload support (`Request::m_payload`) can carry

@@ -12,7 +12,7 @@ Reference repositories:
 
 The HMS code integrates Accel-Sim/GPGPU-Sim with a Ramulator-derived memory
 model for HBM/PCM/HMS and adds UVMSmart/GMMU/page migration behavior. The UVM
-features are outside the SG-HBM baseline path, but the memory-interface pattern
+features are outside this integration baseline path, but the memory-interface pattern
 is useful.
 
 ## How HMS Connects Ramulator
@@ -77,7 +77,7 @@ Ramulator::cycle()
 Because HMS has one Ramulator instance per memory partition, each partition
 ticks its own memory object once per Accel-Sim DRAM clock pass.
 
-## Useful Lessons for SG-HBM
+## Useful Lessons for AccelSim + Ramulator2
 
 The pieces worth carrying into our integration are:
 
@@ -105,7 +105,7 @@ The pieces worth carrying into our integration are:
 
    HMS includes page-table, PCIe validation/invalidation, migration, tag-cache,
    and UVM policy machinery. Those are valuable for HMS but would blur the
-   SG-HBM baseline. We should not import them.
+   baseline bridge. We should not import them.
 
 ## Reflected Changes
 
@@ -136,7 +136,7 @@ Applied to the runner:
 
 - UVMSmart/GMMU/PCIe/page migration queues.
 
-  These are not needed for SG-HBM HBM4 baseline or SG-HBM timing experiments.
+  These are not needed for HBM4 baseline or additional timing experiments.
 
 - Per-partition independent Ramulator memory objects.
 
