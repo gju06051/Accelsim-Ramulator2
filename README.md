@@ -19,9 +19,9 @@ StackGanged-AllInOne/
 
 ## What Is Included
 
-- AccelSim/GPGPU-Sim source and the local `build/sgram_fixed` runtime used by
-  the SG-HBM experiments.
-- Ramulator2 source, runtime library, and local build output.
+- AccelSim/GPGPU-Sim source and the local `build/sgram_fixed` runtime library
+  used by the SG-HBM experiments.
+- Ramulator2 source and runtime library.
 - AccelSim + Ramulator2 integration repo with the Ramulator2 bridge, configs,
   docs, and runner.
 - Operational benchmark manifest with 92 validated benchmarks.

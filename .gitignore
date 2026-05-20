@@ -6,6 +6,7 @@ gpu_benchmark/sg_hbm_trace_classification*/
 # Python/cache/editor noise
 __pycache__/
 *.pyc
+*.o
 *.tmp
 .DS_Store
 .vscode/
@@ -16,6 +17,5 @@ __pycache__/
 *.err
 *.trace
 
-# Keep vendored build/runtime artifacts that are already tracked in this
-# all-in-one artifact. New generated build files can be force-added only when
-# intentionally updating the packaged runtime.
+# Runtime shared libraries may still be tracked intentionally, but generated
+# build trees and object files should stay out of normal source changes.

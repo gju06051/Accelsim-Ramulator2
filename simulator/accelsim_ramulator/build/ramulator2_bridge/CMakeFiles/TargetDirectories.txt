@@ -1,4 +1,0 @@
-/home/gju06051/StackGanged/simulator/accelsim_ramulator/build/ramulator2_bridge/CMakeFiles/rebuild_cache.dir
-/home/gju06051/StackGanged/simulator/accelsim_ramulator/build/ramulator2_bridge/CMakeFiles/edit_cache.dir
-/home/gju06051/StackGanged/simulator/accelsim_ramulator/build/ramulator2_bridge/CMakeFiles/sgram_ramulator2_bridge_smoke.dir
-/home/gju06051/StackGanged/simulator/accelsim_ramulator/build/ramulator2_bridge/CMakeFiles/sgram_ramulator2_bridge.dir

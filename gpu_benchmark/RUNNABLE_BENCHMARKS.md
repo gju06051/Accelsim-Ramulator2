@@ -2,7 +2,7 @@
 
 Checked on RTX 3090 with CUDA 12.3.
 
-Important local change: `setup_gpu_app_collection_env.sh` now exports
+Important local change: `scripts/setup_gpu_app_collection_env.sh` now exports
 `NVCC_PREPEND_FLAGS="-ccbin /usr/bin/g++-11"`. This matters because many old
 benchmark Makefiles call `nvcc` directly and otherwise pick unsupported GCC 13.
 
@@ -160,7 +160,7 @@ Runnable with no external input data:
 - `lud-rodinia-3.1 -s 64`
 - `myocyte-rodinia-3.1`
 - `nn-rodinia-3.1 filelist_4 -r 5 -lat 30 -lng 90` from the Rodinia
-  `cuda/nn` directory after `./generate_rodinia_3_1_inputs.sh`
+  `cuda/nn` directory after `./scripts/generate_rodinia_3_1_inputs.sh`
 - `nw-rodinia-3.1 64 10`
 - `particlefilter_float-rodinia-3.1`
 - `particlefilter_naive-rodinia-3.1`
@@ -279,17 +279,17 @@ Historical real-GPU runnable examples were:
 Rebuild/sweep broad native CUDA targets:
 
 ```bash
-TARGET_TIMEOUT=300s JOBS=4 ./sweep_gpu_app_collection_targets.sh
+TARGET_TIMEOUT=300s JOBS=4 ./scripts/sweep_gpu_app_collection_targets.sh
 ```
 
 Run all built binaries with no args:
 
 ```bash
-BENCH_TIMEOUT=5s ./run_gpu_app_all_binaries_noarg.sh
+BENCH_TIMEOUT=5s ./scripts/run_gpu_app_all_binaries_noarg.sh
 ```
 
 Retry usage-style binaries with small args:
 
 ```bash
-BENCH_TIMEOUT=10s ./run_gpu_app_usage_arg_smoke.sh
+BENCH_TIMEOUT=10s ./scripts/run_gpu_app_usage_arg_smoke.sh
 ```

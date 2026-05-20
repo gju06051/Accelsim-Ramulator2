@@ -17,7 +17,7 @@ official dataset bundle is fetched.
 Local small inputs that can be generated from bundled generators are handled by:
 
 ```bash
-./generate_rodinia_3_1_inputs.sh
+./scripts/generate_rodinia_3_1_inputs.sh
 ```
 
 This has been run once locally and produced:

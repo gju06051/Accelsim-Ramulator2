@@ -8,4 +8,4 @@ if [ ! -d $DATA_ROOT ]; then
 fi
 
 echo "Rodinia 2.0-ft data download is disabled in this local tree."
-echo "Use gpu_benchmark/fetch_gpu_app_collection_data.sh for the shared dataset bundle."
+echo "Use gpu_benchmark/scripts/fetch_gpu_app_collection_data.sh for the shared dataset bundle."

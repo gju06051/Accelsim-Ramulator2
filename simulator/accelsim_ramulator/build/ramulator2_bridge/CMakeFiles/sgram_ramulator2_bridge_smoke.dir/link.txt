@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG CMakeFiles/sgram_ramulator2_bridge_smoke.dir/ramulator2_bridge_smoke.cc.o -o sgram_ramulator2_bridge_smoke  -Wl,-rpath,/home/gju06051/StackGanged/simulator/accelsim_ramulator/build/ramulator2_bridge libsgram_ramulator2_bridge.so 

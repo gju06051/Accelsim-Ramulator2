@@ -14,7 +14,7 @@ logs/traces/data are kept under the `traces` symlink, which points at
 The local CUDA compiler is 12.3 and the GPUs are RTX 3090 (`sm_86`). Source:
 
 ```bash
-source ./setup_gpu_app_collection_env.sh
+source ./scripts/setup_gpu_app_collection_env.sh
 ```
 
 The wrapper sets CUDA 12.3, uses `/usr/bin/g++-11` as nvcc's host compiler, and
@@ -26,19 +26,19 @@ creates the empty `gpu-app-collection/4.2` directory that prevents the old CUDA
 Build a subset:
 
 ```bash
-./build_gpu_app_collection.sh polybench ispass-2009
+./scripts/build_gpu_app_collection.sh polybench ispass-2009
 ```
 
 Build the default local set:
 
 ```bash
-./build_gpu_app_collection.sh
+./scripts/build_gpu_app_collection.sh
 ```
 
 List built binaries:
 
 ```bash
-./list_gpu_app_binaries.sh
+./scripts/list_gpu_app_binaries.sh
 ```
 
 ## Run
@@ -46,26 +46,26 @@ List built binaries:
 Run a checked smoke set from `gpu-app-collection`:
 
 ```bash
-./run_gpu_app_collection_smoke.sh
+./scripts/run_gpu_app_collection_smoke.sh
 ```
 
 If binaries are already built and you only want to run:
 
 ```bash
-BUILD=0 ./run_gpu_app_collection_smoke.sh
+BUILD=0 ./scripts/run_gpu_app_collection_smoke.sh
 ```
 
 Run matching binaries directly with no arguments:
 
 ```bash
-./run_gpu_app_collection_binaries.sh '^polybench-'
+./scripts/run_gpu_app_collection_binaries.sh '^polybench-'
 ```
 
 Run PolyBench-only helpers:
 
 ```bash
-./run_polybench_cuda_smoke.sh
-./run_polybench_cuda_all.sh
+./scripts/run_polybench_cuda_smoke.sh
+./scripts/run_polybench_cuda_all.sh
 ```
 
 Logs are written under `traces/run_logs`.
@@ -81,7 +81,7 @@ The `gpu-app-collection/data_dirs` path is a symlink to:
 Fetch the official gpu-app-collection dataset tarball with:
 
 ```bash
-./fetch_gpu_app_collection_data.sh
+./scripts/fetch_gpu_app_collection_data.sh
 ```
 
 The tarball is 2.4GB, so the wrapper stores/resumes it on `/media/1` instead of
@@ -93,7 +93,7 @@ Rodinia 3.1 also has a few bundled local generators. Generate the small NN and
 LUD inputs with:
 
 ```bash
-./generate_rodinia_3_1_inputs.sh
+./scripts/generate_rodinia_3_1_inputs.sh
 ```
 
 ## NVBit Memory Traces
@@ -110,7 +110,7 @@ Run a benchmark, convert NVBit `mem_trace` output to compact memory trace, and
 compute 32B/16B/8B row-local packing opportunities:
 
 ```bash
-./run_nvbit_row_opportunity.sh graphbig_bfs_small traces -- \
+./scripts/run_nvbit_row_opportunity.sh graphbig_bfs_small traces -- \
   ./suites/graphBIG/gpu_bench/gpu_BFS/bfs_topo_frontier \
   --dataset ./suites/graphBIG/dataset/small --root 31
 ```

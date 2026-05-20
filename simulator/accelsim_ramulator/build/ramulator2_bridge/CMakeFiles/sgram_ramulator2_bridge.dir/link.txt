@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC -O3 -DNDEBUG -shared -Wl,-soname,libsgram_ramulator2_bridge.so -o libsgram_ramulator2_bridge.so CMakeFiles/sgram_ramulator2_bridge.dir/ramulator2_c_api.cc.o  -Wl,-rpath,/home/gju06051/StackGanged/simulator/accelsim_ramulator/../ramulator2:/home/gju06051/StackGanged/simulator/ramulator2 /home/gju06051/StackGanged/simulator/ramulator2/libramulator.so 
