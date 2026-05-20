@@ -1,0 +1,46 @@
+name	suite	expected_class	workdir	command	main_reason
+polybench_2dconv	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-2DConvolution	Structured sliding-window stencil access
+polybench_fdtd2d	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-fdtd2d	Structured grid reuse
+polybench_bicg	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-bicg	Dense matrix-vector style access
+polybench_atax	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-atax	Dense matrix-vector style access
+polybench_covariance	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-covariance	Dense regular matrix access
+polybench_2mm	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-2mm	Dense regular matrix multiplication
+polybench_gramschmidt	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-gramschmidt	Dense regular linear algebra access
+graphbig_bfs_data_warp	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_BFS/bfs_data_warp_centric --dataset gpu_benchmark/suites/graphBIG/dataset/small --root 31	Frontier-driven graph traversal
+graphbig_bfs_topo_atomic	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_BFS/bfs_topo_atomic --dataset gpu_benchmark/suites/graphBIG/dataset/small --root 31	Topology-driven graph traversal with atomics
+graphbig_sssp_data_warp	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_SSSP/sssp_data_warp_centric --dataset gpu_benchmark/suites/graphBIG/dataset/small --root 31	Data-dependent graph traversal
+graphbig_triangle_count	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_TriangleCount/triangle_count --dataset gpu_benchmark/suites/graphBIG/dataset/small	Graph triangle counting
+graphbig_kcore	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_kCore/kcore --dataset gpu_benchmark/suites/graphBIG/dataset/small	Graph k-core traversal
+ispass_lps	ispass-2009	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-LPS	Data-dependent search/access benchmark
+ispass_lib	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-LIB	Structured library benchmark
+ispass_ray	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-RAY 256 256	Ray-style structured traversal
+rodinia_streamcluster	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/streamcluster-rodinia-3.1 10 20 256 65536 65536 1000 none output.txt 1	Cluster assignment with scattered accesses
+rodinia_backprop	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/backprop-rodinia-3.1 65536	Neural-network layer access
+rodinia_srad_v1	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v1-rodinia-3.1 10 0.5 502 458	Structured image diffusion stencil
+rodinia_particlefilter_float	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/particlefilter_float-rodinia-3.1 -x 128 -y 128 -z 10 -np 1000	Particle filter gather/scatter access
+rodinia_srad_v2	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v2-rodinia-3.1 128 128 0 31 0 31 0.5 2	Structured image/stencil access
+rodinia_gaussian	rodinia	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/gaussian-rodinia-3.1 -s 64 -q	Dense matrix elimination
+rodinia_lavamd	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lavaMD-rodinia-3.1	Structured particle neighborhood access
+proxy_xsbench	proxy-apps	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/XSBench 12 small 0	Randomized cross-section lookup
+proxy_lulesh	proxy-apps	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lulesh	Structured hydrodynamics mesh access
+micro_mem_atom_size	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_atom_size	Memory atom size sensitivity microbenchmark
+micro_mem_bw	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_bw	Streaming bandwidth microbenchmark
+micro_mem_lat	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_lat	Memory latency microbenchmark
+micro_l1_bw_128	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l1_bw_128	Regular L1 bandwidth microbenchmark
+micro_l2_bw_32f	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_bw_32f	Regular L2 bandwidth microbenchmark
+micro_l2_lat	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_lat	Latency microbenchmark
+micro_atomic_add_bw_conflict	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/atomic_add_bw_conflict	Conflicting atomic update microbenchmark
+micro_l2_access_grain	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_access_grain	L2 access granularity microbenchmark
+parboil_stencil	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-stencil -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/stencil/small/input/128x128x32.bin -o parboil_stencil.out 128 128 32 100	Structured stencil reuse
+parboil_lbm	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-lbm -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/lbm/short/input/120_120_150_ldc.of -o parboil_lbm.out 100	Lattice Boltzmann structured simulation with short dataset
+parboil_mri_q	parboil	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-mri-q -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/mri-q/small/input/32_32_32_dataset.bin -o parboil_mri_q.out	Regular numerical kernel over dense arrays
+parboil_sgemm	parboil	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-sgemm -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix1.txt,gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix2.txt,gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix2t.txt -o parboil_sgemm.out	Dense matrix multiply from Parboil small dataset
+lonestar_bfs_wlw	lonestar	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lonestar-bfs-wlw gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat12.sym.gr	Worklist BFS graph traversal variant
+lonestar_sssp_wln	lonestar	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lonestar-sssp-wln gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat12.sym.gr	Worklist SSSP graph traversal variant
+pannotia_mis	pannotia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mis gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/mis/data/ecology1.graph 1	Maximal independent set graph traversal
+pannotia_color_maxmin	pannotia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/color_maxmin gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/color_maxmin/data/ecology1.graph 1	Graph coloring over sparse adjacency
+pannotia_sssp_ell	pannotia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/sssp_ell gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/sssp_ell/data/USA-road-d.NY.gr 0	ELL SSSP over DIMACS road graph
+pannotia_pagerank_spmv	pannotia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/pagerank_spmv gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/pagerank_spmv/data/coAuthorsDBLP.graph 1	PageRank expressed through SpMV-like traversal
+pannotia_fw_block	pannotia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/fw_block gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/fw_block/data/256_16384.gr	Blocked Floyd-Warshall matrix-style graph dynamic programming
+dragon_join	dragon-li	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/testJoin -l 1024 -r 1024	Join kernel over generated input arrays
+dragon_amr	dragon-li	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/testAmr -s 4096 -r 2	Adaptive mesh refinement over hierarchical grid data

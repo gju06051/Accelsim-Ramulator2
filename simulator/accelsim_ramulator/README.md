@@ -73,7 +73,7 @@ Enable the Ramulator2 HBM4 backend:
 ```bash
 export SGRAM_BACKEND=ramulator2
 export SGRAM_RAMULATOR_LIB=$PWD/build/ramulator2_bridge/libsgram_ramulator2_bridge.so
-export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/hbm4.yaml
+export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/a100_hbm2e_1stack.yaml
 export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=32
 export SGRAM_QUEUE_LIMIT=32
 ```
@@ -116,7 +116,9 @@ Benchmark operation files:
 List the packaged operational benchmark set:
 
 ```bash
-./scripts/run_fixed_backend_matrix.py --list-benchmarks
+./scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main \
+  --list-benchmarks
 ```
 
 Run the operational preset:
@@ -124,12 +126,11 @@ Run the operational preset:
 ```bash
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset stackganged_operational \
+  --preset accelsim_ramulator_main \
   --latencies 0 \
   --queue-limits 128 \
   --config-variant a100_1stack \
-  --config-overrides '-gpgpu_memory_partition_indexing 2' \
-  --a100-l2-8mb \
+  --ramulator-config configs/ramulator/a100_hbm2e_1stack.yaml \
   --max-cycle 50000 \
   --jobs 32 \
   --ramulator-inflight-read-limit 128 \
@@ -138,7 +139,13 @@ Run the operational preset:
 ```
 
 The preset name `stackganged_operational` is kept for compatibility with earlier
-scripts. It loads `benchmarks/operational_manifest.tsv`.
+scripts. New runs should normally start from `accelsim_ramulator_main`.
+
+Config selection notes:
+
+- `docs/configuration.md`: how to swap AccelSim and Ramulator2 config files
+- `configs/accelsim/README.md`: AccelSim base config and override fragments
+- `configs/ramulator/README.md`: Ramulator2 YAML choices, including A100 HBM2e
 
 ## Milestones
 

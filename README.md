@@ -18,6 +18,9 @@ Accelsim-Ramulator/
     ramulator2/               # Ramulator2 source tree and runtime library
     accelsim_ramulator/       # bridge, overlays, configs, docs, runners
   gpu_benchmark/
+    benchmarks/main/          # user-facing main benchmark list and local drop zone
+    benchmarks/inventory/     # archived benchmark candidate manifests
+    docs/                     # benchmark setup and historical notes
     scripts/                  # benchmark build/run/trace helpers
   scripts/                    # top-level layout checks and smoke tests
   tools/                      # optional NVBit tooling used by trace helpers
@@ -30,7 +33,8 @@ Accelsim-Ramulator/
 - Ramulator2 source plus the packaged `libramulator.so` runtime library.
 - AccelSim + Ramulator2 bridge code, overlay patch, configs, docs, and matrix
   runner under `simulator/accelsim_ramulator`.
-- Operational benchmark manifest with 92 validated benchmarks.
+- Main benchmark manifest with 45 representative benchmarks and an operational
+  pool with 92 validated benchmarks.
 - Benchmark release binaries and the small input/data files referenced by the
   operational manifest.
 - NVBit tooling used by optional memory-trace helper scripts.
@@ -58,18 +62,17 @@ Run a tiny fixed-backend smoke test:
 ./scripts/run_smoke_all_in_one.sh
 ```
 
-Run the operational Ramulator2 smoke sweep:
+Run the main Ramulator2 smoke sweep:
 
 ```bash
 cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset stackganged_operational \
+  --preset accelsim_ramulator_main \
   --latencies 0 \
   --queue-limits 128 \
   --config-variant a100_1stack \
-  --config-overrides '-gpgpu_memory_partition_indexing 2' \
-  --a100-l2-8mb \
+  --ramulator-config configs/ramulator/a100_hbm2e_1stack.yaml \
   --max-cycle 50000 \
   --timeout 240 \
   --jobs 32 \
@@ -81,6 +84,16 @@ cd simulator/accelsim_ramulator
 For full runs that need Ramulator2 internal stats, use `--max-cycle 0`. The
 runner default `--ramulator-finalize-stats auto` keeps bounded smoke runs stable
 and enables Ramulator2 stats for unbounded runs.
+
+Config files can be swapped without editing the runner:
+
+```bash
+--gpgpusim-config /path/to/gpgpusim.config
+--accelsim-config-override-file configs/accelsim/a100_1stack_8mb_l2.config
+--ramulator-config configs/ramulator/a100_hbm2e_80gb.yaml
+```
+
+See `simulator/accelsim_ramulator/docs/configuration.md` for the full flow.
 
 ## Environment
 
@@ -102,7 +115,22 @@ runner. It is kept for compatibility with the existing code path.
 
 ## Benchmark Set
 
-The canonical AccelSim + Ramulator2 operational manifest is:
+The main AccelSim + Ramulator2 benchmark manifest is:
+
+```text
+gpu_benchmark/benchmarks/main/manifest.tsv
+```
+
+It contains 45 representative benchmarks selected from the operational pool.
+Add local benchmarks under:
+
+```text
+gpu_benchmark/benchmarks/main/local/
+```
+
+Then add a TSV row to `gpu_benchmark/benchmarks/main/manifest.tsv`.
+
+The broader operational manifest is:
 
 ```text
 simulator/accelsim_ramulator/benchmarks/operational_manifest.tsv
@@ -122,6 +150,6 @@ Known incompatible candidates are documented in:
 simulator/accelsim_ramulator/benchmarks/exclusions.md
 ```
 
-The runner preset is still named `stackganged_operational` for compatibility
-with earlier scripts, but it refers to the AccelSim + Ramulator2 operational
-benchmark set above.
+The default runner preset is `accelsim_ramulator_main`. The legacy
+`stackganged_operational` preset remains for compatibility with earlier scripts
+and refers to the AccelSim + Ramulator2 operational benchmark set above.

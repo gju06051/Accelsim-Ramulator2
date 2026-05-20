@@ -19,9 +19,11 @@ Last updated: 2026-05-20
 
 ## Manifest Policy
 
-- Keep these benchmarks in build-inventory manifests, such as
-  `sg_hbm_benchmark_manifest_extra_built.tsv` or
-  `sg_hbm_benchmark_manifest_more_suites_built.tsv`, if their binaries exist.
+- Keep these benchmarks in build-inventory manifests under
+  `benchmarks/inventory/`, such as
+  `benchmarks/inventory/sg_hbm_benchmark_manifest_extra_built.tsv` or
+  `benchmarks/inventory/sg_hbm_benchmark_manifest_more_suites_built.tsv`, if
+  their binaries exist.
 - Exclude them from validated/candidate manifests used for trace
   classification and AccelSim + Ramulator2 full-simulation sweeps.
 - Reconsider them only if RED instruction support or the relevant AccelSim

@@ -49,7 +49,10 @@ RAMULATOR2_ROOT = env_path("SGRAM_RAMULATOR2_ROOT", default_simulator_root("ramu
 GPU_BENCHMARK_ROOT = env_path("SGRAM_GPU_BENCHMARK_ROOT", WORKSPACE_ROOT / "gpu_benchmark")
 GPGPU_BUILD = env_path("SGRAM_GPGPU_BUILD", GPGPU_ROOT / "build" / "sgram_fixed")
 GPGPU_SETUP = GPGPU_ROOT / "setup"
-GPGPU_CONFIG = GPGPU_ROOT / "configs" / "tested-cfgs" / "SM80_A100" / "gpgpusim.config"
+GPGPU_CONFIG = env_path(
+    "SGRAM_GPGPU_CONFIG",
+    GPGPU_ROOT / "configs" / "tested-cfgs" / "SM80_A100" / "gpgpusim.config",
+)
 GPU_APP_BIN = (
     GPU_BENCHMARK_ROOT
     / "common"
@@ -62,12 +65,20 @@ GRAPHBIG_GPU = GPU_BENCHMARK_ROOT / "suites" / "graphBIG" / "gpu_bench"
 GRAPHBIG_DATA = GPU_BENCHMARK_ROOT / "suites" / "graphBIG" / "dataset" / "small"
 PARBOIL_DATA = GPU_BENCHMARK_ROOT / "common" / "gpu-app-collection-harness" / "data_dirs" / "parboil" / "datasets"
 LOCAL_BENCHMARK_DIR = INTEGRATION_ROOT / "benchmarks"
+GPU_BENCHMARK_MAIN_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "main"
+GPU_BENCHMARK_INVENTORY_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "inventory"
+MANIFEST_MAIN = GPU_BENCHMARK_MAIN_DIR / "manifest.tsv"
 MANIFEST_OPERATIONAL = LOCAL_BENCHMARK_DIR / "operational_manifest.tsv"
-MANIFEST_BROAD = GPU_BENCHMARK_ROOT / "sg_hbm_benchmark_manifest_broad.tsv"
-MANIFEST_EXTRA_BUILT = GPU_BENCHMARK_ROOT / "sg_hbm_benchmark_manifest_extra_built.tsv"
-MANIFEST_EXTRA_VALIDATED = GPU_BENCHMARK_ROOT / "sg_hbm_benchmark_manifest_extra_validated.tsv"
-MANIFEST_MORE_SUITES_BUILT = GPU_BENCHMARK_ROOT / "sg_hbm_benchmark_manifest_more_suites_built.tsv"
-MANIFEST_MORE_SUITES_VALIDATED = GPU_BENCHMARK_ROOT / "sg_hbm_benchmark_manifest_more_suites_validated.tsv"
+MANIFEST_FINAL = LOCAL_BENCHMARK_DIR / "final_manifest.tsv"
+MANIFEST_BROAD = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_broad.tsv"
+MANIFEST_EXTRA_BUILT = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_extra_built.tsv"
+MANIFEST_EXTRA_VALIDATED = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_extra_validated.tsv"
+MANIFEST_MORE_SUITES_BUILT = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_more_suites_built.tsv"
+MANIFEST_MORE_SUITES_VALIDATED = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_more_suites_validated.tsv"
+DEFAULT_RAMULATOR_CONFIG = env_path(
+    "SGRAM_RAMULATOR_CONFIG",
+    INTEGRATION_ROOT / "configs" / "ramulator" / "hbm4.yaml",
+)
 A100_L2_8MB_CONFIG = "S:32:128:13,L:B:m:L:X,A:192:4,32:0,32"
 A100_1STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 22",
@@ -221,7 +232,9 @@ def load_manifest_benchmarks(path: Path) -> tuple[Benchmark, ...]:
         )
 
 
+MANIFEST_MAIN_BENCHMARKS = load_manifest_benchmarks(MANIFEST_MAIN)
 MANIFEST_OPERATIONAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_OPERATIONAL)
+MANIFEST_FINAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_FINAL)
 MANIFEST_BROAD_BENCHMARKS = load_manifest_benchmarks(MANIFEST_BROAD)
 MANIFEST_EXTRA_BUILT_BENCHMARKS = load_manifest_benchmarks(MANIFEST_EXTRA_BUILT)
 MANIFEST_EXTRA_VALIDATED_BENCHMARKS = load_manifest_benchmarks(MANIFEST_EXTRA_VALIDATED)
@@ -232,6 +245,9 @@ MANIFEST_MORE_SUITES_VALIDATED_BENCHMARKS = load_manifest_benchmarks(MANIFEST_MO
 BENCHMARK_PRESETS: dict[str, tuple[Benchmark, ...]] = {
     "core": CORE_BENCHMARKS,
     "graphbig": GRAPHBIG_BENCHMARKS,
+    "accelsim_ramulator_main": MANIFEST_MAIN_BENCHMARKS or MANIFEST_FINAL_BENCHMARKS,
+    "accelsim_ramulator_operational": MANIFEST_OPERATIONAL_BENCHMARKS,
+    "accelsim_ramulator_final": MANIFEST_FINAL_BENCHMARKS,
     "stackganged": CORE_BENCHMARKS + GRAPHBIG_BENCHMARKS,
     "stackganged_operational": MANIFEST_OPERATIONAL_BENCHMARKS,
     "stackganged_broad": MANIFEST_BROAD_BENCHMARKS or (CORE_BENCHMARKS + GRAPHBIG_BENCHMARKS),
@@ -298,6 +314,20 @@ def resolve_workspace_path(path_arg: Path) -> Path:
     return (WORKSPACE_ROOT / path_arg).resolve(strict=False)
 
 
+def resolve_input_path(path_arg: Path) -> Path:
+    if path_arg.is_absolute():
+        return path_arg.resolve(strict=False)
+    candidates = [
+        (Path.cwd() / path_arg).resolve(strict=False),
+        (INTEGRATION_ROOT / path_arg).resolve(strict=False),
+        (WORKSPACE_ROOT / path_arg).resolve(strict=False),
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 def resolve_manifest_executable(command0: Path, workdir: str) -> Path:
     if command0.is_absolute():
         return command0
@@ -336,23 +366,38 @@ def benchmark_command(bench: Benchmark) -> list[str]:
 
 def write_config(
     run_dir: Path,
+    source_config: Path,
     max_cycle: int,
     l2_cache_config: str,
     config_overrides: tuple[str, ...],
+    override_files: tuple[Path, ...],
 ) -> None:
-    shutil.copyfile(GPGPU_CONFIG, run_dir / "gpgpusim.config")
+    shutil.copyfile(source_config, run_dir / "gpgpusim.config")
     with (run_dir / "gpgpusim.config").open("a", encoding="utf-8") as f:
-        f.write("\n# SG-HBM bounded integration smoke overrides\n")
+        f.write("\n# AccelSim + Ramulator2 runner overrides\n")
+        f.write(f"# base_config: {source_config}\n")
         if l2_cache_config:
             f.write(f"-gpgpu_cache:dl2 {l2_cache_config}\n")
         if config_overrides:
-            f.write("# SG-HBM config variant overrides\n")
+            f.write("# inline/variant overrides\n")
             for override in config_overrides:
                 f.write(f"{override}\n")
+        for override_file in override_files:
+            f.write(f"# override_file: {override_file}\n")
+            text = override_file.read_text(encoding="utf-8")
+            f.write(text)
+            if text and not text.endswith("\n"):
+                f.write("\n")
         f.write(f"-gpgpu_max_cycle {max_cycle}\n")
         f.write("-gpgpu_kernel_launch_latency 0\n")
         f.write("-gpgpu_runtime_stat 1000000000\n")
         f.write("-liveness_message_freq 1000000\n")
+
+
+def prepare_ramulator_config(run_dir: Path, source_config: Path) -> Path:
+    copied_config = run_dir / "ramulator2.yaml"
+    shutil.copyfile(source_config, copied_config)
+    return copied_config.resolve()
 
 
 def prepare_benchmark_inputs(bench: Benchmark, run_dir: Path) -> None:
@@ -739,22 +784,33 @@ def run_one(
     max_cycle: int,
     timeout_s: int,
     out_dir: Path,
+    gpgpusim_config: Path,
     l2_cache_config: str,
+    config_override_files: tuple[Path, ...],
     backend: str,
     config_variant: str,
     config_overrides: tuple[str, ...],
+    ramulator_config: Path,
     ramulator_inflight_read_limit: int,
     ramulator_ticks_per_dram_cycle: int,
     ramulator_finalize_stats: str,
 ) -> dict[str, str | int | float]:
-    run_dir = out_dir / config_variant / bench.name / f"{backend}_lat{latency}_q{queue_limit}"
+    run_dir = (out_dir / config_variant / bench.name / f"{backend}_lat{latency}_q{queue_limit}").resolve()
     if run_dir.exists():
         shutil.rmtree(run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
-    write_config(run_dir, max_cycle, l2_cache_config, config_overrides)
+    write_config(
+        run_dir,
+        gpgpusim_config,
+        max_cycle,
+        l2_cache_config,
+        config_overrides,
+        config_override_files,
+    )
     prepare_benchmark_inputs(bench, run_dir)
 
     cmd = benchmark_command(bench)
+    run_ramulator_config = ""
     stdout_path = run_dir / "stdout.log"
     stderr_path = run_dir / "stderr.log"
 
@@ -767,7 +823,7 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
 """.strip()
     elif backend == "ramulator2":
         bridge_lib = INTEGRATION_ROOT / "build" / "ramulator2_bridge" / "libsgram_ramulator2_bridge.so"
-        ramulator_config = INTEGRATION_ROOT / "configs" / "ramulator" / "hbm4.yaml"
+        run_ramulator_config = str(prepare_ramulator_config(run_dir, ramulator_config))
         skip_finalize_stats = ramulator_finalize_stats == "off" or (
             ramulator_finalize_stats == "auto" and max_cycle > 0
         )
@@ -780,7 +836,7 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
 export SGRAM_BACKEND=ramulator2
 export SGRAM_QUEUE_LIMIT={queue_limit}
 export SGRAM_RAMULATOR_LIB={quote(str(bridge_lib))}
-export SGRAM_RAMULATOR_CONFIG={quote(str(ramulator_config))}
+export SGRAM_RAMULATOR_CONFIG={quote(run_ramulator_config)}
 export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT={ramulator_inflight_read_limit}
 export SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE={ramulator_ticks_per_dram_cycle}
 {finalize_stats_env}
@@ -833,8 +889,13 @@ exec {run_cmd}
         "benchmark_workdir": bench.workdir,
         "main_reason": bench.main_reason,
         "config_variant": config_variant,
+        "gpgpusim_config_source": str(gpgpusim_config),
+        "gpgpusim_config_run": str(run_dir / "gpgpusim.config"),
+        "config_override_files": ";".join(str(path) for path in config_override_files),
         "config_overrides": ";".join(config_overrides),
         "backend": backend,
+        "ramulator_config_source": str(ramulator_config) if backend == "ramulator2" else "",
+        "ramulator_config_run": run_ramulator_config,
         "ramulator_inflight_read_limit": ramulator_inflight_read_limit if backend == "ramulator2" else "",
         "ramulator_ticks_per_dram_cycle": ramulator_ticks_per_dram_cycle if backend == "ramulator2" else "",
         "ramulator_finalize_stats": ramulator_finalize_stats if backend == "ramulator2" else "",
@@ -906,6 +967,25 @@ def main() -> int:
         default="",
         help="Extra semicolon-separated gpgpusim.config override lines appended after the variant.",
     )
+    parser.add_argument(
+        "--gpgpusim-config",
+        type=Path,
+        default=GPGPU_CONFIG,
+        help=(
+            "Base AccelSim/GPGPU-Sim config to copy into each run directory. "
+            "Relative paths are resolved from the current directory, the integration root, then the workspace root."
+        ),
+    )
+    parser.add_argument(
+        "--accelsim-config-override-file",
+        type=Path,
+        action="append",
+        default=[],
+        help=(
+            "Append an AccelSim/GPGPU-Sim config fragment after --config-variant "
+            "and --config-overrides. May be specified multiple times."
+        ),
+    )
     parser.add_argument("--max-cycle", type=int, default=50_000)
     parser.add_argument("--timeout", type=int, default=120, help="Per-run wall-clock timeout in seconds. Use 0 to disable.")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 32))
@@ -930,11 +1010,20 @@ def main() -> int:
             "--max-cycle 0 runs and skips them for bounded smoke runs."
         ),
     )
+    parser.add_argument(
+        "--ramulator-config",
+        type=Path,
+        default=DEFAULT_RAMULATOR_CONFIG,
+        help=(
+            "Ramulator2 YAML for --backend ramulator2. The file is copied into "
+            "each run directory as ramulator2.yaml before being passed to the bridge."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=0, help="Limit benchmark count for smoke tests.")
     parser.add_argument(
         "--preset",
         choices=sorted(BENCHMARK_PRESETS),
-        default="stackganged_operational",
+        default="accelsim_ramulator_main",
         help="Built-in benchmark preset.",
     )
     parser.add_argument(
@@ -970,6 +1059,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    gpgpusim_config = resolve_input_path(args.gpgpusim_config)
+    ramulator_config = resolve_input_path(args.ramulator_config)
+    config_override_files = tuple(resolve_input_path(path) for path in args.accelsim_config_override_file)
     l2_cache_config = args.l2_cache_config or (A100_L2_8MB_CONFIG if args.a100_l2_8mb else "")
     config_overrides = CONFIG_VARIANTS[args.config_variant]
     if args.config_overrides:
@@ -1006,7 +1098,10 @@ def main() -> int:
                 ]
             )
         return 0
-    missing = [path for path in (GPGPU_SETUP, GPGPU_BUILD / "libcudart.so", GPGPU_CONFIG) if not path.exists()]
+    missing = [path for path in (GPGPU_SETUP, GPGPU_BUILD / "libcudart.so", gpgpusim_config) if not path.exists()]
+    if args.backend == "ramulator2" and not ramulator_config.exists():
+        missing.append(ramulator_config)
+    missing.extend(path for path in config_override_files if not path.exists())
     if missing:
         for path in missing:
             print(f"missing required file: {path}", file=sys.stderr)
@@ -1016,7 +1111,8 @@ def main() -> int:
     ).exists() else None
     latencies = parse_csv_ints(args.latencies)
     queue_limits = parse_csv_ints(args.queue_limits)
-    args.out_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = args.out_dir if args.out_dir.is_absolute() else (Path.cwd() / args.out_dir).resolve()
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     tasks = [
         (bench, latency, queue_limit)
@@ -1028,10 +1124,13 @@ def main() -> int:
         f"running {len(tasks)} jobs: benchmarks={len(benches)} "
         f"latencies={latencies} queue_limits={queue_limits} jobs={args.jobs} "
         f"backend={args.backend} config_variant={args.config_variant} "
+        f"gpgpusim_config={gpgpusim_config} "
         f"workspace_root={WORKSPACE_ROOT} "
         f"gpu_benchmark_root={GPU_BENCHMARK_ROOT} "
         f"l2_cache_config={l2_cache_config or 'base-config'} "
+        f"config_override_files={';'.join(str(path) for path in config_override_files) or 'none'} "
         f"config_overrides={';'.join(config_overrides) or 'none'} "
+        f"ramulator_config={ramulator_config if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_inflight_read_limit={args.ramulator_inflight_read_limit} "
         f"ramulator_ticks_per_dram_cycle={args.ramulator_ticks_per_dram_cycle} "
         f"ramulator_finalize_stats={args.ramulator_finalize_stats}"
@@ -1049,11 +1148,14 @@ def main() -> int:
                 queue_limit,
                 args.max_cycle,
                 args.timeout,
-                args.out_dir,
+                out_dir,
+                gpgpusim_config,
                 l2_cache_config,
+                config_override_files,
                 args.backend,
                 args.config_variant,
                 config_overrides,
+                ramulator_config,
                 args.ramulator_inflight_read_limit,
                 args.ramulator_ticks_per_dram_cycle,
                 args.ramulator_finalize_stats,
@@ -1073,7 +1175,7 @@ def main() -> int:
             )
 
     rows.sort(key=lambda r: (str(r["benchmark"]), int(r["latency"]), int(r["queue_limit"])))
-    summary = args.out_dir / "summary.csv"
+    summary = out_dir / "summary.csv"
     fields = [
         "benchmark",
         "suite",
@@ -1081,8 +1183,13 @@ def main() -> int:
         "benchmark_workdir",
         "main_reason",
         "config_variant",
+        "gpgpusim_config_source",
+        "gpgpusim_config_run",
+        "config_override_files",
         "config_overrides",
         "backend",
+        "ramulator_config_source",
+        "ramulator_config_run",
         "ramulator_inflight_read_limit",
         "ramulator_ticks_per_dram_cycle",
         "ramulator_finalize_stats",

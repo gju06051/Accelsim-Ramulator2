@@ -24,7 +24,7 @@ Ramulator2 mode:
 ```text
 SGRAM_BACKEND=ramulator2
 SGRAM_RAMULATOR_LIB=/path/to/libsgram_ramulator2_bridge.so
-SGRAM_RAMULATOR_CONFIG=/path/to/hbm4.yaml
+SGRAM_RAMULATOR_CONFIG=/path/to/a100_hbm2e_1stack.yaml
 SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=<entries>
 SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=<ticks>
 SGRAM_QUEUE_LIMIT=<entries>

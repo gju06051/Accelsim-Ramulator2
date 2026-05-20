@@ -19,11 +19,14 @@ The operational manifest is the union of the checked candidate manifests below:
 
 | Source manifest | Rows | Role |
 | --- | ---: | --- |
-| `sg_hbm_benchmark_manifest_broad.tsv` | 59 | Previously checked broad benchmark set |
-| `sg_hbm_benchmark_manifest_extra_validated.tsv` | 16 | Additional validated benchmarks |
-| `sg_hbm_benchmark_manifest_final.tsv` | 17 | Newly validated lonestar/pannotia/dragon-li set |
+| `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_broad.tsv` | 59 | Previously checked broad benchmark set |
+| `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_extra_validated.tsv` | 16 | Additional validated benchmarks |
+| `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_final.tsv` | 17 | Newly validated lonestar/pannotia/dragon-li set |
 
 Total rows: 92
+
+The narrower recommended sweep set is tracked separately in
+`benchmarks/final_manifest.tsv`.
 
 ## Class Distribution
 
@@ -62,8 +65,11 @@ Total rows: 92
 ## Policy
 
 - Use `benchmarks/operational_manifest.tsv` for AccelSim + Ramulator2 sweeps,
-  Ramulator replay generation, and trace extraction unless a narrower subset is
-  explicitly needed.
+  Ramulator replay generation, and trace extraction when broad coverage is
+  needed.
+- Use `benchmarks/final_manifest.tsv` for routine experiments where runtime,
+  result readability, and variant de-duplication are more important than
+  maximum coverage.
 - Keep build-inventory manifests separate from operational manifests.
 - Add newly validated benchmarks to the operational manifest only after checking
   that they do not hit known AccelSim unsupported instruction paths.

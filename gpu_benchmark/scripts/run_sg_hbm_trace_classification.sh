@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-MANIFEST="${MANIFEST:-${ROOT}/gpu_benchmark/sg_hbm_benchmark_manifest.tsv}"
+MANIFEST="${MANIFEST:-${ROOT}/gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest.tsv}"
 OUT_DIR="${OUT_DIR:-${ROOT}/gpu_benchmark/sg_hbm_trace_classification}"
 MAX_CASES="${MAX_CASES:-0}"
 CASE_REGEX="${CASE_REGEX:-}"

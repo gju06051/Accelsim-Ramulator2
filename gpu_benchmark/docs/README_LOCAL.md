@@ -1,6 +1,9 @@
 # Local GPU Benchmark Setup
 
-This directory is organized around two benchmark sources:
+This note describes the `gpu_benchmark/` root. Run the commands below from that
+directory unless a command says otherwise.
+
+The benchmark tree is organized around two benchmark sources:
 
 - `suites/graphBIG`: the existing GraphBIG GPU benchmarks.
 - `gpu-app-collection`: the source tree for the non-GraphBIG CUDA workloads.

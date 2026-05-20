@@ -13,6 +13,8 @@ environment variables.
 | --- | --- |
 | `operational_manifest.tsv` | Canonical validated benchmark list for AccelSim + Ramulator2 runs |
 | `operational_manifest_notes.md` | Source, class, suite, and validation notes for the manifest |
+| `final_manifest.tsv` | Smaller representative benchmark set recommended for routine sweeps |
+| `final_manifest_notes.md` | Selection policy and family-level de-duplication notes for the final set |
 | `exclusions.md` | Benchmarks excluded from the operational set and the reason for exclusion |
 
 ## Operational Set
@@ -38,6 +40,31 @@ The operational manifest currently has 92 benchmarks:
 | pannotia | 8 |
 | dragon-li | 4 |
 
+## Final Representative Set
+
+The final manifest has 45 benchmarks selected from the operational pool. It
+keeps all major suites represented, removes near-duplicate variants, and avoids
+the two current-repo input/problem cases found during validation.
+
+| Class | Count |
+| --- | ---: |
+| Streaming | 11 |
+| Mixed-locality | 17 |
+| Irregular | 17 |
+
+| Suite | Count |
+| --- | ---: |
+| polybench | 7 |
+| graphBIG | 5 |
+| ispass-2009 | 3 |
+| rodinia | 7 |
+| proxy-apps | 2 |
+| microbench | 8 |
+| parboil | 4 |
+| lonestar | 2 |
+| pannotia | 5 |
+| dragon-li | 2 |
+
 ## Expected External Tree
 
 By default, the runner assumes the integration repo is placed under a workspace
@@ -62,24 +89,29 @@ export SGRAM_RAMULATOR2_ROOT=/path/to/ramulator2
 export SGRAM_GPGPU_BUILD=/path/to/gpgpu-sim_distribution/build/sgram_fixed
 ```
 
-## Runner Preset
+## Runner Presets
 
-The operational runner preset is still named `stackganged_operational` for
-compatibility with earlier scripts. It loads
-`benchmarks/operational_manifest.tsv`.
+The recommended user-facing preset is `accelsim_ramulator_main`. It loads
+`gpu_benchmark/benchmarks/main/manifest.tsv`, so local benchmark additions can
+be made without editing the simulator tree. The frozen 45-benchmark set is also
+available as `accelsim_ramulator_final`, and the broader validated pool is
+available as `accelsim_ramulator_operational`. Legacy `stackganged_*` preset
+names remain for compatibility with earlier scripts.
 
-List the distributable benchmark set without requiring an AccelSim build:
+List the final benchmark set without requiring an AccelSim build:
 
 ```bash
-./scripts/run_fixed_backend_matrix.py --list-benchmarks
+./scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main \
+  --list-benchmarks
 ```
 
-Run a bounded smoke on the operational set:
+Run a bounded smoke on the final set:
 
 ```bash
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset stackganged_operational \
+  --preset accelsim_ramulator_main \
   --latencies 0 \
   --queue-limits 128 \
   --config-variant a100_1stack \
