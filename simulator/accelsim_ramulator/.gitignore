@@ -1,0 +1,10 @@
+build/
+run/
+results/
+__pycache__/
+*.pyc
+*.log
+*.out
+*.err
+*.csv
+*.trace

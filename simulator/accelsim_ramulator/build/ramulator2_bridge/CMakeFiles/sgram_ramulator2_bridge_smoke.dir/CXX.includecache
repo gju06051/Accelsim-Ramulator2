@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/gju06051/StackGanged/simulator/accelsim_ramulator/bridge/ramulator2_bridge_smoke.cc
+ramulator2_c_api.h
+/home/gju06051/StackGanged/simulator/accelsim_ramulator/bridge/ramulator2_c_api.h
+cstdlib
+-
+iostream
+-
+
+/home/gju06051/StackGanged/simulator/accelsim_ramulator/bridge/ramulator2_c_api.h
+

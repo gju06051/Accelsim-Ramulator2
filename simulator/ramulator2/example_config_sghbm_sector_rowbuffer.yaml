@@ -1,0 +1,45 @@
+Frontend:
+  impl: LoadStoreTrace
+  clock_ratio: 1
+  path: example_sghbm_sector_rowbuffer.ldst
+  drain_cycles: 1000
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 1
+
+  DRAM:
+    impl: SGHBM
+    org:
+      preset: SGHBM_8Gb
+      channel_width: 32
+      channel: 1
+    timing:
+      preset: SGHBM_4Gbps
+    sg:
+      sector_size: A512
+      cmd_factor: 2
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+      - ControllerPlugin:
+          impl: TraceRecorder
+          path: ./build/sghbm_sector_rowbuffer.cmdtrace
+      - ControllerPlugin:
+          impl: CommandCounter
+          path: ./build/sghbm_sector_rowbuffer.cmdcount
+          commands_to_count:
+            - ACT
+            - RD
+            - WR
+            - PRE
+
+  AddrMapper:
+    impl: RoBaRaCoCh

@@ -1,0 +1,9 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z6kernelPj9cudaGraphjPb' for 'sm_20'
+ptxas info    : Function properties for _Z6kernelPj9cudaGraphjPb
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 19 registers, 88 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z10initializePjm' for 'sm_20'
+ptxas info    : Function properties for _Z10initializePjm
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 5 registers, 48 bytes cmem[0]

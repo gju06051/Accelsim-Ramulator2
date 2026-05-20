@@ -1,0 +1,133 @@
+
+
+
+
+
+
+
+
+.version 5.0
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z10initializePjm(
+.param .u64 _Z10initializePjm_param_0,
+.param .u64 _Z10initializePjm_param_1
+)
+{
+.reg .pred %p<2>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<7>;
+
+
+ld.param.u64 %rd2, [_Z10initializePjm_param_0];
+ld.param.u64 %rd3, [_Z10initializePjm_param_1];
+mov.u32 %r1, %ctaid.x;
+mov.u32 %r2, %ntid.x;
+mov.u32 %r3, %tid.x;
+mad.lo.s32 %r4, %r2, %r1, %r3;
+cvt.u64.u32	%rd1, %r4;
+setp.ge.u64	%p1, %rd1, %rd3;
+@%p1 bra BB0_2;
+
+cvta.to.global.u64 %rd4, %rd2;
+shl.b64 %rd5, %rd1, 2;
+add.s64 %rd6, %rd4, %rd5;
+mov.u32 %r5, -256;
+st.global.u32 [%rd6], %r5;
+
+BB0_2:
+ret;
+}
+
+
+.visible .entry _Z6kernelPjS_9cudaGraphjPb(
+.param .u64 _Z6kernelPjS_9cudaGraphjPb_param_0,
+.param .u64 _Z6kernelPjS_9cudaGraphjPb_param_1,
+.param .align 8 .b8 _Z6kernelPjS_9cudaGraphjPb_param_2[32],
+.param .u32 _Z6kernelPjS_9cudaGraphjPb_param_3,
+.param .u64 _Z6kernelPjS_9cudaGraphjPb_param_4
+)
+{
+.reg .pred %p<10>;
+.reg .b16 %rs<2>;
+.reg .b32 %r<10>;
+.reg .b64 %rd<32>;
+
+
+ld.param.u64 %rd16, [_Z6kernelPjS_9cudaGraphjPb_param_0];
+ld.param.u64 %rd17, [_Z6kernelPjS_9cudaGraphjPb_param_1];
+ld.param.u64 %rd12, [_Z6kernelPjS_9cudaGraphjPb_param_2+8];
+ld.param.u64 %rd11, [_Z6kernelPjS_9cudaGraphjPb_param_2];
+ld.param.u64 %rd13, [_Z6kernelPjS_9cudaGraphjPb_param_2+16];
+ld.param.u32 %r3, [_Z6kernelPjS_9cudaGraphjPb_param_3];
+ld.param.u64 %rd15, [_Z6kernelPjS_9cudaGraphjPb_param_4];
+cvta.to.global.u64 %rd1, %rd17;
+cvta.to.global.u64 %rd2, %rd16;
+mov.u32 %r4, %ntid.x;
+mov.u32 %r5, %ctaid.x;
+mov.u32 %r6, %tid.x;
+mad.lo.s32 %r7, %r4, %r5, %r6;
+cvt.u64.u32	%rd3, %r7;
+setp.ge.u64	%p1, %rd3, %rd13;
+@%p1 bra BB1_9;
+
+shl.b64 %rd18, %rd3, 2;
+add.s64 %rd4, %rd2, %rd18;
+ld.global.u32 %r8, [%rd4];
+setp.ne.s32	%p2, %r8, -256;
+@%p2 bra BB1_9;
+
+cvta.to.global.u64 %rd19, %rd11;
+cvta.to.global.u64 %rd5, %rd12;
+shl.b64 %rd20, %rd3, 3;
+add.s64 %rd21, %rd19, %rd20;
+add.s64 %rd23, %rd1, %rd18;
+ld.global.u32 %r1, [%rd23];
+ld.global.u64 %rd6, [%rd21+8];
+ld.global.u64 %rd31, [%rd21];
+setp.ge.u64	%p3, %rd31, %rd6;
+@%p3 bra BB1_8;
+
+BB1_3:
+shl.b64 %rd24, %rd31, 3;
+add.s64 %rd25, %rd5, %rd24;
+ld.global.u64 %rd9, [%rd25];
+shl.b64 %rd26, %rd9, 2;
+add.s64 %rd27, %rd2, %rd26;
+ld.global.u32 %r9, [%rd27];
+setp.lt.u32	%p4, %r9, %r3;
+@%p4 bra BB1_7;
+
+add.s64 %rd29, %rd1, %rd26;
+ld.global.u32 %r2, [%rd29];
+setp.gt.u32	%p5, %r2, %r1;
+@%p5 bra BB1_6;
+
+setp.eq.s32	%p6, %r2, %r1;
+setp.lt.u64	%p7, %rd9, %rd3;
+and.pred %p8, %p6, %p7;
+@!%p8 bra BB1_7;
+bra.uni BB1_6;
+
+BB1_7:
+add.s64 %rd31, %rd31, 1;
+setp.lt.u64	%p9, %rd31, %rd6;
+@%p9 bra BB1_3;
+
+BB1_8:
+st.global.u32 [%rd4], %r3;
+bra.uni BB1_9;
+
+BB1_6:
+cvta.to.global.u64 %rd30, %rd15;
+mov.u16 %rs1, 0;
+st.global.u8 [%rd30], %rs1;
+
+BB1_9:
+ret;
+}
+
+

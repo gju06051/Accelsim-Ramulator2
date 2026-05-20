@@ -1,0 +1,439 @@
+#include "sgram_backend.h"
+
+#include <assert.h>
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "gpu-sim.h"
+#include "l2cache.h"
+#include "mem_fetch.h"
+#include "mem_latency_stat.h"
+
+namespace {
+
+typedef void (*sgram_ramulator2_complete_cb)(
+    void *user, void *payload, unsigned long long addr, int type,
+    int source_id, long long arrive, long long depart);
+typedef void *(*r2_create_fn)(const char *config_path);
+typedef void (*r2_destroy_fn)(void *handle);
+typedef int (*r2_send_fn)(void *handle, unsigned long long addr, int type,
+                          int source_id, void *payload, void *user,
+                          sgram_ramulator2_complete_cb callback);
+typedef void (*r2_tick_fn)(void *handle);
+typedef void (*r2_finalize_fn)(void *handle);
+typedef double (*r2_tck_ns_fn)(void *handle);
+typedef unsigned long long (*r2_ticks_fn)(void *handle);
+
+struct ramulator2_api_t {
+  r2_create_fn create;
+  r2_destroy_fn destroy;
+  r2_send_fn send;
+  r2_tick_fn tick;
+  r2_finalize_fn finalize;
+  r2_tck_ns_fn tck_ns;
+  r2_ticks_fn ticks;
+};
+
+void *g_ramulator2_dso = NULL;
+void *g_ramulator2_handle = NULL;
+ramulator2_api_t g_ramulator2_api = {};
+unsigned g_ramulator2_refcount = 0;
+bool g_ramulator2_atexit_registered = false;
+unsigned g_ramulator2_inflight_reads = 0;
+unsigned g_ramulator2_inflight_read_limit = 32;
+unsigned g_ramulator2_ticks_per_dram_cycle = 1;
+
+unsigned env_u32_local(const char *name, unsigned default_value) {
+  const char *value = getenv(name);
+  if (!value || !value[0]) return default_value;
+  char *end = NULL;
+  unsigned long parsed = strtoul(value, &end, 0);
+  if (end == value) return default_value;
+  return static_cast<unsigned>(parsed);
+}
+
+void *load_symbol(const char *name) {
+  dlerror();
+  void *symbol = dlsym(g_ramulator2_dso, name);
+  const char *err = dlerror();
+  if (err != NULL || symbol == NULL) {
+    printf("failed to load Ramulator2 bridge symbol %s: %s\n", name,
+           err ? err : "symbol is null");
+    abort();
+  }
+  return symbol;
+}
+
+void load_ramulator2_api() {
+  if (g_ramulator2_dso) return;
+
+  const char *lib = getenv("SGRAM_RAMULATOR_LIB");
+  if (!lib || !lib[0]) lib = "libsgram_ramulator2_bridge.so";
+
+  g_ramulator2_dso = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+  if (!g_ramulator2_dso) {
+    printf("failed to dlopen Ramulator2 bridge %s: %s\n", lib, dlerror());
+    abort();
+  }
+
+  g_ramulator2_api.create =
+      reinterpret_cast<r2_create_fn>(load_symbol("sgram_ramulator2_create"));
+  g_ramulator2_api.destroy =
+      reinterpret_cast<r2_destroy_fn>(load_symbol("sgram_ramulator2_destroy"));
+  g_ramulator2_api.send =
+      reinterpret_cast<r2_send_fn>(load_symbol("sgram_ramulator2_send"));
+  g_ramulator2_api.tick =
+      reinterpret_cast<r2_tick_fn>(load_symbol("sgram_ramulator2_tick"));
+  g_ramulator2_api.finalize =
+      reinterpret_cast<r2_finalize_fn>(load_symbol("sgram_ramulator2_finalize"));
+  g_ramulator2_api.tck_ns =
+      reinterpret_cast<r2_tck_ns_fn>(load_symbol("sgram_ramulator2_tck_ns"));
+  g_ramulator2_api.ticks =
+      reinterpret_cast<r2_ticks_fn>(load_symbol("sgram_ramulator2_ticks"));
+}
+
+void create_ramulator2_if_needed() {
+  load_ramulator2_api();
+  if (g_ramulator2_handle) {
+    g_ramulator2_refcount++;
+    return;
+  }
+
+  const char *config = getenv("SGRAM_RAMULATOR_CONFIG");
+  if (!config || !config[0]) {
+    printf("SGRAM_BACKEND=ramulator2 requires SGRAM_RAMULATOR_CONFIG\n");
+    abort();
+  }
+
+  g_ramulator2_handle = g_ramulator2_api.create(config);
+  if (!g_ramulator2_handle) {
+    printf("failed to create Ramulator2 bridge using config %s\n", config);
+    abort();
+  }
+  g_ramulator2_inflight_read_limit =
+      env_u32_local("SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT", 32);
+  g_ramulator2_ticks_per_dram_cycle =
+      env_u32_local("SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE", 1);
+  if (!g_ramulator2_atexit_registered) {
+    atexit([]() {
+      if (g_ramulator2_handle) g_ramulator2_api.finalize(g_ramulator2_handle);
+    });
+    g_ramulator2_atexit_registered = true;
+  }
+  g_ramulator2_refcount = 1;
+  printf("SGRAM Ramulator2 bridge created: config=%s tCK=%.3f ns "
+         "inflight_read_limit=%u ticks_per_dram_cycle=%u\n",
+         config, g_ramulator2_api.tck_ns(g_ramulator2_handle),
+         g_ramulator2_inflight_read_limit,
+         g_ramulator2_ticks_per_dram_cycle);
+}
+
+void release_ramulator2() {
+  if (!g_ramulator2_handle) return;
+  assert(g_ramulator2_refcount > 0);
+  g_ramulator2_refcount--;
+  if (g_ramulator2_refcount != 0) return;
+
+  g_ramulator2_api.destroy(g_ramulator2_handle);
+  g_ramulator2_handle = NULL;
+}
+
+}  // namespace
+
+sgram_backend_t *sgram_backend_t::create_if_enabled(
+    unsigned partition_id, const memory_config *config, memory_stats_t *stats,
+    memory_partition_unit *mp, gpgpu_sim *gpu) {
+  const char *backend = getenv("SGRAM_BACKEND");
+  if (!backend || !backend[0]) return NULL;
+  if (strcmp(backend, "fixed") != 0 && strcmp(backend, "fixed_latency") != 0 &&
+      strcmp(backend, "ramulator2") != 0) {
+    printf("SGRAM_BACKEND=%s is not supported by the scaffolding backend\n",
+           backend);
+    abort();
+  }
+  return new sgram_backend_t(partition_id, config, stats, mp, gpu);
+}
+
+sgram_backend_t::sgram_backend_t(unsigned partition_id,
+                                 const memory_config *config,
+                                 memory_stats_t *stats,
+                                 memory_partition_unit *mp, gpgpu_sim *gpu)
+    : m_partition_id(partition_id),
+      m_config(config),
+      m_stats(stats),
+      m_memory_partition_unit(mp),
+      m_gpu(gpu),
+      m_backend_kind(BACKEND_FIXED),
+      m_fixed_latency(env_u32("SGRAM_FIXED_LATENCY", config->dram_latency)),
+      m_queue_limit(env_u32("SGRAM_QUEUE_LIMIT",
+                            config->gpgpu_frfcfs_dram_sched_queue_size)),
+      m_returnq(new fifo_pipeline<mem_fetch>(
+          "sgram_returnq", 0,
+          config->gpgpu_dram_return_queue_size == 0
+              ? 1024
+              : config->gpgpu_dram_return_queue_size)),
+      m_num_pushes(0),
+      m_num_reads(0),
+      m_num_writes(0),
+      m_num_writebacks(0),
+      m_num_returns(0),
+      m_num_rejected(0),
+      m_num_rejected_inflight(0),
+      m_num_rejected_ramulator(0),
+      m_num_backend_full(0),
+      m_num_ramulator2_accepted_reads(0),
+      m_num_ramulator2_accepted_writes(0),
+      m_num_ramulator2_completed_reads(0),
+      m_num_ramulator2_immediate_writes(0) {
+  const char *backend = getenv("SGRAM_BACKEND");
+  if (backend && strcmp(backend, "ramulator2") == 0) {
+    m_backend_kind = BACKEND_RAMULATOR2;
+    create_ramulator2_if_needed();
+    printf("SGRAM Ramulator2 backend enabled: partition=%u queue_limit=%u\n",
+           m_partition_id, m_queue_limit);
+  } else {
+    printf("SGRAM fixed-latency backend enabled: partition=%u latency=%u "
+           "queue_limit=%u\n",
+           m_partition_id, m_fixed_latency, m_queue_limit);
+  }
+}
+
+sgram_backend_t::~sgram_backend_t() {
+  if (m_backend_kind == BACKEND_RAMULATOR2) release_ramulator2();
+  delete m_returnq;
+}
+
+unsigned sgram_backend_t::env_u32(const char *name, unsigned default_value) {
+  const char *value = getenv(name);
+  if (!value || !value[0]) return default_value;
+  char *end = NULL;
+  unsigned long parsed = strtoul(value, &end, 0);
+  if (end == value) return default_value;
+  return static_cast<unsigned>(parsed);
+}
+
+const char *sgram_backend_t::env_str(const char *name,
+                                     const char *default_value) {
+  const char *value = getenv(name);
+  if (!value || !value[0]) return default_value;
+  return value;
+}
+
+unsigned long long sgram_backend_t::now() const {
+  return m_gpu->gpu_sim_cycle + m_gpu->gpu_tot_sim_cycle;
+}
+
+bool sgram_backend_t::full(bool is_write) const {
+  (void)is_write;
+  if (m_queue_limit == 0) return false;
+  if (m_backend_kind == BACKEND_RAMULATOR2) {
+    bool is_full = (m_pending.size() + m_completed.size()) >= m_queue_limit;
+    if (is_full) m_num_backend_full++;
+    return is_full;
+  }
+  bool is_full = m_pending.size() >= m_queue_limit;
+  if (is_full) m_num_backend_full++;
+  return is_full;
+}
+
+void sgram_backend_t::push(mem_fetch *data) {
+  data->set_status(IN_PARTITION_MC_INTERFACE_QUEUE, now());
+  m_stats->memlatstat_dram_access(data);
+  unsigned long long ready_cycle =
+      m_backend_kind == BACKEND_FIXED ? now() + m_fixed_latency : 0;
+  m_pending.push_back({ready_cycle, data});
+  m_num_pushes++;
+  if (data->get_access_type() == L1_WRBK_ACC ||
+      data->get_access_type() == L2_WRBK_ACC) {
+    m_num_writebacks++;
+  } else if (data->get_is_write()) {
+    m_num_writes++;
+  } else {
+    m_num_reads++;
+  }
+}
+
+void sgram_backend_t::ramulator2_complete(void *user, void *payload,
+                                          unsigned long long addr, int type,
+                                          int source_id, long long arrive,
+                                          long long depart) {
+  (void)addr;
+  (void)type;
+  (void)source_id;
+  (void)arrive;
+  (void)depart;
+  sgram_backend_t *backend = static_cast<sgram_backend_t *>(user);
+  mem_fetch *data = static_cast<mem_fetch *>(payload);
+  if (g_ramulator2_inflight_reads > 0) g_ramulator2_inflight_reads--;
+  backend->m_completed.push_back({data});
+  backend->m_num_ramulator2_completed_reads++;
+}
+
+void sgram_backend_t::complete(mem_fetch *data) {
+  data->set_status(IN_PARTITION_MC_RETURNQ, now());
+
+  if (data->get_access_type() != L1_WRBK_ACC &&
+      data->get_access_type() != L2_WRBK_ACC) {
+    data->set_reply();
+    m_returnq->push(data);
+    m_num_returns++;
+  } else {
+    m_memory_partition_unit->set_done(data);
+    delete data;
+  }
+}
+
+bool sgram_backend_t::send_ramulator2(mem_fetch *data) {
+  assert(g_ramulator2_handle != NULL);
+  int type = data->get_is_write() ? 1 : 0;
+  int source_id = static_cast<int>(m_partition_id);
+  if (type == 0 && g_ramulator2_inflight_read_limit != 0 &&
+      g_ramulator2_inflight_reads >= g_ramulator2_inflight_read_limit) {
+    m_num_rejected++;
+    m_num_rejected_inflight++;
+    return false;
+  }
+  int accepted =
+      g_ramulator2_api.send(g_ramulator2_handle, data->get_addr(), type,
+                            source_id, data, this, ramulator2_complete);
+  if (!accepted) {
+    m_num_rejected++;
+    m_num_rejected_ramulator++;
+    return false;
+  }
+
+  if (type == 0) {
+    g_ramulator2_inflight_reads++;
+    m_num_ramulator2_accepted_reads++;
+  } else {
+    m_num_ramulator2_accepted_writes++;
+    m_num_ramulator2_immediate_writes++;
+    m_completed.push_back({data});
+  }
+  return true;
+}
+
+void sgram_backend_t::tick_ramulator2_once() {
+  if (m_backend_kind != BACKEND_RAMULATOR2) return;
+  if (m_partition_id != 0) return;
+  for (unsigned i = 0; i < g_ramulator2_ticks_per_dram_cycle; i++) {
+    g_ramulator2_api.tick(g_ramulator2_handle);
+  }
+}
+
+void sgram_backend_t::cycle() {
+  if (m_backend_kind == BACKEND_RAMULATOR2) {
+    tick_ramulator2_once();
+
+    while (!m_completed.empty() && !m_returnq->full()) {
+      mem_fetch *data = m_completed.front().req;
+      m_completed.pop_front();
+      complete(data);
+    }
+
+    if (!m_pending.empty()) {
+      mem_fetch *data = m_pending.front().req;
+      if (send_ramulator2(data)) m_pending.pop_front();
+    }
+    return;
+  }
+
+  if (m_pending.empty() || m_returnq->full()) return;
+  if (m_pending.front().ready_cycle > now()) return;
+
+  mem_fetch *data = m_pending.front().req;
+  m_pending.pop_front();
+  complete(data);
+}
+
+mem_fetch *sgram_backend_t::return_queue_top() { return m_returnq->top(); }
+
+mem_fetch *sgram_backend_t::return_queue_pop() { return m_returnq->pop(); }
+
+bool sgram_backend_t::returnq_full() const { return m_returnq->full(); }
+
+unsigned sgram_backend_t::que_length() const {
+  return static_cast<unsigned>(m_pending.size());
+}
+
+void sgram_backend_t::print(FILE *fp) const {
+  if (m_backend_kind == BACKEND_RAMULATOR2) {
+    unsigned long long ticks =
+        g_ramulator2_handle ? g_ramulator2_api.ticks(g_ramulator2_handle) : 0;
+    fprintf(fp,
+            "SGRAM Ramulator2 backend partition %u: pending=%zu completed=%zu "
+            "returnq_full=%u queue_limit=%u bridge_ticks=%llu "
+            "ticks_per_dram_cycle=%u "
+            "accepted_reads=%llu completed_reads=%llu accepted_writes=%llu "
+            "rejected=%llu rejected_inflight=%llu rejected_ramulator=%llu "
+            "backend_full=%llu global_inflight_reads=%u inflight_limit=%u\n",
+            m_partition_id, m_pending.size(), m_completed.size(),
+            m_returnq->full() ? 1 : 0, m_queue_limit, ticks,
+            g_ramulator2_ticks_per_dram_cycle,
+            m_num_ramulator2_accepted_reads,
+            m_num_ramulator2_completed_reads,
+            m_num_ramulator2_accepted_writes, m_num_rejected,
+            m_num_rejected_inflight, m_num_rejected_ramulator,
+            m_num_backend_full, g_ramulator2_inflight_reads,
+            g_ramulator2_inflight_read_limit);
+  } else {
+    fprintf(fp,
+            "SGRAM fixed backend partition %u: pending=%zu returnq_full=%u "
+            "latency=%u queue_limit=%u\n",
+            m_partition_id, m_pending.size(), m_returnq->full() ? 1 : 0,
+            m_fixed_latency, m_queue_limit);
+  }
+}
+
+void sgram_backend_t::print_stat(FILE *fp) {
+  const char *prefix =
+      m_backend_kind == BACKEND_RAMULATOR2 ? "sgram_ramulator2_backend"
+                                           : "sgram_fixed_backend";
+  fprintf(fp, "%s[%u]_pushes = %llu\n", prefix, m_partition_id, m_num_pushes);
+  fprintf(fp, "%s[%u]_reads = %llu\n", prefix, m_partition_id, m_num_reads);
+  fprintf(fp, "%s[%u]_writes = %llu\n", prefix, m_partition_id, m_num_writes);
+  fprintf(fp, "%s[%u]_writebacks = %llu\n", prefix, m_partition_id,
+          m_num_writebacks);
+  fprintf(fp, "%s[%u]_returns = %llu\n", prefix, m_partition_id,
+          m_num_returns);
+  fprintf(fp, "%s[%u]_rejected = %llu\n", prefix, m_partition_id,
+          m_num_rejected);
+  fprintf(fp, "%s[%u]_rejected_inflight = %llu\n", prefix, m_partition_id,
+          m_num_rejected_inflight);
+  fprintf(fp, "%s[%u]_rejected_ramulator = %llu\n", prefix, m_partition_id,
+          m_num_rejected_ramulator);
+  fprintf(fp, "%s[%u]_backend_full = %llu\n", prefix, m_partition_id,
+          m_num_backend_full);
+  if (m_backend_kind == BACKEND_RAMULATOR2) {
+    fprintf(fp, "%s[%u]_accepted_reads = %llu\n", prefix, m_partition_id,
+            m_num_ramulator2_accepted_reads);
+    fprintf(fp, "%s[%u]_accepted_writes = %llu\n", prefix, m_partition_id,
+            m_num_ramulator2_accepted_writes);
+    fprintf(fp, "%s[%u]_completed_reads = %llu\n", prefix, m_partition_id,
+            m_num_ramulator2_completed_reads);
+    fprintf(fp, "%s[%u]_immediate_writes = %llu\n", prefix, m_partition_id,
+            m_num_ramulator2_immediate_writes);
+  }
+}
+
+void sgram_backend_t::visualize() const {}
+
+void sgram_backend_t::visualizer_print(gzFile visualizer_file) const {
+  (void)visualizer_file;
+}
+
+void sgram_backend_t::set_dram_power_stats(
+    unsigned &cmd, unsigned &activity, unsigned &nop, unsigned &act,
+    unsigned &pre, unsigned &rd, unsigned &wr, unsigned &wr_WB,
+    unsigned &req) const {
+  cmd = 0;
+  activity = 0;
+  nop = 0;
+  act = 0;
+  pre = 0;
+  rd = static_cast<unsigned>(m_num_reads);
+  wr = static_cast<unsigned>(m_num_writes);
+  wr_WB = static_cast<unsigned>(m_num_writebacks);
+  req = static_cast<unsigned>(m_num_pushes);
+}

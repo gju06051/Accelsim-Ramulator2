@@ -1,0 +1,13 @@
+name	suite	expected_class	workdir	command	main_reason
+polybench_gemm	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-gemm	Dense regular matrix access
+polybench_2mm	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-2mm	Dense regular matrix multiplication
+polybench_3mm	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-3mm	Dense regular matrix multiplication
+polybench_2dconv	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-2DConvolution	Structured sliding-window locality
+polybench_3dconv	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-3DConvolution	Structured sliding-window locality
+polybench_fdtd2d	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-fdtd2d	Structured grid reuse
+graphbig_bfs_small	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_BFS/bfs_topo_frontier --dataset gpu_benchmark/suites/graphBIG/dataset/small --root 31	Frontier-driven graph traversal
+graphbig_sssp_small	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_SSSP/sssp_data_thread_centric --dataset gpu_benchmark/suites/graphBIG/dataset/small --root 31	Data-dependent graph traversal
+graphbig_connected_comp_small	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_ConnectedComp/connected_comp --dataset gpu_benchmark/suites/graphBIG/dataset/small	Graph component traversal and updates
+parboil_stencil	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-stencil -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/stencil/small/input/128x128x32.bin -o parboil_stencil.out 128 128 32 100	Structured stencil reuse
+parboil_histo	parboil	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-histo -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/histo/default/input/img.bin -o parboil_histo.bmp 20 4	Random/scattered histogram updates
+lonestar_bfs_rmat12	lonestar	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lonestar-bfs gpu_benchmark/suites/lonestargpu-2.0/inputs/rmat12.sym.gr	Graph traversal

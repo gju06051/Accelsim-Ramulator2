@@ -1,0 +1,312 @@
+
+
+
+
+
+
+
+
+.version 5.0
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z10initializePmS_PbS_9cudaGraph(
+.param .u64 _Z10initializePmS_PbS_9cudaGraph_param_0,
+.param .u64 _Z10initializePmS_PbS_9cudaGraph_param_1,
+.param .u64 _Z10initializePmS_PbS_9cudaGraph_param_2,
+.param .u64 _Z10initializePmS_PbS_9cudaGraph_param_3,
+.param .align 8 .b8 _Z10initializePmS_PbS_9cudaGraph_param_4[32]
+)
+{
+.reg .pred %p<4>;
+.reg .b16 %rs<2>;
+.reg .b32 %r<5>;
+.reg .b64 %rd<30>;
+
+
+ld.param.u64 %rd10, [_Z10initializePmS_PbS_9cudaGraph_param_0];
+ld.param.u64 %rd11, [_Z10initializePmS_PbS_9cudaGraph_param_1];
+ld.param.u64 %rd12, [_Z10initializePmS_PbS_9cudaGraph_param_2];
+ld.param.u64 %rd13, [_Z10initializePmS_PbS_9cudaGraph_param_3];
+ld.param.u64 %rd14, [_Z10initializePmS_PbS_9cudaGraph_param_4];
+ld.param.u64 %rd16, [_Z10initializePmS_PbS_9cudaGraph_param_4+16];
+mov.u32 %r1, %ntid.x;
+mov.u32 %r2, %ctaid.x;
+mov.u32 %r3, %tid.x;
+mad.lo.s32 %r4, %r1, %r2, %r3;
+cvt.u64.u32	%rd1, %r4;
+setp.ge.u64	%p1, %rd1, %rd16;
+@%p1 bra BB0_4;
+
+cvta.to.global.u64 %rd18, %rd14;
+cvta.to.global.u64 %rd19, %rd10;
+shl.b64 %rd20, %rd1, 3;
+add.s64 %rd21, %rd19, %rd20;
+st.global.u64 [%rd21], %rd1;
+cvta.to.global.u64 %rd22, %rd11;
+add.s64 %rd23, %rd22, %rd20;
+st.global.u64 [%rd23], %rd1;
+add.s64 %rd24, %rd18, %rd20;
+ld.global.u64 %rd2, [%rd24+8];
+ld.global.u64 %rd29, [%rd24];
+setp.ge.u64	%p2, %rd29, %rd2;
+@%p2 bra BB0_4;
+
+cvta.to.global.u64 %rd25, %rd13;
+cvta.to.global.u64 %rd4, %rd12;
+shl.b64 %rd26, %rd29, 3;
+add.s64 %rd28, %rd25, %rd26;
+
+BB0_3:
+add.s64 %rd27, %rd4, %rd29;
+mov.u16 %rs1, 0;
+st.global.u8 [%rd27], %rs1;
+st.global.u64 [%rd28], %rd1;
+add.s64 %rd28, %rd28, 8;
+add.s64 %rd29, %rd29, 1;
+setp.lt.u64	%p3, %rd29, %rd2;
+@%p3 bra BB0_3;
+
+BB0_4:
+ret;
+}
+
+
+.visible .entry _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph(
+.param .u64 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_0,
+.param .u64 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_1,
+.param .u64 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_2,
+.param .u64 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_3,
+.param .u64 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_4,
+.param .u32 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_5,
+.param .align 8 .b8 _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_6[32]
+)
+{
+.reg .pred %p<12>;
+.reg .b16 %rs<7>;
+.reg .b32 %r<11>;
+.reg .b64 %rd<80>;
+
+
+ld.param.u64 %rd36, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_0];
+ld.param.u64 %rd34, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_1];
+ld.param.u64 %rd37, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_2];
+ld.param.u64 %rd38, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_3];
+ld.param.u64 %rd35, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_4];
+ld.param.u32 %r3, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_5];
+ld.param.u64 %rd6, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_6+24];
+ld.param.u64 %rd39, [_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph_param_6+8];
+cvta.to.global.u64 %rd1, %rd36;
+cvta.to.global.u64 %rd2, %rd38;
+cvta.to.global.u64 %rd3, %rd37;
+cvta.to.global.u64 %rd4, %rd39;
+mov.u32 %r4, %ntid.x;
+mov.u32 %r1, %ctaid.x;
+mov.u32 %r2, %tid.x;
+mad.lo.s32 %r5, %r4, %r1, %r2;
+mul.wide.u32 %rd79, %r5, 2;
+setp.ge.u64	%p1, %rd79, %rd6;
+@%p1 bra BB1_15;
+
+add.s64 %rd40, %rd79, 2;
+min.u64 %rd7, %rd6, %rd40;
+setp.ge.u64	%p2, %rd79, %rd7;
+@%p2 bra BB1_15;
+
+and.b32 %r6, %r3, 1;
+setp.eq.b32	%p3, %r6, 1;
+@!%p3 bra BB1_9;
+bra.uni BB1_3;
+
+BB1_3:
+mul.wide.u32 %rd41, %r5, 16;
+add.s64 %rd76, %rd2, %rd41;
+add.s64 %rd75, %rd4, %rd41;
+
+BB1_4:
+add.s64 %rd13, %rd3, %rd79;
+ld.global.u8 %rs1, [%rd13];
+setp.ne.s16	%p4, %rs1, 0;
+@%p4 bra BB1_8;
+
+ld.global.u64 %rd14, [%rd76];
+shl.b64 %rd42, %rd14, 3;
+add.s64 %rd43, %rd1, %rd42;
+ld.global.u64 %rd15, [%rd75];
+shl.b64 %rd44, %rd15, 3;
+add.s64 %rd45, %rd1, %rd44;
+ld.global.u64 %rd16, [%rd45];
+ld.global.u64 %rd17, [%rd43];
+setp.eq.s64	%p5, %rd17, %rd16;
+@%p5 bra BB1_7;
+bra.uni BB1_6;
+
+BB1_7:
+mov.u16 %rs3, 1;
+st.global.u8 [%rd13], %rs3;
+bra.uni BB1_8;
+
+BB1_6:
+setp.gt.u64	%p6, %rd17, %rd16;
+selp.b64	%rd46, %rd15, %rd14, %p6;
+selp.b64	%rd47, %rd14, %rd15, %p6;
+shl.b64 %rd48, %rd47, 3;
+add.s64 %rd49, %rd1, %rd48;
+shl.b64 %rd50, %rd46, 3;
+add.s64 %rd51, %rd1, %rd50;
+ld.global.u64 %rd52, [%rd51];
+cvta.to.global.u64 %rd53, %rd34;
+ld.global.u64 %rd54, [%rd49];
+shl.b64 %rd55, %rd54, 3;
+add.s64 %rd56, %rd53, %rd55;
+st.global.u64 [%rd56], %rd52;
+cvta.to.global.u64 %rd57, %rd35;
+mov.u16 %rs2, 0;
+st.global.u8 [%rd57], %rs2;
+
+BB1_8:
+add.s64 %rd79, %rd79, 1;
+add.s64 %rd76, %rd76, 8;
+add.s64 %rd75, %rd75, 8;
+setp.lt.u64	%p7, %rd79, %rd7;
+@%p7 bra BB1_4;
+bra.uni BB1_15;
+
+BB1_9:
+mul.wide.u32 %rd58, %r5, 16;
+add.s64 %rd78, %rd4, %rd58;
+add.s64 %rd77, %rd2, %rd58;
+
+BB1_10:
+add.s64 %rd26, %rd3, %rd79;
+ld.global.u8 %rs4, [%rd26];
+setp.ne.s16	%p8, %rs4, 0;
+@%p8 bra BB1_14;
+
+ld.global.u64 %rd27, [%rd77];
+shl.b64 %rd59, %rd27, 3;
+add.s64 %rd60, %rd1, %rd59;
+ld.global.u64 %rd28, [%rd78];
+shl.b64 %rd61, %rd28, 3;
+add.s64 %rd62, %rd1, %rd61;
+ld.global.u64 %rd29, [%rd62];
+ld.global.u64 %rd30, [%rd60];
+setp.eq.s64	%p9, %rd30, %rd29;
+@%p9 bra BB1_13;
+bra.uni BB1_12;
+
+BB1_13:
+mov.u16 %rs6, 1;
+st.global.u8 [%rd26], %rs6;
+bra.uni BB1_14;
+
+BB1_12:
+setp.gt.u64	%p10, %rd30, %rd29;
+selp.b64	%rd63, %rd28, %rd27, %p10;
+selp.b64	%rd64, %rd27, %rd28, %p10;
+shl.b64 %rd65, %rd64, 3;
+add.s64 %rd66, %rd1, %rd65;
+shl.b64 %rd67, %rd63, 3;
+add.s64 %rd68, %rd1, %rd67;
+ld.global.u64 %rd69, [%rd66];
+cvta.to.global.u64 %rd70, %rd34;
+ld.global.u64 %rd71, [%rd68];
+shl.b64 %rd72, %rd71, 3;
+add.s64 %rd73, %rd70, %rd72;
+st.global.u64 [%rd73], %rd69;
+cvta.to.global.u64 %rd74, %rd35;
+mov.u16 %rs5, 0;
+st.global.u8 [%rd74], %rs5;
+
+BB1_14:
+add.s64 %rd79, %rd79, 1;
+add.s64 %rd78, %rd78, 8;
+add.s64 %rd77, %rd77, 8;
+setp.lt.u64	%p11, %rd79, %rd7;
+@%p11 bra BB1_10;
+
+BB1_15:
+ret;
+}
+
+
+.visible .entry _Z13kernel_updatePmS_j(
+.param .u64 _Z13kernel_updatePmS_j_param_0,
+.param .u64 _Z13kernel_updatePmS_j_param_1,
+.param .u32 _Z13kernel_updatePmS_j_param_2
+)
+{
+.reg .pred %p<2>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<9>;
+
+
+ld.param.u64 %rd1, [_Z13kernel_updatePmS_j_param_0];
+ld.param.u64 %rd2, [_Z13kernel_updatePmS_j_param_1];
+ld.param.u32 %r2, [_Z13kernel_updatePmS_j_param_2];
+mov.u32 %r3, %ctaid.x;
+mov.u32 %r4, %ntid.x;
+mov.u32 %r5, %tid.x;
+mad.lo.s32 %r1, %r4, %r3, %r5;
+setp.ge.u32	%p1, %r1, %r2;
+@%p1 bra BB2_2;
+
+cvta.to.global.u64 %rd3, %rd2;
+mul.wide.u32 %rd4, %r1, 8;
+add.s64 %rd5, %rd3, %rd4;
+ld.global.u64 %rd6, [%rd5];
+cvta.to.global.u64 %rd7, %rd1;
+add.s64 %rd8, %rd7, %rd4;
+st.global.u64 [%rd8], %rd6;
+
+BB2_2:
+ret;
+}
+
+
+.visible .entry _Z22kernel_pointer_jumpingPmS_j(
+.param .u64 _Z22kernel_pointer_jumpingPmS_j_param_0,
+.param .u64 _Z22kernel_pointer_jumpingPmS_j_param_1,
+.param .u32 _Z22kernel_pointer_jumpingPmS_j_param_2
+)
+{
+.reg .pred %p<3>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<16>;
+
+
+ld.param.u64 %rd8, [_Z22kernel_pointer_jumpingPmS_j_param_0];
+ld.param.u64 %rd7, [_Z22kernel_pointer_jumpingPmS_j_param_1];
+ld.param.u32 %r1, [_Z22kernel_pointer_jumpingPmS_j_param_2];
+cvta.to.global.u64 %rd1, %rd8;
+mov.u32 %r2, %ntid.x;
+mov.u32 %r3, %ctaid.x;
+mov.u32 %r4, %tid.x;
+mad.lo.s32 %r5, %r2, %r3, %r4;
+cvt.u64.u32	%rd2, %r5;
+setp.ge.u32	%p1, %r5, %r1;
+@%p1 bra BB3_4;
+
+cvta.to.global.u64 %rd3, %rd7;
+shl.b64 %rd9, %rd2, 3;
+add.s64 %rd10, %rd1, %rd9;
+ld.global.u64 %rd15, [%rd10];
+
+BB3_2:
+mov.u64 %rd5, %rd15;
+shl.b64 %rd11, %rd5, 3;
+add.s64 %rd12, %rd1, %rd11;
+ld.global.u64 %rd15, [%rd12];
+setp.ne.s64	%p2, %rd15, %rd5;
+@%p2 bra BB3_2;
+
+add.s64 %rd14, %rd3, %rd9;
+st.global.u64 [%rd14], %rd5;
+
+BB3_4:
+ret;
+}
+
+

@@ -1,0 +1,143 @@
+
+
+
+
+
+
+
+
+.version 5.0
+.target sm_20
+.address_size 64
+
+
+
+.visible .entry _Z10initializePjm(
+.param .u64 _Z10initializePjm_param_0,
+.param .u64 _Z10initializePjm_param_1
+)
+{
+.reg .pred %p<2>;
+.reg .b32 %r<6>;
+.reg .b64 %rd<7>;
+
+
+ld.param.u64 %rd2, [_Z10initializePjm_param_0];
+ld.param.u64 %rd3, [_Z10initializePjm_param_1];
+mov.u32 %r1, %ctaid.x;
+mov.u32 %r2, %ntid.x;
+mov.u32 %r3, %tid.x;
+mad.lo.s32 %r4, %r2, %r1, %r3;
+cvt.u64.u32	%rd1, %r4;
+setp.ge.u64	%p1, %rd1, %rd3;
+@%p1 bra BB0_2;
+
+cvta.to.global.u64 %rd4, %rd2;
+shl.b64 %rd5, %rd1, 2;
+add.s64 %rd6, %rd4, %rd5;
+mov.u32 %r5, -256;
+st.global.u32 [%rd6], %r5;
+
+BB0_2:
+ret;
+}
+
+
+.visible .entry _Z6kernelPjS_9cudaGraph11my_worklistS1_j(
+.param .u64 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_0,
+.param .u64 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_1,
+.param .align 8 .b8 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_2[32],
+.param .align 8 .b8 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_3[16],
+.param .align 8 .b8 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_4[16],
+.param .u32 _Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_5
+)
+{
+.reg .pred %p<10>;
+.reg .b32 %r<12>;
+.reg .b64 %rd<44>;
+
+
+ld.param.u64 %rd11, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_0];
+ld.param.u64 %rd12, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_1];
+ld.param.u64 %rd14, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_2+8];
+ld.param.u64 %rd13, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_2];
+ld.param.u64 %rd17, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_3];
+ld.param.u64 %rd18, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_3+8];
+ld.param.u64 %rd20, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_4+8];
+ld.param.u64 %rd19, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_4];
+ld.param.u32 %r4, [_Z6kernelPjS_9cudaGraph11my_worklistS1_j_param_5];
+cvta.to.global.u64 %rd21, %rd18;
+mov.u32 %r5, %ntid.x;
+mov.u32 %r6, %ctaid.x;
+mov.u32 %r7, %tid.x;
+mad.lo.s32 %r1, %r5, %r6, %r7;
+ldu.global.u32 %r8, [%rd21];
+setp.ge.u32	%p1, %r1, %r8;
+@%p1 bra BB1_9;
+
+cvta.to.global.u64 %rd22, %rd11;
+cvta.to.global.u64 %rd23, %rd17;
+mul.wide.u32 %rd24, %r1, 8;
+add.s64 %rd25, %rd23, %rd24;
+ld.global.u64 %rd1, [%rd25];
+shl.b64 %rd26, %rd1, 2;
+add.s64 %rd2, %rd22, %rd26;
+ld.global.u32 %r9, [%rd2];
+setp.ne.s32	%p2, %r9, -256;
+@%p2 bra BB1_9;
+
+cvta.to.global.u64 %rd27, %rd12;
+cvta.to.global.u64 %rd28, %rd13;
+cvta.to.global.u64 %rd3, %rd14;
+cvta.to.global.u64 %rd4, %rd19;
+cvta.to.global.u64 %rd5, %rd20;
+shl.b64 %rd29, %rd1, 3;
+add.s64 %rd30, %rd28, %rd29;
+add.s64 %rd32, %rd27, %rd26;
+ld.global.u32 %r2, [%rd32];
+ld.global.u64 %rd6, [%rd30+8];
+ld.global.u64 %rd43, [%rd30];
+setp.ge.u64	%p3, %rd43, %rd6;
+@%p3 bra BB1_8;
+
+BB1_3:
+shl.b64 %rd34, %rd43, 3;
+add.s64 %rd35, %rd3, %rd34;
+ld.global.u64 %rd9, [%rd35];
+shl.b64 %rd36, %rd9, 2;
+add.s64 %rd37, %rd22, %rd36;
+ld.global.u32 %r10, [%rd37];
+setp.lt.u32	%p4, %r10, %r4;
+@%p4 bra BB1_7;
+
+add.s64 %rd40, %rd27, %rd36;
+ld.global.u32 %r3, [%rd40];
+setp.gt.u32	%p5, %r3, %r2;
+@%p5 bra BB1_6;
+
+setp.eq.s32	%p6, %r3, %r2;
+setp.lt.u64	%p7, %rd9, %rd1;
+and.pred %p8, %p6, %p7;
+@!%p8 bra BB1_7;
+bra.uni BB1_6;
+
+BB1_7:
+add.s64 %rd43, %rd43, 1;
+setp.lt.u64	%p9, %rd43, %rd6;
+@%p9 bra BB1_3;
+
+BB1_8:
+st.global.u32 [%rd2], %r4;
+bra.uni BB1_9;
+
+BB1_6:
+atom.global.add.u32 %r11, [%rd5], 1;
+mul.wide.u32 %rd41, %r11, 8;
+add.s64 %rd42, %rd4, %rd41;
+st.global.u64 [%rd42], %rd1;
+
+BB1_9:
+ret;
+}
+
+

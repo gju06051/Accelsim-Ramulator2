@@ -1,0 +1,12 @@
+export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=1
+export GPGPUSIM_ROOT=/home/gju06051/StackGanged/simulator/gpgpu-sim_distribution
+export GPGPUSIM_CONFIG=gcc-13.3.0/cuda-12030/release
+export CUDA_INSTALL_PATH=/usr/local/cuda-12.3
+export PATH=`echo $PATH | sed 's#$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##'`
+export PATH=$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:$PATH
+export CUDA_VERSION_NUMBER=12030
+export PTX_SIM_USE_PTX_FILE=1.ptx
+export PTX_SIM_KERNELFILE=_1.ptx
+export CUOBJDUMP_SIM_FILE=jj
+export LD_LIBRARY_PATH=`echo $LD_LIBRARY_PATH | sed -re 's#'$GPGPUSIM_ROOT'/lib/[0-9]+/(debug|release):##'`
+export LD_LIBRARY_PATH=$GPGPUSIM_ROOT/lib/$GPGPUSIM_CONFIG:$LD_LIBRARY_PATH

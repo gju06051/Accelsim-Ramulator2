@@ -1,0 +1,17 @@
+ptxas info    : 0 bytes gmem
+ptxas info    : Compiling entry function '_Z14kernel_hookingPmS_PbS_S0_j9cudaGraph' for 'sm_20'
+ptxas info    : Function properties for _Z14kernel_hookingPmS_PbS_S0_j9cudaGraph
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 25 registers, 112 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z22kernel_pointer_jumpingPmS_j' for 'sm_20'
+ptxas info    : Function properties for _Z22kernel_pointer_jumpingPmS_j
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 12 registers, 52 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z10initializePmS_PbS_9cudaGraph' for 'sm_20'
+ptxas info    : Function properties for _Z10initializePmS_PbS_9cudaGraph
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 14 registers, 96 bytes cmem[0]
+ptxas info    : Compiling entry function '_Z13kernel_updatePmS_j' for 'sm_20'
+ptxas info    : Function properties for _Z13kernel_updatePmS_j
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 8 registers, 52 bytes cmem[0]
