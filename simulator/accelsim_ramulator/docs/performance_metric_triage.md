@@ -163,7 +163,7 @@ DRAM-level locality metrics.
 
 3. Sweep queue/inflight settings on a small set:
    `queue_limit = 32/64/128/256`,
-   `ramulator_inflight_read_limit = 32/64/128/256`.
+   `ramulator_inflight_read_limit = 128/256/512/auto/0`.
    Use `polybench_atax`, `polybench_mvt`, `pannotia_color_max`,
    `micro_mem_bw`, and `proxy_xsbench`.
 

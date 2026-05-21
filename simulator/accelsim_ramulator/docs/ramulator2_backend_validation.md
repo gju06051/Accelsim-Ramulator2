@@ -30,8 +30,8 @@ Common runtime configuration:
 SGRAM_BACKEND=ramulator2
 SGRAM_RAMULATOR_CONFIG=configs/ramulator/hbm4.yaml
 SGRAM_QUEUE_LIMIT=32
-SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=32
-SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=1
+SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=5120
+SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=auto
 ```
 
 Accel-Sim configuration:
@@ -168,7 +168,7 @@ Broad manifest, longer 52-way run after the CUDA-Sim argument-buffer fix:
   --timeout 240 \
   --jobs 52 \
   --ramulator-inflight-read-limit 32 \
-  --ramulator-ticks-per-dram-cycle 1 \
+  --ramulator-ticks-per-dram-cycle auto \
   --out-dir results/ramulator2_backend_broad_after_argbuffer_fix_a100_1stack_l2_8mb_j52_mc50k_v1
 ```
 

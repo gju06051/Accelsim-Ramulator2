@@ -71,19 +71,23 @@ cd simulator/accelsim_ramulator
   --preset accelsim_ramulator_main \
   --latencies 0 \
   --queue-limits 128 \
-  --config-variant a100_1stack \
-  --ramulator-config configs/ramulator/a100_hbm2e_1stack.yaml \
+  --config-variant a100_5stack \
+  --ramulator-config configs/ramulator/a100_hbm2e_5stack.yaml \
   --max-cycle 50000 \
   --timeout 240 \
   --jobs 32 \
   --ramulator-inflight-read-limit 128 \
-  --ramulator-ticks-per-dram-cycle 1 \
   --out-dir results/operational_smoke
 ```
 
-For full runs that need Ramulator2 internal stats, use `--max-cycle 0`. The
-runner default `--ramulator-finalize-stats auto` keeps bounded smoke runs stable
-and enables Ramulator2 stats for unbounded runs.
+The runner default `--ramulator-finalize-stats auto` emits Ramulator2 internal
+YAML stats into `summary.csv`. If a process is killed before Ramulator2 can
+finalize, the runner falls back to bridge-sourced request counters and marks
+those rows with `ramulator_stats_source=bridge`.
+
+The runner also defaults to `--ramulator-ticks-per-dram-cycle auto`: it reads
+AccelSim's DRAM clock from `gpgpusim.config`, queries Ramulator2 `tCK`, and
+uses a fractional tick accumulator so the two time domains stay aligned.
 
 Config files can be swapped without editing the runner:
 

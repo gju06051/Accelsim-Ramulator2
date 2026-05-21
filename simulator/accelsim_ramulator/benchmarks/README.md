@@ -19,20 +19,20 @@ environment variables.
 
 ## Operational Set
 
-The operational manifest currently has 92 benchmarks:
+The operational manifest currently has 91 benchmarks:
 
 | Class | Count |
 | --- | ---: |
 | Streaming | 22 |
 | Mixed-locality | 27 |
-| Irregular | 43 |
+| Irregular | 42 |
 
 | Suite | Count |
 | --- | ---: |
 | polybench | 15 |
 | graphBIG | 17 |
 | ispass-2009 | 7 |
-| rodinia | 13 |
+| rodinia | 12 |
 | proxy-apps | 2 |
 | microbench | 15 |
 | parboil | 6 |
@@ -42,7 +42,7 @@ The operational manifest currently has 92 benchmarks:
 
 ## Final Representative Set
 
-The final manifest has 45 benchmarks selected from the operational pool. It
+The final manifest has 44 benchmarks selected from the operational pool. It
 keeps all major suites represented, removes near-duplicate variants, and avoids
 the two current-repo input/problem cases found during validation.
 
@@ -50,14 +50,14 @@ the two current-repo input/problem cases found during validation.
 | --- | ---: |
 | Streaming | 11 |
 | Mixed-locality | 17 |
-| Irregular | 17 |
+| Irregular | 16 |
 
 | Suite | Count |
 | --- | ---: |
 | polybench | 7 |
 | graphBIG | 5 |
 | ispass-2009 | 3 |
-| rodinia | 7 |
+| rodinia | 6 |
 | proxy-apps | 2 |
 | microbench | 8 |
 | parboil | 4 |
@@ -120,8 +120,8 @@ Run a bounded smoke on the final set:
   --max-cycle 50000 \
   --timeout 240 \
   --jobs 32 \
-  --ramulator-inflight-read-limit 128 \
-  --ramulator-ticks-per-dram-cycle 1 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
   --out-dir results/operational_smoke
 ```
 

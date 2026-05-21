@@ -413,6 +413,7 @@ class gpgpu_sim_config : public power_config,
       : m_shader_config(ctx), m_memory_config(ctx) {
     m_valid = false;
     gpgpu_ctx = ctx;
+    gpgpu_host_timing = false;
   }
   void reg_options(class OptionParser *opp);
   void init() {
@@ -507,6 +508,7 @@ class gpgpu_sim_config : public power_config,
   // statistics collection
   int gpu_stat_sample_freq;
   int gpu_runtime_stat_flag;
+  bool gpgpu_host_timing;
 
   // Device Limits
   size_t stack_size_limit;
@@ -676,6 +678,9 @@ class gpgpu_sim : public gpgpu_t {
   int next_clock_domain(void);
   void issue_block2core();
   void print_dram_stats(FILE *fout) const;
+  void reset_host_timing();
+  void record_host_timing(unsigned stage, unsigned long long start_us);
+  void print_host_timing_stats(FILE *fout) const;
   void shader_print_runtime_stat(FILE *fout);
   void shader_print_l1_miss_stat(FILE *fout) const;
   void shader_print_cache_stats(FILE *fout) const;
@@ -728,6 +733,23 @@ class gpgpu_sim : public gpgpu_t {
   unsigned long long last_gpu_sim_insn;
 
   unsigned long long last_liveness_message_time;
+
+  enum {
+    HOST_TIMING_CLOCK = 0,
+    HOST_TIMING_CORE_ICNT,
+    HOST_TIMING_MEM_TO_ICNT,
+    HOST_TIMING_DRAM,
+    HOST_TIMING_L2,
+    HOST_TIMING_ICNT_TRANSFER,
+    HOST_TIMING_CORE_PIPELINE,
+    HOST_TIMING_POWER_MODEL,
+    HOST_TIMING_CORE_BOOKKEEPING,
+    HOST_TIMING_RUNTIME_STATS,
+    HOST_TIMING_TOTAL,
+    HOST_TIMING_COUNT
+  };
+  unsigned long long m_host_timing_us[HOST_TIMING_COUNT];
+  unsigned long long m_host_timing_calls[HOST_TIMING_COUNT];
 
   std::map<std::string, FuncCache> m_special_cache_config;
 

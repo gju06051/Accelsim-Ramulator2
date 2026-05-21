@@ -1,0 +1,35 @@
+# HBM3 + SID 40-channel Ramulator2 config for AccelSim external-channel runs.
+#
+# AccelSim memory partition ids are passed to Ramulator2 as Request::source_id.
+# ExternalChannelRoBaRaCoCh uses that source_id as the channel, then maps the
+# lower address bits across pseudochannel, SID, bankgroup, bank, row, column.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM3SID
+    org:
+      preset: HBM3SID_8Gb
+      channel_width: 128
+      channel: 40
+    timing:
+      preset: HBM3SID_6.4Gbps
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh

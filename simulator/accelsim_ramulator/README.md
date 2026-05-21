@@ -73,9 +73,9 @@ Enable the Ramulator2 HBM4 backend:
 ```bash
 export SGRAM_BACKEND=ramulator2
 export SGRAM_RAMULATOR_LIB=$PWD/build/ramulator2_bridge/libsgram_ramulator2_bridge.so
-export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/a100_hbm2e_1stack.yaml
-export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=32
-export SGRAM_QUEUE_LIMIT=32
+export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/a100_hbm2e_5stack.yaml
+export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=5120
+export SGRAM_QUEUE_LIMIT=128
 ```
 
 The Ramulator2 bridge is built as a separate shared library so the
@@ -129,17 +129,21 @@ Run the operational preset:
   --preset accelsim_ramulator_main \
   --latencies 0 \
   --queue-limits 128 \
-  --config-variant a100_1stack \
-  --ramulator-config configs/ramulator/a100_hbm2e_1stack.yaml \
+  --config-variant a100_5stack \
+  --ramulator-config configs/ramulator/a100_hbm2e_5stack.yaml \
   --max-cycle 50000 \
   --jobs 32 \
-  --ramulator-inflight-read-limit 128 \
-  --ramulator-ticks-per-dram-cycle 1 \
+  --ramulator-inflight-read-limit auto \
   --out-dir results/operational_smoke
 ```
 
 The preset name `stackganged_operational` is kept for compatibility with earlier
 scripts. New runs should normally start from `accelsim_ramulator_main`.
+
+By default, `--ramulator-ticks-per-dram-cycle auto` derives the Ramulator tick
+ratio from AccelSim's DRAM clock and Ramulator2 `tCK`. The runner also enables
+GPGPU-Sim host timing metrics in `summary.csv`; use `--gpgpusim-host-timing off`
+to disable that instrumentation.
 
 Config selection notes:
 

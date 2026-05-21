@@ -17,6 +17,7 @@ target_sources(
   impl/HBM.cpp
   impl/HBM2.cpp
   impl/HBM3.cpp
+  impl/HBM3SID.cpp
   impl/HBM4.cpp
   impl/SGHBM.cpp
 )

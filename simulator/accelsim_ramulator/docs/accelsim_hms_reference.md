@@ -97,9 +97,10 @@ The pieces worth carrying into our integration are:
 
    HMS ticks once per partition because each partition owns a separate memory
    object. Our design uses one shared Ramulator2 memory system with multiple
-   channels, so only partition 0 ticks it. We added
-   `SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE` as an explicit knob for sensitivity
-   experiments.
+   channels, so only partition 0 ticks it. The normal path now uses
+   `SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=auto`, which derives the ratio from
+   AccelSim's DRAM clock and Ramulator2 `tCK`; numeric values remain available
+   for sensitivity experiments.
 
 4. Keep policy-heavy memory-management code out of the baseline bridge.
 
@@ -115,16 +116,17 @@ Applied to our bridge:
 sgram_backend_t::push()
   -> m_stats->memlatstat_dram_access(data)
 
-SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=<N>
-  -> partition 0 ticks the shared Ramulator2 memory system N times per
-     Accel-Sim DRAM clock pass
+SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=auto
+SGRAM_ACCELSIM_DRAM_FREQ_MHZ=<MHz>
+  -> partition 0 ticks the shared Ramulator2 memory system with a fractional
+     ratio derived from Ramulator2 tCK and the Accel-Sim DRAM clock
 ```
 
 Applied to the runner:
 
 ```text
 --ramulator-inflight-read-limit <N>
---ramulator-ticks-per-dram-cycle <N>
+--ramulator-ticks-per-dram-cycle auto
 ```
 
 ## Not Imported

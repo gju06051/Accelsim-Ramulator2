@@ -54,11 +54,19 @@ Current defaults used in the main q128 runs:
 
 ```text
 SGRAM_QUEUE_LIMIT=128
-SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=128
+SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=auto
 ```
 
 `g_ramulator2_inflight_reads` is global across all AccelSim memory partitions,
-not per channel.
+not per channel. The runner's `auto` value is sized from the Ramulator2
+Generic controller's nominal read-side buffering:
+
+```text
+inflight_read_limit = channel_count * 32 read-buffer entries * 2 read-side buffers
+```
+
+So the current H100 80-channel config uses `5120`, 40-channel configs use
+`2560`, and 8-channel configs use `512`.
 
 ## Smoke Check
 
@@ -100,12 +108,12 @@ For performance analysis:
 4. Do not compare raw `rejected` across different queue/inflight settings
    without the reason breakdown.
 
-For HBM4 baseline experiments, `ramulator_inflight_read_limit=128` is probably
-still conservative because it is global across all 8 channels. A later sweep
-should compare:
+For baseline experiments, keep `ramulator_inflight_read_limit=auto` so the
+bridge-level MLP guard tracks the Ramulator2 controller scale. A debug-only
+sweep can still compare:
 
 ```text
-inflight_read_limit = 128 / 256 / 512 / 0(unlimited)
+inflight_read_limit = 128 / 256 / 512 / auto / 0(unlimited)
 queue_limit         = 128 / 256 / 512
 ```
 

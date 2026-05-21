@@ -9,6 +9,12 @@ These YAML files are passed to the Ramulator2 bridge when the runner uses
 | --- | --- |
 | `hbm4.yaml` | Existing 8-channel HBM4-style smoke config |
 | `hbm4_external.yaml` | External-channel HBM4 variant kept for compatibility |
+| `hbm3_sid_external_40ch.yaml` | HBM3 + SID 40-channel experimental config |
+| `hbm3_sid_external_8ch.yaml` | HBM3 + SID 8-channel config for 1-stack comparisons |
+| `h100_sxm_hbm3_sid_16ch.yaml` | H100 SXM-style 1-stack HBM3 config with 16 x 64-bit channels |
+| `h100_sxm_hbm3_sid_80ch.yaml` | H100 SXM-style full HBM3 config with 80 x 64-bit channels |
+| `hbm4_external_40ch.yaml` | HBM4 40-channel config for full-stack comparisons |
+| `a100_hbm2e_5stack.yaml` | A100 80GB HBM2e-style 5-stack / 40-channel config |
 | `a100_hbm2e_80gb.yaml` | A100 80GB HBM2e-style full 40-channel config |
 | `a100_hbm2e_1stack.yaml` | 8-channel A100 HBM2e-style smoke config for `a100_1stack` |
 
@@ -48,6 +54,57 @@ tree. The A100 configs therefore use `impl: HBM2` with:
 - `ExternalChannelRoBaRaCoCh`, so AccelSim memory partition ids select
   Ramulator2 channels directly.
 
-Use `a100_hbm2e_80gb.yaml` with a 40-memory-partition AccelSim config. Use
-`a100_hbm2e_1stack.yaml` with `--config-variant a100_1stack` for quick smoke
-tests.
+Use `a100_hbm2e_5stack.yaml` with `--config-variant a100_5stack` for the normal
+A100-style baseline. `a100_hbm2e_80gb.yaml` is kept as an equivalent 40-channel
+name. Use `a100_hbm2e_1stack.yaml` with `--config-variant a100_1stack` only for
+quick smoke tests.
+
+The 5-stack AccelSim side should use the balanced IPoly path
+(`-gpgpu_memory_partition_indexing 2`). The local address decoder supports
+40-channel IPoly by hashing in the next power-of-two channel domain and folding
+the result back to 40.
+
+## Current Smoke-Validated Pairings
+
+Use these pairings when you want a config whose external-channel address mapping
+has been checked against the current bridge build:
+
+| Ramulator2 config | AccelSim variant | Channels |
+| --- | --- | ---: |
+| `a100_hbm2e_1stack.yaml` | `a100_1stack` | 8 |
+| `a100_hbm2e_5stack.yaml` | `a100_5stack` | 40 |
+| `a100_hbm2e_80gb.yaml` | `a100_full` | 40 |
+| `hbm3_sid_external_8ch.yaml` | `a100_1stack` | 8 |
+| `hbm3_sid_external_40ch.yaml` | `a100_5stack` | 40 |
+| `h100_sxm_hbm3_sid_16ch.yaml` | `h100_1stack` | 16 |
+| `h100_sxm_hbm3_sid_80ch.yaml` | `h100_full` | 80 |
+| `hbm4.yaml` | `a100_1stack` | 8 |
+| `hbm4_external.yaml` | `a100_1stack` | 8 |
+| `hbm4_external_40ch.yaml` | `a100_5stack` | 40 |
+
+## HBM3 SID Notes
+
+The upstream HBM3 model in this tree does not expose an SID hierarchy. The
+`HBM3SID` model adds:
+
+```text
+channel -> pseudochannel -> sid -> bankgroup -> bank -> row -> column
+```
+
+`hbm3_sid_external_40ch.yaml` uses `impl: HBM3SID` with four SIDs per
+pseudochannel and the same external-channel address mapper used by the A100
+HBM2e configs. Use it with `--config-variant a100_5stack` when you want the
+AccelSim side to expose 40 memory partitions and Ramulator2 to expose 40
+source-id-selected channels.
+
+Both HBM3 SID YAMLs use `HBM3SID_6.4Gbps`, matching the JEDEC HBM3 6.4Gbps/pin
+speed bin. In this model `rate` is the per-pin data rate. HBM3 uses WDQS/RDQS
+at twice CK and DQ is DDR on those strobes, so the Ramulator2 command clock is:
+
+```text
+fCK = rate / 4 = 1600 MHz
+tCK = 0.625 ns
+```
+
+With the A100 AccelSim DRAM clock at 1512MHz, `SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE=auto`
+therefore resolves to about `1.0582` Ramulator ticks per AccelSim DRAM tick.

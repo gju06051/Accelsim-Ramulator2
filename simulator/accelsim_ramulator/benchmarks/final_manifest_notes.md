@@ -26,20 +26,20 @@ validated pool.
 
 ## Final Set Size
 
-The final manifest has 45 benchmarks.
+The final manifest has 44 benchmarks.
 
 | Class | Count |
 | --- | ---: |
 | Streaming | 11 |
 | Mixed-locality | 17 |
-| Irregular | 17 |
+| Irregular | 16 |
 
 | Suite | Count |
 | --- | ---: |
 | polybench | 7 |
 | graphBIG | 5 |
 | ispass-2009 | 3 |
-| rodinia | 7 |
+| rodinia | 6 |
 | proxy-apps | 2 |
 | microbench | 8 |
 | parboil | 4 |
@@ -56,7 +56,7 @@ The final manifest has 45 benchmarks.
 | graphBIG BFS/SSSP | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp` | Other BFS/SSSP thread/frontier/unroll/topology variants |
 | graphBIG structural graph kernels | `graphbig_triangle_count`, `graphbig_kcore` | `graphbig_betweenness`, `graphbig_connected_comp`, `graphbig_degree_centr`, `graphbig_gc_topo_thread` |
 | ISPASS | `ispass_lps`, `ispass_lib`, `ispass_ray` | BFS/NQU/NN/STO variants for routine sweeps |
-| Rodinia | `rodinia_streamcluster`, `rodinia_backprop`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_particlefilter_float`, `rodinia_gaussian`, `rodinia_lavamd` | `rodinia_particlefilter_naive`, `rodinia_pathfinder`, `rodinia_nw`, `rodinia_myocyte`, `rodinia_nn`, `rodinia_heartwall` |
+| Rodinia | `rodinia_streamcluster`, `rodinia_backprop`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_gaussian`, `rodinia_lavamd` | `rodinia_particlefilter_float`, `rodinia_particlefilter_naive`, `rodinia_pathfinder`, `rodinia_nw`, `rodinia_myocyte`, `rodinia_nn`, `rodinia_heartwall` |
 | Microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` | Other L1/L2/cacheline/atomic width variants |
 | Parboil | `parboil_stencil`, `parboil_lbm`, `parboil_mri_q`, `parboil_sgemm` | `parboil_bfs`, `parboil_mri_gridding` |
 | Lonestar | `lonestar_bfs_wlw`, `lonestar_sssp_wln` | `lonestar_bfs`, `lonestar_bfs_wla`, `lonestar_sssp` |
@@ -71,6 +71,10 @@ The final manifest has 45 benchmarks.
 - `rodinia_nn` is not in the final set. It requires generated `cane4_*.db`
   inputs that are not present in the current repo tree, although it can run
   with an external benchmark overlay.
+- `rodinia_particlefilter_float` is not in the final set. The unbounded HBM3
+  Ramulator2 runs hit a GPGPU-Sim deadlock under both A100 1-stack and 5-stack
+  configs, so it is excluded from routine sweeps until that benchmark-specific
+  issue is debugged separately.
 - The broader operational manifest is still useful when coverage matters more
   than runtime. Use this final manifest when sweep cost, result readability, and
   variant de-duplication are the priority.
@@ -99,7 +103,7 @@ Run a bounded Ramulator2 smoke sweep:
   --max-cycle 50000 \
   --timeout 600 \
   --jobs 64 \
-  --ramulator-inflight-read-limit 128 \
-  --ramulator-ticks-per-dram-cycle 1 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
   --out-dir results/final_validate_ramulator2
 ```

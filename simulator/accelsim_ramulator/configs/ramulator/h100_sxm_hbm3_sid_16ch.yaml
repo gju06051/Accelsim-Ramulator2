@@ -1,0 +1,38 @@
+# H100 SXM-style 1-stack HBM3 + SID Ramulator2 config for direct AccelSim mapping.
+#
+# This models one physical HBM3 stack as:
+#   1 stack * 16 channels/stack * 64 bits/channel = 1024 bits
+#
+# Pair this with configs/accelsim/h100_sxm_hbm3_1stack_16ch.config or
+# --config-variant h100_1stack. ExternalChannelRoBaRaCoCh maps each AccelSim
+# partition/source_id directly to the matching Ramulator2 channel.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM3SID
+    org:
+      preset: HBM3SID_8Gb
+      channel_width: 64
+      channel: 16
+    timing:
+      preset: HBM3SID_H100_SXM_5.234Gbps
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh

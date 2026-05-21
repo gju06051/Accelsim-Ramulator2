@@ -17,7 +17,6 @@ ispass_ray	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-
 rodinia_streamcluster	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/streamcluster-rodinia-3.1 10 20 256 65536 65536 1000 none output.txt 1	Cluster assignment with scattered accesses
 rodinia_backprop	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/backprop-rodinia-3.1 65536	Neural-network layer access
 rodinia_srad_v1	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v1-rodinia-3.1 10 0.5 502 458	Structured image diffusion stencil
-rodinia_particlefilter_float	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/particlefilter_float-rodinia-3.1 -x 128 -y 128 -z 10 -np 1000	Particle filter gather/scatter access
 rodinia_srad_v2	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v2-rodinia-3.1 128 128 0 31 0 31 0.5 2	Structured image/stencil access
 rodinia_gaussian	rodinia	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/gaussian-rodinia-3.1 -s 64 -q	Dense matrix elimination
 rodinia_lavamd	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lavaMD-rodinia-3.1	Structured particle neighborhood access

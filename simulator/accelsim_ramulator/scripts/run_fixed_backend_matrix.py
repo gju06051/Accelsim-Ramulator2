@@ -79,14 +79,63 @@ DEFAULT_RAMULATOR_CONFIG = env_path(
     "SGRAM_RAMULATOR_CONFIG",
     INTEGRATION_ROOT / "configs" / "ramulator" / "hbm4.yaml",
 )
+RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = 32
+RAMULATOR_READ_SIDE_BUFFERS_PER_CHANNEL = 2
 A100_L2_8MB_CONFIG = "S:32:128:13,L:B:m:L:X,A:192:4,32:0,32"
+A100_HBM_ADDR_MAPPING = (
+    "-gpgpu_mem_addr_mapping "
+    "dramid@8;00000000.00000000.00000000.00000000."
+    "0000RRRR.RRRRRRRR.RBBBCCCC.BCCSSSSS"
+)
 A100_1STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 22",
     "-gpgpu_n_mem 8",
 )
+A100_5STACK_OVERRIDES: tuple[str, ...] = (
+    "-gpgpu_n_clusters 108",
+    "-gpgpu_n_mem 40",
+    "-gpgpu_n_sub_partition_per_mchannel 4",
+    "-gpgpu_memory_partition_indexing 2",
+    "-gpgpu_mem_address_mask 1",
+    A100_HBM_ADDR_MAPPING,
+)
+H100_HBM_ADDR_MAPPING = A100_HBM_ADDR_MAPPING
+H100_1STACK_OVERRIDES: tuple[str, ...] = (
+    "-gpgpu_n_clusters 26",
+    "-gpgpu_clock_domains 1980:1980:1980:1309",
+    "-ptx_opcode_initiation_fp 1,1,1,1,2",
+    "-gpgpu_shmem_option 0,8,16,32,64,100,132,164,196,228",
+    "-gpgpu_unified_l1d_size 256",
+    "-gpgpu_shmem_size 233472",
+    "-gpgpu_shmem_sizeDefault 233472",
+    "-gpgpu_n_mem 16",
+    "-gpgpu_n_sub_partition_per_mchannel 2",
+    "-gpgpu_cache:dl2 S:128:128:20,L:B:m:L:X,A:192:4,32:0,32",
+    "-gpgpu_memory_partition_indexing 2",
+    "-gpgpu_mem_address_mask 1",
+    H100_HBM_ADDR_MAPPING,
+)
+H100_FULL_OVERRIDES: tuple[str, ...] = (
+    "-gpgpu_n_clusters 132",
+    "-gpgpu_clock_domains 1980:1980:1980:1309",
+    "-ptx_opcode_initiation_fp 1,1,1,1,2",
+    "-gpgpu_shmem_option 0,8,16,32,64,100,132,164,196,228",
+    "-gpgpu_unified_l1d_size 256",
+    "-gpgpu_shmem_size 233472",
+    "-gpgpu_shmem_sizeDefault 233472",
+    "-gpgpu_n_mem 80",
+    "-gpgpu_n_sub_partition_per_mchannel 2",
+    "-gpgpu_cache:dl2 S:128:128:20,L:B:m:L:X,A:192:4,32:0,32",
+    "-gpgpu_memory_partition_indexing 2",
+    "-gpgpu_mem_address_mask 1",
+    H100_HBM_ADDR_MAPPING,
+)
 CONFIG_VARIANTS: dict[str, tuple[str, ...]] = {
     "a100_full": (),
     "a100_1stack": A100_1STACK_OVERRIDES,
+    "a100_5stack": A100_5STACK_OVERRIDES,
+    "h100_1stack": H100_1STACK_OVERRIDES,
+    "h100_full": H100_FULL_OVERRIDES,
 }
 
 
@@ -266,7 +315,12 @@ BENCHMARK_PRESETS: dict[str, tuple[Benchmark, ...]] = {
 BENCHMARKS: tuple[Benchmark, ...] = BENCHMARK_PRESETS["core"]
 
 
-ENABLED_RE = re.compile(r"SGRAM (?:fixed-latency|Ramulator2) backend enabled: partition=(\d+)")
+# GPGPU-Sim may interleave md5/PTX extraction output with backend init lines;
+# keep the partition/queue tail form so a split "backend enabled" line still counts.
+ENABLED_RE = re.compile(
+    r"(?:SGRAM (?:fixed-latency|Ramulator2) backend enabled: )?"
+    r"(?:partition|tion|ion)=(\d+) queue_limit=\d+"
+)
 BACKEND_PRINT_RE = re.compile(r"SGRAM (?:fixed|Ramulator2) backend partition (\d+):")
 BACKEND_PARTITION_STAT_RE = re.compile(
     r"SGRAM Ramulator2 backend partition (\d+): .*?"
@@ -275,12 +329,38 @@ BACKEND_PARTITION_STAT_RE = re.compile(
     r"(?: rejected_inflight=(\d+) rejected_ramulator=(\d+) "
     r"backend_full=(\d+) global_inflight_reads=(\d+) inflight_limit=(\d+))?"
 )
+BACKEND_RAMULATOR_STAT_RE = re.compile(
+    r"SGRAM Ramulator2 backend partition (?P<partition>\d+): .*?"
+    r"bridge_ticks=(?P<ticks>\d+) .*?"
+    r"accepted_reads=(?P<reads>\d+) completed_reads=(?P<completed_reads>\d+) "
+    r"accepted_writes=(?P<writes>\d+)"
+)
+RAMULATOR_BRIDGE_CREATED_RE = re.compile(
+    r"SGRAM Ramulator2 bridge created: .*?"
+    r"tCK=(?P<tck>[0-9.]+) ns .*?"
+    r"accelsim_dram_freq_mhz=(?P<accel_dram>[0-9.-]+) "
+    r"ramulator_mhz=(?P<ramulator_mhz>[0-9.-]+) .*?"
+    r"ticks_per_dram_cycle=(?P<ticks>[0-9.]+) source=(?P<source>[A-Za-z0-9_]+)"
+)
 LAUNCH_RE = re.compile(r"GPGPU-Sim PTX: cudaLaunch")
 STAT_RE = re.compile(r"^([A-Za-z0-9_]+)\s*=\s*([0-9.]+)")
 RAMULATOR_YAML_STAT_RE = re.compile(
     r"^\s*([A-Za-z][A-Za-z0-9_]*):\s*"
     r"([+-]?(?:(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|\.nan|nan|inf|\.inf))\s*$",
     re.IGNORECASE,
+)
+HOST_TIMING_STAGES = (
+    "clock",
+    "core_icnt",
+    "mem_to_icnt",
+    "dram",
+    "l2",
+    "icnt_transfer",
+    "core_pipeline",
+    "power_model",
+    "core_bookkeeping",
+    "runtime_stats",
+    "total",
 )
 
 
@@ -371,6 +451,7 @@ def write_config(
     l2_cache_config: str,
     config_overrides: tuple[str, ...],
     override_files: tuple[Path, ...],
+    gpgpusim_host_timing: str,
 ) -> None:
     shutil.copyfile(source_config, run_dir / "gpgpusim.config")
     with (run_dir / "gpgpusim.config").open("a", encoding="utf-8") as f:
@@ -391,6 +472,7 @@ def write_config(
         f.write(f"-gpgpu_max_cycle {max_cycle}\n")
         f.write("-gpgpu_kernel_launch_latency 0\n")
         f.write("-gpgpu_runtime_stat 1000000000\n")
+        f.write(f"-gpgpu_host_timing {1 if gpgpusim_host_timing == 'on' else 0}\n")
         f.write("-liveness_message_freq 1000000\n")
 
 
@@ -398,6 +480,34 @@ def prepare_ramulator_config(run_dir: Path, source_config: Path) -> Path:
     copied_config = run_dir / "ramulator2.yaml"
     shutil.copyfile(source_config, copied_config)
     return copied_config.resolve()
+
+
+def infer_ramulator_channels(ramulator_config: Path) -> int:
+    text = ramulator_config.read_text(encoding="utf-8", errors="replace")
+    matches = re.findall(r"(?m)^\s*channel\s*:\s*(\d+)\s*(?:#.*)?$", text)
+    if not matches:
+        raise ValueError(f"could not infer DRAM channel count from {ramulator_config}")
+    return int(matches[-1])
+
+
+def resolve_ramulator_inflight_read_limit(value: str, ramulator_config: Path) -> int:
+    normalized = str(value).strip().lower()
+    if normalized == "auto":
+        channels = infer_ramulator_channels(ramulator_config)
+        return (
+            channels
+            * RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL
+            * RAMULATOR_READ_SIDE_BUFFERS_PER_CHANNEL
+        )
+    try:
+        parsed = int(str(value), 0)
+    except ValueError as exc:
+        raise ValueError(
+            "--ramulator-inflight-read-limit must be an integer or 'auto'"
+        ) from exc
+    if parsed < 0:
+        raise ValueError("--ramulator-inflight-read-limit must be non-negative")
+    return parsed
 
 
 def prepare_benchmark_inputs(bench: Benchmark, run_dir: Path) -> None:
@@ -501,6 +611,50 @@ def extract_last_numeric(stdout: str, key: str) -> str:
     return value
 
 
+def extract_clock_domains(config_path: Path) -> tuple[str, str, str, str]:
+    domains = ""
+    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("-gpgpu_clock_domains "):
+            domains = stripped.split(None, 1)[1].split("#", 1)[0].strip()
+    parts = domains.split(":")
+    if len(parts) != 4:
+        return ("", "", "", "")
+    return tuple(parts)  # type: ignore[return-value]
+
+
+def extract_ramulator_clock_stats(stdout: str) -> dict[str, str]:
+    match = None
+    for match in RAMULATOR_BRIDGE_CREATED_RE.finditer(stdout):
+        pass
+    if not match:
+        return {
+            "ramulator_tck_ns": "",
+            "ramulator_mhz": "",
+            "ramulator_effective_ticks_per_dram_cycle": "",
+            "ramulator_tick_source": "",
+        }
+    return {
+        "ramulator_tck_ns": match.group("tck"),
+        "ramulator_mhz": match.group("ramulator_mhz"),
+        "ramulator_effective_ticks_per_dram_cycle": match.group("ticks"),
+        "ramulator_tick_source": match.group("source"),
+    }
+
+
+def extract_host_timing_stats(stdout: str) -> dict[str, str]:
+    stats = {
+        "gpgpusim_host_timing_enabled": extract_last_numeric(
+            stdout, "gpgpusim_host_timing_enabled"
+        )
+    }
+    for stage in HOST_TIMING_STAGES:
+        for suffix in ("us", "calls", "pct"):
+            key = f"gpgpusim_host_timing_{stage}_{suffix}"
+            stats[key] = extract_last_numeric(stdout, key)
+    return stats
+
+
 def compute_ratio(numer: str, denom: str) -> str:
     try:
         n = float(numer)
@@ -553,6 +707,81 @@ def format_numeric(value: float | int | None) -> str:
     return format_float(value)
 
 
+def empty_ramulator_stats() -> dict[str, str | int]:
+    return {
+        "ramulator_stats_present": 0,
+        "ramulator_stats_source": "",
+        "ramulator_memory_system_cycles": "",
+        "ramulator_total_num_read_requests": "",
+        "ramulator_total_num_write_requests": "",
+        "ramulator_num_read_reqs": "",
+        "ramulator_num_write_reqs": "",
+        "ramulator_row_hits": "",
+        "ramulator_row_misses": "",
+        "ramulator_row_conflicts": "",
+        "ramulator_read_row_hits": "",
+        "ramulator_read_row_misses": "",
+        "ramulator_read_row_conflicts": "",
+        "ramulator_write_row_hits": "",
+        "ramulator_write_row_misses": "",
+        "ramulator_write_row_conflicts": "",
+        "ramulator_read_latency": "",
+        "ramulator_avg_read_latency": "",
+        "ramulator_queue_len_avg_sum": "",
+        "ramulator_read_queue_len_avg_sum": "",
+        "ramulator_write_queue_len_avg_sum": "",
+        "ramulator_priority_queue_len_avg_sum": "",
+        "ramulator_num_read_reqs_by_channel": "",
+        "ramulator_row_hits_by_channel": "",
+        "ramulator_row_misses_by_channel": "",
+        "ramulator_row_conflicts_by_channel": "",
+        "ramulator_avg_read_latency_by_channel": "",
+        "ramulator_queue_len_avg_by_channel": "",
+        "ramulator_read_queue_len_avg_by_channel": "",
+    }
+
+
+def extract_bridge_ramulator_stats(stdout: str) -> dict[str, str | int]:
+    per_partition: dict[int, tuple[int, int, int]] = {}
+    max_ticks = 0
+    for match in BACKEND_RAMULATOR_STAT_RE.finditer(stdout):
+        partition = int(match.group("partition"))
+        ticks = int(match.group("ticks"))
+        reads = int(match.group("reads"))
+        completed_reads = int(match.group("completed_reads"))
+        writes = int(match.group("writes"))
+        max_ticks = max(max_ticks, ticks)
+        per_partition[partition] = (reads, completed_reads, writes)
+
+    if not per_partition:
+        return empty_ramulator_stats()
+
+    partition_count = max(per_partition) + 1
+    reads_by_partition = [
+        per_partition.get(partition, (0, 0, 0))[0]
+        for partition in range(partition_count)
+    ]
+    writes_by_partition = [
+        per_partition.get(partition, (0, 0, 0))[2]
+        for partition in range(partition_count)
+    ]
+
+    stats = empty_ramulator_stats()
+    stats.update(
+        {
+            "ramulator_stats_present": 1,
+            "ramulator_stats_source": "bridge",
+            "ramulator_memory_system_cycles": str(max_ticks),
+            "ramulator_total_num_read_requests": str(sum(reads_by_partition)),
+            "ramulator_total_num_write_requests": str(sum(writes_by_partition)),
+            "ramulator_num_read_reqs": str(sum(reads_by_partition)),
+            "ramulator_num_write_reqs": str(sum(writes_by_partition)),
+            "ramulator_num_read_reqs_by_channel": format_int_list(reads_by_partition),
+        }
+    )
+    return stats
+
+
 def extract_ramulator_stats(stdout: str) -> dict[str, str | int]:
     raw_stats: dict[str, float | int] = {}
     for line in stdout.splitlines():
@@ -571,36 +800,7 @@ def extract_ramulator_stats(stdout: str) -> dict[str, str | int]:
         }
     )
     if not channel_ids and "memory_system_cycles" not in raw_stats:
-        return {
-            "ramulator_stats_present": 0,
-            "ramulator_memory_system_cycles": "",
-            "ramulator_total_num_read_requests": "",
-            "ramulator_total_num_write_requests": "",
-            "ramulator_num_read_reqs": "",
-            "ramulator_num_write_reqs": "",
-            "ramulator_row_hits": "",
-            "ramulator_row_misses": "",
-            "ramulator_row_conflicts": "",
-            "ramulator_read_row_hits": "",
-            "ramulator_read_row_misses": "",
-            "ramulator_read_row_conflicts": "",
-            "ramulator_write_row_hits": "",
-            "ramulator_write_row_misses": "",
-            "ramulator_write_row_conflicts": "",
-            "ramulator_read_latency": "",
-            "ramulator_avg_read_latency": "",
-            "ramulator_queue_len_avg_sum": "",
-            "ramulator_read_queue_len_avg_sum": "",
-            "ramulator_write_queue_len_avg_sum": "",
-            "ramulator_priority_queue_len_avg_sum": "",
-            "ramulator_num_read_reqs_by_channel": "",
-            "ramulator_row_hits_by_channel": "",
-            "ramulator_row_misses_by_channel": "",
-            "ramulator_row_conflicts_by_channel": "",
-            "ramulator_avg_read_latency_by_channel": "",
-            "ramulator_queue_len_avg_by_channel": "",
-            "ramulator_read_queue_len_avg_by_channel": "",
-        }
+        return extract_bridge_ramulator_stats(stdout)
 
     def channel_values(base: str) -> list[float | int]:
         return [raw_stats.get(f"{base}_{channel}", 0) for channel in channel_ids]
@@ -625,6 +825,7 @@ def extract_ramulator_stats(stdout: str) -> dict[str, str | int]:
 
     return {
         "ramulator_stats_present": 1,
+        "ramulator_stats_source": "yaml",
         "ramulator_memory_system_cycles": format_numeric(raw_stats.get("memory_system_cycles")),
         "ramulator_total_num_read_requests": format_numeric(raw_stats.get("total_num_read_requests")),
         "ramulator_total_num_write_requests": format_numeric(raw_stats.get("total_num_write_requests")),
@@ -790,9 +991,10 @@ def run_one(
     backend: str,
     config_variant: str,
     config_overrides: tuple[str, ...],
+    gpgpusim_host_timing: str,
     ramulator_config: Path,
     ramulator_inflight_read_limit: int,
-    ramulator_ticks_per_dram_cycle: int,
+    ramulator_ticks_per_dram_cycle: str,
     ramulator_finalize_stats: str,
 ) -> dict[str, str | int | float]:
     run_dir = (out_dir / config_variant / bench.name / f"{backend}_lat{latency}_q{queue_limit}").resolve()
@@ -806,6 +1008,10 @@ def run_one(
         l2_cache_config,
         config_overrides,
         config_override_files,
+        gpgpusim_host_timing,
+    )
+    core_freq_mhz, icnt_freq_mhz, l2_freq_mhz, dram_freq_mhz = extract_clock_domains(
+        run_dir / "gpgpusim.config"
     )
     prepare_benchmark_inputs(bench, run_dir)
 
@@ -824,9 +1030,7 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
     elif backend == "ramulator2":
         bridge_lib = INTEGRATION_ROOT / "build" / "ramulator2_bridge" / "libsgram_ramulator2_bridge.so"
         run_ramulator_config = str(prepare_ramulator_config(run_dir, ramulator_config))
-        skip_finalize_stats = ramulator_finalize_stats == "off" or (
-            ramulator_finalize_stats == "auto" and max_cycle > 0
-        )
+        skip_finalize_stats = ramulator_finalize_stats == "off"
         finalize_stats_env = (
             "export SGRAM_RAMULATOR_SKIP_FINALIZE_STATS=1"
             if skip_finalize_stats
@@ -838,7 +1042,8 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
 export SGRAM_RAMULATOR_LIB={quote(str(bridge_lib))}
 export SGRAM_RAMULATOR_CONFIG={quote(run_ramulator_config)}
 export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT={ramulator_inflight_read_limit}
-export SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE={ramulator_ticks_per_dram_cycle}
+export SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE={quote(str(ramulator_ticks_per_dram_cycle))}
+export SGRAM_ACCELSIM_DRAM_FREQ_MHZ={quote(str(dram_freq_mhz))}
 {finalize_stats_env}
 """.strip()
 
@@ -878,6 +1083,8 @@ exec {run_cmd}
         stdout, enabled_partitions | printed_partitions
     )
     ramulator_stats = extract_ramulator_stats(stdout)
+    ramulator_clock_stats = extract_ramulator_clock_stats(stdout)
+    host_timing_stats = extract_host_timing_stats(stdout)
     launches = len(LAUNCH_RE.findall(stdout))
     l2_accesses = extract_last_numeric(stdout, "L2_total_cache_accesses")
     l2_misses = extract_last_numeric(stdout, "L2_total_cache_misses")
@@ -893,22 +1100,29 @@ exec {run_cmd}
         "gpgpusim_config_run": str(run_dir / "gpgpusim.config"),
         "config_override_files": ";".join(str(path) for path in config_override_files),
         "config_overrides": ";".join(config_overrides),
+        "gpgpusim_host_timing": gpgpusim_host_timing,
+        "accelsim_core_freq_mhz": core_freq_mhz,
+        "accelsim_icnt_freq_mhz": icnt_freq_mhz,
+        "accelsim_l2_freq_mhz": l2_freq_mhz,
+        "accelsim_dram_freq_mhz": dram_freq_mhz,
         "backend": backend,
         "ramulator_config_source": str(ramulator_config) if backend == "ramulator2" else "",
         "ramulator_config_run": run_ramulator_config,
         "ramulator_inflight_read_limit": ramulator_inflight_read_limit if backend == "ramulator2" else "",
         "ramulator_ticks_per_dram_cycle": ramulator_ticks_per_dram_cycle if backend == "ramulator2" else "",
         "ramulator_finalize_stats": ramulator_finalize_stats if backend == "ramulator2" else "",
+        **ramulator_clock_stats,
         "latency": latency,
         "queue_limit": queue_limit,
         "l2_cache_config": l2_cache_config,
         "status": status,
         "exit_code": proc.returncode,
         "seconds": round(elapsed, 3),
-        "backend_enabled_partitions": len(enabled_partitions),
+        "backend_enabled_partitions": len(enabled_partitions | printed_partitions),
         "backend_runtime_print_partitions": len(printed_partitions),
         **backend_partition_stats,
         **ramulator_stats,
+        **host_timing_stats,
         "kernel_launches": launches,
         "max_cycle_hit": int("break due to reaching the maximum cycles" in stdout),
         "l2_accesses": l2_accesses,
@@ -991,23 +1205,36 @@ def main() -> int:
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 32))
     parser.add_argument(
         "--ramulator-inflight-read-limit",
-        type=int,
-        default=32,
-        help="SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT for --backend ramulator2.",
+        default="auto",
+        help=(
+            "SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT for --backend ramulator2. "
+            "Use 'auto' to set the bridge-wide read cap near Ramulator2's "
+            "Generic controller read-side buffering: channels * 32 read-buffer "
+            "entries * 2 read-side buffers. Use 0 to disable the guard."
+        ),
     )
     parser.add_argument(
         "--ramulator-ticks-per-dram-cycle",
-        type=int,
-        default=1,
-        help="SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE for --backend ramulator2.",
+        default="auto",
+        help=(
+            "SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE for --backend ramulator2. "
+            "Use 'auto' to derive Ramulator ticks per AccelSim DRAM tick from "
+            "-gpgpu_clock_domains and Ramulator tCK."
+        ),
+    )
+    parser.add_argument(
+        "--gpgpusim-host-timing",
+        choices=("on", "off"),
+        default="on",
+        help="Append -gpgpu_host_timing to collect GPGPU-Sim stage wall-time metrics.",
     )
     parser.add_argument(
         "--ramulator-finalize-stats",
         choices=("auto", "on", "off"),
         default="auto",
         help=(
-            "Control Ramulator2 finalize stats. auto enables stats for unbounded "
-            "--max-cycle 0 runs and skips them for bounded smoke runs."
+            "Control Ramulator2 finalize stats. auto enables internal stats and "
+            "falls back to bridge counters if the process exits before finalization."
         ),
     )
     parser.add_argument(
@@ -1106,6 +1333,17 @@ def main() -> int:
         for path in missing:
             print(f"missing required file: {path}", file=sys.stderr)
         return 2
+    try:
+        ramulator_inflight_read_limit = (
+            resolve_ramulator_inflight_read_limit(
+                args.ramulator_inflight_read_limit, ramulator_config
+            )
+            if args.backend == "ramulator2"
+            else 0
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     (GPGPU_BUILD / "libcudart.so.12").symlink_to("libcudart.so") if not (
         GPGPU_BUILD / "libcudart.so.12"
     ).exists() else None
@@ -1128,10 +1366,11 @@ def main() -> int:
         f"workspace_root={WORKSPACE_ROOT} "
         f"gpu_benchmark_root={GPU_BENCHMARK_ROOT} "
         f"l2_cache_config={l2_cache_config or 'base-config'} "
+        f"gpgpusim_host_timing={args.gpgpusim_host_timing} "
         f"config_override_files={';'.join(str(path) for path in config_override_files) or 'none'} "
         f"config_overrides={';'.join(config_overrides) or 'none'} "
         f"ramulator_config={ramulator_config if args.backend == 'ramulator2' else 'n/a'} "
-        f"ramulator_inflight_read_limit={args.ramulator_inflight_read_limit} "
+        f"ramulator_inflight_read_limit={ramulator_inflight_read_limit} "
         f"ramulator_ticks_per_dram_cycle={args.ramulator_ticks_per_dram_cycle} "
         f"ramulator_finalize_stats={args.ramulator_finalize_stats}"
         ,
@@ -1155,8 +1394,9 @@ def main() -> int:
                 args.backend,
                 args.config_variant,
                 config_overrides,
+                args.gpgpusim_host_timing,
                 ramulator_config,
-                args.ramulator_inflight_read_limit,
+                ramulator_inflight_read_limit,
                 args.ramulator_ticks_per_dram_cycle,
                 args.ramulator_finalize_stats,
             )
@@ -1187,11 +1427,20 @@ def main() -> int:
         "gpgpusim_config_run",
         "config_override_files",
         "config_overrides",
+        "gpgpusim_host_timing",
+        "accelsim_core_freq_mhz",
+        "accelsim_icnt_freq_mhz",
+        "accelsim_l2_freq_mhz",
+        "accelsim_dram_freq_mhz",
         "backend",
         "ramulator_config_source",
         "ramulator_config_run",
         "ramulator_inflight_read_limit",
         "ramulator_ticks_per_dram_cycle",
+        "ramulator_effective_ticks_per_dram_cycle",
+        "ramulator_tick_source",
+        "ramulator_tck_ns",
+        "ramulator_mhz",
         "ramulator_finalize_stats",
         "latency",
         "queue_limit",
@@ -1220,6 +1469,7 @@ def main() -> int:
         "backend_rejected_ramulator_by_partition",
         "backend_full_by_partition",
         "ramulator_stats_present",
+        "ramulator_stats_source",
         "ramulator_memory_system_cycles",
         "ramulator_total_num_read_requests",
         "ramulator_total_num_write_requests",
@@ -1270,6 +1520,12 @@ def main() -> int:
         "store_insn",
         "stall_shd_mem",
         "l1cache_bkconflict",
+        "gpgpusim_host_timing_enabled",
+        *(
+            f"gpgpusim_host_timing_{stage}_{suffix}"
+            for stage in HOST_TIMING_STAGES
+            for suffix in ("us", "calls", "pct")
+        ),
         "stdout",
         "stderr",
         "command",

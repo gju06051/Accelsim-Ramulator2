@@ -73,6 +73,10 @@ class GenericDRAMController final : public IDRAMController, public Implementatio
       m_priority_buffer.max_size = 512*3 + 32;
 
       m_num_cores = frontend->get_num_cores();
+      size_t num_external_sources = static_cast<size_t>(m_dram->m_organization.count[0]);
+      if (m_num_cores < num_external_sources) {
+        m_num_cores = num_external_sources;
+      }
 
       s_read_row_hits_per_core.resize(m_num_cores, 0);
       s_read_row_misses_per_core.resize(m_num_cores, 0);
@@ -254,25 +258,25 @@ class GenericDRAMController final : public IDRAMController, public Implementatio
     {
       req->is_stat_updated = true;
 
-      if (req->type_id == Request::Type::Read) 
+      if (req->type_id == Request::Type::Read)
       {
         if (is_row_hit(req)) {
           s_read_row_hits++;
           s_row_hits++;
-          if (req->source_id != -1)
+          if (req->source_id >= 0 && static_cast<size_t>(req->source_id) < m_num_cores)
             s_read_row_hits_per_core[req->source_id]++;
         } else if (is_row_open(req)) {
           s_read_row_conflicts++;
           s_row_conflicts++;
-          if (req->source_id != -1)
+          if (req->source_id >= 0 && static_cast<size_t>(req->source_id) < m_num_cores)
             s_read_row_conflicts_per_core[req->source_id]++;
         } else {
           s_read_row_misses++;
           s_row_misses++;
-          if (req->source_id != -1)
+          if (req->source_id >= 0 && static_cast<size_t>(req->source_id) < m_num_cores)
             s_read_row_misses_per_core[req->source_id]++;
-        } 
-      } 
+        }
+      }
       else if (req->type_id == Request::Type::Write) 
       {
         if (is_row_hit(req)) {

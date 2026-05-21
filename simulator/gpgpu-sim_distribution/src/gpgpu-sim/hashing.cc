@@ -84,11 +84,34 @@ unsigned ipoly_hash_function(new_addr_type higher_bits, unsigned index,
     new_index[5] =
         a[17] ^ a[16] ^ a[15] ^ a[14] ^ a[11] ^ a[9] ^ a[5] ^ a[4] ^ b[5];
     return new_index.to_ulong();
+  } else if (bank_set_num == 128) {
+    std::bitset<64> a(higher_bits);
+    std::bitset<7> b(index);
+    std::bitset<7> new_index(index);
+
+    // 7-bit IPOLY-style GF(2) mix for 128-entry virtual domains. This is used
+    // by non-power-of-two channel counts such as 80, then folded back to the
+    // real channel count by the address decoder.
+    new_index[0] = a[20] ^ a[18] ^ a[17] ^ a[14] ^ a[11] ^ a[7] ^ a[3] ^
+                   a[0] ^ b[0];
+    new_index[1] = a[21] ^ a[19] ^ a[18] ^ a[15] ^ a[12] ^ a[8] ^ a[4] ^
+                   a[1] ^ b[1];
+    new_index[2] = a[22] ^ a[20] ^ a[19] ^ a[16] ^ a[13] ^ a[9] ^ a[5] ^
+                   a[2] ^ b[2];
+    new_index[3] = a[21] ^ a[20] ^ a[17] ^ a[14] ^ a[10] ^ a[6] ^ a[3] ^
+                   a[0] ^ b[3];
+    new_index[4] = a[22] ^ a[21] ^ a[18] ^ a[15] ^ a[11] ^ a[7] ^ a[4] ^
+                   a[1] ^ b[4];
+    new_index[5] = a[22] ^ a[19] ^ a[16] ^ a[12] ^ a[8] ^ a[5] ^ a[2] ^
+                   b[5];
+    new_index[6] = a[20] ^ a[17] ^ a[13] ^ a[9] ^ a[6] ^ a[3] ^ a[0] ^
+                   b[6];
+    return new_index.to_ulong();
   } else { /* Else incorrect number of channels for the hashing function */
     assert(
         "\nmemory_partition_indexing error: The number of "
         "channels should be "
-        "16, 32 or 64 for the hashing IPOLY index function. other banks "
+        "16, 32, 64 or 128 for the hashing IPOLY index function. other banks "
         "numbers are not supported. Generate it by yourself! \n" &&
         0);
 

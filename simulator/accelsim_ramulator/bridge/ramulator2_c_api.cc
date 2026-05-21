@@ -123,11 +123,9 @@ extern "C" void sgram_ramulator2_finalize(void *handle) {
       return;
     }
     if (system->outstanding != 0) {
-      std::cerr << "sgram_ramulator2_finalize: skipping Ramulator2 stats "
-                << "because " << system->outstanding
-                << " requests are still outstanding" << std::endl;
-      system->finalized = true;
-      return;
+      std::cerr << "sgram_ramulator2_finalize: emitting Ramulator2 stats with "
+                << system->outstanding << " requests still outstanding"
+                << std::endl;
     }
     if (system->frontend) system->frontend->finalize();
     if (system->memory_system) system->memory_system->finalize();

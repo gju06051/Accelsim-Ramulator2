@@ -1,0 +1,65 @@
+# NVIDIA A100 80GB HBM2e-style 5-stack Ramulator2 config.
+#
+# A100 80GB exposes five active HBM2e stacks. In this integration, AccelSim
+# memory partition ids are passed to Ramulator2 as Request::source_id, and
+# Ramulator2's ExternalChannelRoBaRaCoCh mapper uses source_id as the channel.
+# The 5-stack config therefore exposes 40 channels, matching the stock
+# SM80_A100 AccelSim config's 40 memory partitions.
+#
+# Ramulator2 has an HBM2 model but no separate HBM2e model in this tree, so this
+# uses HBM2 with a 16Gb/channel organization and 3.2Gbps/pin timing class.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM2
+    org:
+      preset: HBM2_8Gb
+      density: 16384
+      channel_width: 128
+      channel: 40
+      row: 65536
+    timing:
+      rate: 3200
+      nBL: 4
+      tCL: 7.5
+      tRCDRD: 7.5
+      tRCDWR: 7.5
+      tRP: 7.5
+      tRAS: 17.0
+      tRC: 19.0
+      tWR: 8.0
+      tRTPS: 2.0
+      tRTPL: 3.0
+      tCWL: 2.0
+      nCCDS: 1
+      nCCDL: 2
+      tRRDS: 2.0
+      tRRDL: 3.0
+      tWTRS: 3.0
+      tWTRL: 4.0
+      tRTW: 3.0
+      tFAW: 15.0
+      tRFCSB: 160.0
+      tREFI: 3900.0
+      tREFISB: 2438.0
+      tRREFD: 8.0
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh

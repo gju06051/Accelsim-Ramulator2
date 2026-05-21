@@ -16,10 +16,45 @@ Append one or more fragments with:
 --accelsim-config-override-file configs/accelsim/a100_1stack_8mb_l2.config
 ```
 
+The normal A100-style 5-stack baseline is:
+
+```bash
+--config-variant a100_5stack
+--ramulator-config configs/ramulator/a100_hbm2e_5stack.yaml
+```
+
+The equivalent reusable override fragment is:
+
+```bash
+--accelsim-config-override-file configs/accelsim/a100_5stack_hbm2e.config
+```
+
+The H100 SXM-style HBM3 presets are:
+
+```bash
+--config-variant h100_1stack
+--ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml
+```
+
+and:
+
+```bash
+--config-variant h100_full
+--ramulator-config configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml
+```
+
+`h100_1stack` models one HBM3 stack as 16 x 64-bit channels, 26 SMs
+(`132 / 5` rounded to the nearest integer), and 10 MiB L2. The equivalent
+fragment is `configs/accelsim/h100_sxm_hbm3_1stack_16ch.config`.
+
+For 5-stack/40-channel runs, use `-gpgpu_memory_partition_indexing 2` for the
+balanced IPoly path. The local address decoder supports 40 channels by hashing
+in the next power-of-two channel domain and folding the result back to 40.
+
 Inline one-off overrides still work:
 
 ```bash
---config-overrides '-gpgpu_memory_partition_indexing 2;-gpgpu_dram_return_queue_size 256'
+--config-overrides '-gpgpu_dram_return_queue_size 256'
 ```
 
 Order inside the generated run config is:

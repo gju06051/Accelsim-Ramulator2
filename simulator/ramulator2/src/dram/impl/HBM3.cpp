@@ -16,8 +16,9 @@ class HBM3 : public IDRAM, public Implementation {
 
     inline static const std::map<std::string, std::vector<int>> timing_presets = {
       //   name       rate   nBL  nCL  nRCDRD  nRCDWR  nRP  nRAS  nRC  nWR  nRTPS  nRTPL  nCWL  nCCDS  nCCDL  nRRDS  nRRDL  nWTRS  nWTRL  nRTW  nFAW  nRFC  nRFCSB  nREFI  nREFISB  nRREFD  tCK_ps
-      {"HBM3_2Gbps",  {2000,   4,   7,    7,      7,     7,   17,  19,   8,    2,     3,    2,    1,      2,     2,     3,     3,     4,    3,    15,   -1,   160,   3900,     -1,      8,   1000}},
-      // TODO: Find more sources on HBM3 timings...
+      {"HBM3_2Gbps",  {2000,   4,   7,    7,      7,     7,   17,  19,   8,    2,     3,    2,    1,      2,     2,     3,     3,     4,    3,    15,   -1,   160,   3900,     -1,      8,   2000}},
+      // JEDEC HBM3 6.4Gbps/pin uses CK=1600MHz, i.e. tCK=0.625ns.
+      {"HBM3_6.4Gbps", {6400,   4,  23,   23,     23,    21,   52,  72,  10,    4,     4,   10,    2,      4,     4,     4,     7,     7,    7,    26,   -1,   256,   6240,     -1,      8,    625}},
     };
 
 
@@ -237,14 +238,15 @@ class HBM3 : public IDRAM, public Implementation {
         }
       }
 
-      // Check for rate (in MT/s), and if provided, calculate and set tCK (in picosecond)
+      // HBM3 speed bins are specified as data rate per pin. WDQS/RDQS run at
+      // twice CK and DQ is DDR on those strobes, so data_rate = 4 * fCK.
       if (auto dq = param_group("timing").param<int>("rate").optional()) {
         if (preset_provided) {
           throw ConfigurationError("Cannot change the transfer rate of {} when using a speed preset !", get_name());
         }
         m_timing_vals("rate") = *dq;
       }
-      int tCK_ps = 1E6 / (m_timing_vals("rate") / 2);
+      int tCK_ps = (4000000 + m_timing_vals("rate") / 2) / m_timing_vals("rate");
       m_timing_vals("tCK_ps") = tCK_ps;
 
       // Refresh timings

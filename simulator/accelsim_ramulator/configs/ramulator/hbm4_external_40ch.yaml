@@ -1,0 +1,34 @@
+# HBM4 40-channel Ramulator2 config for AccelSim full-stack runs.
+#
+# This keeps the same per-channel HBM4 organization/timing as hbm4.yaml and
+# exposes 40 externally selected channels for --config-variant a100_5stack.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM4
+    org:
+      preset: HBM4_8Gb
+      channel_width: 32
+      channel: 40
+    timing:
+      preset: HBM4_4Gbps
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh

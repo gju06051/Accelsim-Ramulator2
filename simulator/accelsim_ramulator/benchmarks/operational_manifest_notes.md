@@ -19,11 +19,11 @@ The operational manifest is the union of the checked candidate manifests below:
 
 | Source manifest | Rows | Role |
 | --- | ---: | --- |
-| `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_broad.tsv` | 59 | Previously checked broad benchmark set |
+| `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_broad.tsv` | 58 | Previously checked broad benchmark set |
 | `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_extra_validated.tsv` | 16 | Additional validated benchmarks |
 | `gpu_benchmark/benchmarks/inventory/sg_hbm_benchmark_manifest_final.tsv` | 17 | Newly validated lonestar/pannotia/dragon-li set |
 
-Total rows: 92
+Total rows: 91
 
 The narrower recommended sweep set is tracked separately in
 `benchmarks/final_manifest.tsv`.
@@ -34,7 +34,7 @@ The narrower recommended sweep set is tracked separately in
 | --- | ---: |
 | Streaming | 22 |
 | Mixed-locality | 27 |
-| Irregular | 43 |
+| Irregular | 42 |
 
 ## Suite Distribution
 
@@ -43,7 +43,7 @@ The narrower recommended sweep set is tracked separately in
 | polybench | 15 |
 | graphBIG | 17 |
 | ispass-2009 | 7 |
-| rodinia | 13 |
+| rodinia | 12 |
 | proxy-apps | 2 |
 | microbench | 15 |
 | parboil | 6 |

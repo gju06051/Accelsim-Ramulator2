@@ -1,0 +1,41 @@
+# HBM3 + SID 80-channel Ramulator2 config for 5-stack HBM3-style runs.
+#
+# This models the physical HBM3 channel topology as:
+#   5 stacks * 16 channels/stack * 64 bits/channel = 5120 bits
+#
+# AccelSim currently exposes 40 memory partitions for A100/H100-like configs.
+# ExternalChannelGroupRoBaRaCoCh maps each AccelSim partition source_id to two
+# 64-bit Ramulator2 channels, selecting the lane with address bits at 32B
+# granularity.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM3SID
+    org:
+      preset: HBM3SID_8Gb
+      channel_width: 64
+      channel: 80
+    timing:
+      preset: HBM3SID_6.4Gbps
+
+  Controller:
+    impl: Generic
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelGroupRoBaRaCoCh
+    channels_per_source: 2
+    split_granularity_bytes: 32

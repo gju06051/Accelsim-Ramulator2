@@ -41,8 +41,13 @@ ramulator2_api_t g_ramulator2_api = {};
 unsigned g_ramulator2_refcount = 0;
 bool g_ramulator2_atexit_registered = false;
 unsigned g_ramulator2_inflight_reads = 0;
-unsigned g_ramulator2_inflight_read_limit = 32;
-unsigned g_ramulator2_ticks_per_dram_cycle = 1;
+const unsigned kDefaultRamulator2InflightReadLimit = 5120;
+unsigned g_ramulator2_inflight_read_limit = kDefaultRamulator2InflightReadLimit;
+double g_ramulator2_ticks_per_dram_cycle = 1.0;
+double g_ramulator2_tick_credit = 0.0;
+double g_ramulator2_accelsim_dram_freq_mhz = -1.0;
+double g_ramulator2_mhz = -1.0;
+const char *g_ramulator2_tick_source = "manual";
 
 unsigned env_u32_local(const char *name, unsigned default_value) {
   const char *value = getenv(name);
@@ -51,6 +56,20 @@ unsigned env_u32_local(const char *name, unsigned default_value) {
   unsigned long parsed = strtoul(value, &end, 0);
   if (end == value) return default_value;
   return static_cast<unsigned>(parsed);
+}
+
+double env_double_local(const char *name, double default_value) {
+  const char *value = getenv(name);
+  if (!value || !value[0]) return default_value;
+  char *end = NULL;
+  double parsed = strtod(value, &end);
+  if (end == value || parsed <= 0.0) return default_value;
+  return parsed;
+}
+
+bool env_is_auto(const char *value) {
+  return !value || !value[0] || strcmp(value, "auto") == 0 ||
+         strcmp(value, "AUTO") == 0 || strcmp(value, "Auto") == 0;
 }
 
 void *load_symbol(const char *name) {
@@ -112,9 +131,29 @@ void create_ramulator2_if_needed() {
     abort();
   }
   g_ramulator2_inflight_read_limit =
-      env_u32_local("SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT", 32);
-  g_ramulator2_ticks_per_dram_cycle =
-      env_u32_local("SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE", 1);
+      env_u32_local("SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT",
+                    kDefaultRamulator2InflightReadLimit);
+  const char *tick_env = getenv("SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE");
+  double ramulator_tck_ns = g_ramulator2_api.tck_ns(g_ramulator2_handle);
+  g_ramulator2_accelsim_dram_freq_mhz =
+      env_double_local("SGRAM_ACCELSIM_DRAM_FREQ_MHZ", -1.0);
+  g_ramulator2_mhz =
+      ramulator_tck_ns > 0.0 ? 1000.0 / ramulator_tck_ns : -1.0;
+  if (env_is_auto(tick_env)) {
+    if (g_ramulator2_mhz > 0.0 && g_ramulator2_accelsim_dram_freq_mhz > 0.0) {
+      g_ramulator2_ticks_per_dram_cycle =
+          g_ramulator2_mhz / g_ramulator2_accelsim_dram_freq_mhz;
+      g_ramulator2_tick_source = "auto";
+    } else {
+      g_ramulator2_ticks_per_dram_cycle = 1.0;
+      g_ramulator2_tick_source = "auto_fallback";
+    }
+  } else {
+    g_ramulator2_ticks_per_dram_cycle =
+        env_double_local("SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE", 1.0);
+    g_ramulator2_tick_source = "manual";
+  }
+  g_ramulator2_tick_credit = 0.0;
   if (!g_ramulator2_atexit_registered) {
     atexit([]() {
       if (g_ramulator2_handle) g_ramulator2_api.finalize(g_ramulator2_handle);
@@ -123,10 +162,12 @@ void create_ramulator2_if_needed() {
   }
   g_ramulator2_refcount = 1;
   printf("SGRAM Ramulator2 bridge created: config=%s tCK=%.3f ns "
-         "inflight_read_limit=%u ticks_per_dram_cycle=%u\n",
-         config, g_ramulator2_api.tck_ns(g_ramulator2_handle),
+         "accelsim_dram_freq_mhz=%.3f ramulator_mhz=%.3f "
+         "inflight_read_limit=%u ticks_per_dram_cycle=%.6f source=%s\n",
+         config, ramulator_tck_ns, g_ramulator2_accelsim_dram_freq_mhz,
+         g_ramulator2_mhz,
          g_ramulator2_inflight_read_limit,
-         g_ramulator2_ticks_per_dram_cycle);
+         g_ramulator2_ticks_per_dram_cycle, g_ramulator2_tick_source);
 }
 
 void release_ramulator2() {
@@ -317,7 +358,10 @@ bool sgram_backend_t::send_ramulator2(mem_fetch *data) {
 void sgram_backend_t::tick_ramulator2_once() {
   if (m_backend_kind != BACKEND_RAMULATOR2) return;
   if (m_partition_id != 0) return;
-  for (unsigned i = 0; i < g_ramulator2_ticks_per_dram_cycle; i++) {
+  g_ramulator2_tick_credit += g_ramulator2_ticks_per_dram_cycle;
+  unsigned ticks_to_issue = static_cast<unsigned>(g_ramulator2_tick_credit);
+  g_ramulator2_tick_credit -= ticks_to_issue;
+  for (unsigned i = 0; i < ticks_to_issue; i++) {
     g_ramulator2_api.tick(g_ramulator2_handle);
   }
 }
@@ -364,7 +408,7 @@ void sgram_backend_t::print(FILE *fp) const {
     fprintf(fp,
             "SGRAM Ramulator2 backend partition %u: pending=%zu completed=%zu "
             "returnq_full=%u queue_limit=%u bridge_ticks=%llu "
-            "ticks_per_dram_cycle=%u "
+            "ticks_per_dram_cycle=%.6f "
             "accepted_reads=%llu completed_reads=%llu accepted_writes=%llu "
             "rejected=%llu rejected_inflight=%llu rejected_ramulator=%llu "
             "backend_full=%llu global_inflight_reads=%u inflight_limit=%u\n",

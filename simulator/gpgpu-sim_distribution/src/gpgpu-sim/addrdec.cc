@@ -142,17 +142,29 @@ void linear_to_raw_address_translation::addrdec_tlx(new_addr_type addr,
       break;
     }
     case IPOLY: {
-      // assert(!gap);
       unsigned sub_partition_addr_mask = m_n_sub_partition_in_channel - 1;
-      unsigned sub_partition = tlx->chip * m_n_sub_partition_in_channel +
-                               (tlx->bk & sub_partition_addr_mask);
-      sub_partition = ipoly_hash_function(
-          rest_of_addr_high_bits, sub_partition,
-          nextPowerOf2_m_n_channel * m_n_sub_partition_in_channel);
+      unsigned sub_partition;
 
-      if (gap)  // if it is not 2^n partitions, then take modular
-        sub_partition =
-            sub_partition % (m_n_channel * m_n_sub_partition_in_channel);
+      if (gap) {
+        // Non-power-of-two channel counts (e.g., A100 5-stack = 40 channels)
+        // cannot call IPOLY over the full channel*subpartition space because
+        // the virtual power-of-two domain can exceed the IPOLY equations
+        // implemented in hashing.cc. Hash only the channel in the next
+        // power-of-two channel domain, fold it back to the real channel count,
+        // then retain the bank-derived subpartition selector.
+        unsigned hashed_chip =
+            ipoly_hash_function(rest_of_addr_high_bits, tlx->chip,
+                                nextPowerOf2_m_n_channel) %
+            m_n_channel;
+        sub_partition = hashed_chip * m_n_sub_partition_in_channel +
+                        (tlx->bk & sub_partition_addr_mask);
+      } else {
+        sub_partition = tlx->chip * m_n_sub_partition_in_channel +
+                        (tlx->bk & sub_partition_addr_mask);
+        sub_partition = ipoly_hash_function(
+            rest_of_addr_high_bits, sub_partition,
+            m_n_channel * m_n_sub_partition_in_channel);
+      }
 
       tlx->chip = sub_partition / m_n_sub_partition_in_channel;
       tlx->sub_partition = sub_partition;

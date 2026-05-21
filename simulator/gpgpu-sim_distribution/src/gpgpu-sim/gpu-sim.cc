@@ -36,6 +36,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include "zlib.h"
 
 #include "dram.h"
@@ -86,6 +87,13 @@ class gpgpu_sim_wrapper {};
 bool g_interactive_debugger_enabled = false;
 
 tr1_hash_map<new_addr_type, unsigned> address_random_interleaving;
+
+static unsigned long long host_time_us() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return static_cast<unsigned long long>(tv.tv_sec) * 1000000ULL +
+         static_cast<unsigned long long>(tv.tv_usec);
+}
 
 /* Clock Domains */
 
@@ -685,6 +693,11 @@ void gpgpu_sim_config::reg_options(option_parser_t opp) {
       opp, "-gpgpu_runtime_stat", OPT_CSTR, &gpgpu_runtime_stat,
       "display runtime statistics such as dram utilization {<freq>:<flag>}",
       "10000:0");
+  option_parser_register(
+      opp, "-gpgpu_host_timing", OPT_BOOL, &gpgpu_host_timing,
+      "collect host wall-clock microsecond timing by major gpgpu_sim::cycle "
+      "stage (0=off, 1=on)",
+      "0");
   option_parser_register(opp, "-liveness_message_freq", OPT_INT64,
                          &liveness_message_freq,
                          "Minimum number of seconds between simulation "
@@ -1011,6 +1024,7 @@ gpgpu_sim::gpgpu_sim(const gpgpu_sim_config &config, gpgpu_context *ctx)
   gpu_tot_sim_cycle_parition_util = 0;
   partiton_replys_in_parallel = 0;
   partiton_replys_in_parallel_total = 0;
+  reset_host_timing();
   last_streamID = -1;
 
   gpu_kernel_time.clear();
@@ -1140,6 +1154,59 @@ void gpgpu_sim::reinit_clock_domains(void) {
   dram_time = 0;
   icnt_time = 0;
   l2_time = 0;
+}
+
+void gpgpu_sim::reset_host_timing() {
+  memset(m_host_timing_us, 0, sizeof(m_host_timing_us));
+  memset(m_host_timing_calls, 0, sizeof(m_host_timing_calls));
+}
+
+void gpgpu_sim::record_host_timing(unsigned stage,
+                                   unsigned long long start_us) {
+  if (!m_config.gpgpu_host_timing || start_us == 0 ||
+      stage >= HOST_TIMING_COUNT) {
+    return;
+  }
+  unsigned long long elapsed_us = host_time_us() - start_us;
+  m_host_timing_us[stage] += elapsed_us;
+  m_host_timing_calls[stage]++;
+}
+
+void gpgpu_sim::print_host_timing_stats(FILE *fout) const {
+  if (!m_config.gpgpu_host_timing) {
+    fprintf(fout, "gpgpusim_host_timing_enabled = 0\n");
+    return;
+  }
+
+  static const char *stage_names[HOST_TIMING_COUNT] = {
+      "clock",
+      "core_icnt",
+      "mem_to_icnt",
+      "dram",
+      "l2",
+      "icnt_transfer",
+      "core_pipeline",
+      "power_model",
+      "core_bookkeeping",
+      "runtime_stats",
+      "total",
+  };
+
+  unsigned long long total_us = m_host_timing_us[HOST_TIMING_TOTAL];
+  fprintf(fout, "gpgpusim_host_timing_enabled = 1\n");
+  for (unsigned i = 0; i < HOST_TIMING_COUNT; i++) {
+    double pct = 0.0;
+    if (total_us > 0 && i != HOST_TIMING_TOTAL) {
+      pct = 100.0 * static_cast<double>(m_host_timing_us[i]) /
+            static_cast<double>(total_us);
+    }
+    fprintf(fout, "gpgpusim_host_timing_%s_us = %llu\n", stage_names[i],
+            m_host_timing_us[i]);
+    fprintf(fout, "gpgpusim_host_timing_%s_calls = %llu\n", stage_names[i],
+            m_host_timing_calls[i]);
+    fprintf(fout, "gpgpusim_host_timing_%s_pct = %.6f\n", stage_names[i],
+            pct);
+  }
 }
 
 bool gpgpu_sim::active() {
@@ -1466,6 +1533,7 @@ void gpgpu_sim::gpu_print_stat(unsigned long long streamID) {
   printf("gpu_occupancy = %.4f%% \n", gpu_occupancy.get_occ_fraction() * 100);
   printf("gpu_tot_occupancy = %.4f%% \n",
          (gpu_occupancy + gpu_tot_occupancy).get_occ_fraction() * 100);
+  print_host_timing_stats(statfout);
 
   fprintf(statfout, "max_total_param_size = %llu\n",
           gpgpu_ctx->device_runtime->g_max_total_param_size);
@@ -1971,15 +2039,23 @@ unsigned long long g_single_step =
     0;  // set this in gdb to single step the pipeline
 
 void gpgpu_sim::cycle() {
+  unsigned long long host_total_start =
+      m_config.gpgpu_host_timing ? host_time_us() : 0;
+  unsigned long long host_stage_start =
+      m_config.gpgpu_host_timing ? host_time_us() : 0;
   int clock_mask = next_clock_domain();
+  record_host_timing(HOST_TIMING_CLOCK, host_stage_start);
 
   if (clock_mask & CORE) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     // shader core loading (pop from ICNT into core) follows CORE clock
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++)
       m_cluster[i]->icnt_cycle();
+    record_host_timing(HOST_TIMING_CORE_ICNT, host_stage_start);
   }
   unsigned partiton_replys_in_parallel_per_cycle = 0;
   if (clock_mask & ICNT) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     // pop from memory controller to interconnect
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
       mem_fetch *mf = m_memory_sub_partition[i]->top();
@@ -2001,10 +2077,12 @@ void gpgpu_sim::cycle() {
         m_memory_sub_partition[i]->pop();
       }
     }
+    record_host_timing(HOST_TIMING_MEM_TO_ICNT, host_stage_start);
   }
   partiton_replys_in_parallel += partiton_replys_in_parallel_per_cycle;
 
   if (clock_mask & DRAM) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     for (unsigned i = 0; i < m_memory_config->m_n_mem; i++) {
       if (m_memory_config->simple_dram_model)
         m_memory_partition_unit[i]->simple_dram_model_cycle();
@@ -2025,11 +2103,13 @@ void gpgpu_sim::cycle() {
             m_power_stats->pwr_mem_stat->n_req[CURRENT_STAT_IDX][i]);
       }
     }
+    record_host_timing(HOST_TIMING_DRAM, host_stage_start);
   }
 
   // L2 operations follow L2 clock domain
   unsigned partiton_reqs_in_parallel_per_cycle = 0;
   if (clock_mask & L2) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX].clear();
     for (unsigned i = 0; i < m_memory_config->m_n_mem_sub_partition; i++) {
       // move memory request from interconnect into memory partition (if not
@@ -2049,6 +2129,7 @@ void gpgpu_sim::cycle() {
             m_power_stats->pwr_mem_stat->l2_cache_stats[CURRENT_STAT_IDX]);
       }
     }
+    record_host_timing(HOST_TIMING_L2, host_stage_start);
   }
   partiton_reqs_in_parallel += partiton_reqs_in_parallel_per_cycle;
   if (partiton_reqs_in_parallel_per_cycle > 0) {
@@ -2057,10 +2138,13 @@ void gpgpu_sim::cycle() {
   }
 
   if (clock_mask & ICNT) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     icnt_transfer();
+    record_host_timing(HOST_TIMING_ICNT_TRANSFER, host_stage_start);
   }
 
   if (clock_mask & CORE) {
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     // L1 cache + shader core pipeline stages
     m_power_stats->pwr_mem_stat->core_cache_stats[CURRENT_STAT_IDX].clear();
     for (unsigned i = 0; i < m_shader_config->n_simt_clusters; i++) {
@@ -2088,6 +2172,7 @@ void gpgpu_sim::cycle() {
     *average_pipeline_duty_cycle = ((*average_pipeline_duty_cycle) + temp);
     // cout<<"Average pipeline duty cycle:
     // "<<*average_pipeline_duty_cycle<<endl;
+    record_host_timing(HOST_TIMING_CORE_PIPELINE, host_stage_start);
 
     if (g_single_step &&
         ((gpu_sim_cycle + gpu_tot_sim_cycle) >= g_single_step)) {
@@ -2098,6 +2183,7 @@ void gpgpu_sim::cycle() {
     if (g_interactive_debugger_enabled) gpgpu_debug();
 
       // McPAT main cycle (interface with McPAT)
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
 #ifdef GPGPUSIM_POWER_MODEL
     if (m_config.g_power_simulation_enabled) {
       if (m_config.g_power_simulation_mode == 0) {
@@ -2108,7 +2194,9 @@ void gpgpu_sim::cycle() {
       }
     }
 #endif
+    record_host_timing(HOST_TIMING_POWER_MODEL, host_stage_start);
 
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     issue_block2core();
     decrement_kernel_latency();
 
@@ -2146,7 +2234,9 @@ void gpgpu_sim::cycle() {
         }
       }
     }
+    record_host_timing(HOST_TIMING_CORE_BOOKKEEPING, host_stage_start);
 
+    host_stage_start = m_config.gpgpu_host_timing ? host_time_us() : 0;
     if (!(gpu_sim_cycle % m_config.gpu_stat_sample_freq)) {
       time_t days, hrs, minutes, sec;
       time_t curr_time;
@@ -2211,7 +2301,9 @@ void gpgpu_sim::cycle() {
     // launch device kernel
     gpgpu_ctx->device_runtime->launch_one_device_kernel();
 #endif
+    record_host_timing(HOST_TIMING_RUNTIME_STATS, host_stage_start);
   }
+  record_host_timing(HOST_TIMING_TOTAL, host_total_start);
 }
 
 void sst_gpgpu_sim::cycle() {

@@ -98,9 +98,9 @@ python3 ./scripts/run_fixed_backend_matrix.py \
   --max-cycle 50000 \
   --timeout 240 \
   --jobs 3 \
-  --ramulator-inflight-read-limit 128 \
-  --ramulator-ticks-per-dram-cycle 1 \
-  --out-dir results/address_mapping_ipoly_smoke_a100_1stack_l2_8mb_q128_if128_mc50k_v1
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --out-dir results/address_mapping_ipoly_smoke_a100_1stack_l2_8mb_q128_ifauto_mc50k_v1
 ```
 
 ## Unbounded Run Status
@@ -233,17 +233,18 @@ The bounded run stops with outstanding Ramulator2 requests. The bridge now skips
 Ramulator2 stats finalization when outstanding requests remain, so max-cycle
 smoke runs complete cleanly and still preserve AccelSim-side backend counters.
 
-For AccelSim benchmark sweeps, `run_fixed_backend_matrix.py` now controls this
-with `--ramulator-finalize-stats {auto,on,off}`. The default `auto` mode keeps
-bounded smoke runs from depending on Ramulator2's YAML stats dump:
+For AccelSim benchmark sweeps, `run_fixed_backend_matrix.py` controls this with
+`--ramulator-finalize-stats {auto,on,off}`. The default `auto` mode enables
+Ramulator2's internal finalizer and promotes selected Ramulator2 fields into
+`summary.csv` when the process exits cleanly. If the finalizer output is not
+available, the runner falls back to the bridge-side request counters:
 
 ```text
-SGRAM_RAMULATOR_SKIP_FINALIZE_STATS=1
+ramulator_stats_source=yaml
+ramulator_stats_source=bridge
 ```
 
-For unbounded `--max-cycle 0` runs, `auto` unsets the skip variable, lets
-Ramulator2 print internal stats at process shutdown, and promotes selected
-Ramulator2 fields into `summary.csv`:
+The promoted Ramulator2 fields include:
 
 ```text
 memory_system_cycles
@@ -256,6 +257,32 @@ read_latency_i / avg_read_latency_i
 
 The standalone bridge smoke also leaves finalization enabled, so it can still
 validate Ramulator2 per-channel counters directly.
+
+## 40-Channel IPoly Update
+
+The original IPoly path assumed a power-of-two partition domain. With 40
+channels and four subpartitions per channel, the old code attempted to call
+`ipoly_hash_function(..., 256)`, but the implemented IPoly equations cover only
+16/32/64-way domains.
+
+The address decoder now handles non-power-of-two channel counts by hashing the
+channel id in the next power-of-two channel domain, folding that result back to
+the real channel count, and preserving the bank-derived subpartition selector.
+This keeps `-gpgpu_memory_partition_indexing 2` usable for the 40-channel
+A100-style 5-stack config.
+
+Validation:
+
+| Run | Result |
+| --- | --- |
+| `a100_5stack` + `a100_hbm2e_5stack.yaml`, `micro_mem_bw`, q128, 5k | `MAX_CYCLE_OK`, enabled partitions `40/40`, active partitions `40/40`, `ramulator_stats_source=yaml` |
+| `a100_5stack` + `a100_hbm2e_5stack.yaml`, `polybench_atax`, q128, 5k | `MAX_CYCLE_OK`, enabled partitions `40/40`, active partitions `36/40`, `ramulator_stats_source=yaml` |
+
+Result CSV:
+
+```text
+results/ipoly40_a100_hbm2e_5stack_smoke_20260520/summary.csv
+```
 
 ## Stress Results After External-Channel Fix
 
