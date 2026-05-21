@@ -1,56 +1,53 @@
 # AccelSim + Ramulator2 Integration Bundle
 
-This repository packages an AccelSim/GPGPU-Sim and Ramulator2 integration in one
-checkout. The main purpose is to run CUDA workloads in AccelSim while routing
-memory requests through a Ramulator2-backed external memory backend.
+This repository packages an AccelSim/GPGPU-Sim and Ramulator2 co-simulation
+environment in one checkout. Its main purpose is to run CUDA workloads through
+AccelSim while routing memory-system requests into a Ramulator2-backed external
+memory backend.
 
-The repository vendors the simulator sources, the integration bridge, runtime
-libraries, helper scripts, and a validated benchmark manifest. Some historical
-script and environment names still use `sgram`; treat those as internal/legacy
-names for the memory-backend hook, not as the identity of this repository.
+Some internal scripts and environment variables still use the historical
+`sgram` name. Treat those names as legacy labels for the external memory
+backend hook. The project focus is AccelSim + Ramulator2 integration.
 
-The checkout layout is:
+## Repository Layout
 
 ```text
 Accelsim-Ramulator/
   simulator/
-    gpgpu-sim_distribution/   # AccelSim/GPGPU-Sim source tree
+    gpgpu-sim_distribution/   # AccelSim/GPGPU-Sim source tree and runtime build
     ramulator2/               # Ramulator2 source tree and runtime library
-    accelsim_ramulator/       # bridge, overlays, configs, docs, runners
+    accelsim_ramulator/       # bridge, configs, docs, validation runners
   gpu_benchmark/
-    benchmarks/main/          # user-facing main benchmark list and local drop zone
-    benchmarks/inventory/     # archived benchmark candidate manifests
-    docs/                     # benchmark setup and historical notes
-    scripts/                  # benchmark build/run/trace helpers
-  scripts/                    # top-level layout checks and smoke tests
-  tools/                      # optional NVBit tooling used by trace helpers
+    benchmarks/main/          # default benchmark manifest and local drop zone
+    benchmarks/inventory/     # broader candidate manifests
+    common/                   # packaged benchmark harness, binaries, and data
+    docs/                     # benchmark layout notes
+    scripts/                  # benchmark helper scripts
+  scripts/                    # top-level layout checks and smoke helpers
+  tools/                      # optional tracing tools
 ```
+
+The main implementation area is `simulator/accelsim_ramulator`. It contains the
+Ramulator2 bridge, runtime config files, benchmark runner, and project notes.
 
 ## What Is Included
 
 - AccelSim/GPGPU-Sim source plus the packaged `build/sgram_fixed/libcudart.so`
-  runtime library used by the smoke runner.
+  runtime used by the benchmark runner.
 - Ramulator2 source plus the packaged `libramulator.so` runtime library.
-- AccelSim + Ramulator2 bridge code, overlay patch, configs, docs, and matrix
-  runner under `simulator/accelsim_ramulator`.
-- Main benchmark manifest with 45 representative benchmarks and an operational
-  pool with 92 validated benchmarks.
-- Benchmark release binaries and the small input/data files referenced by the
-  operational manifest.
-- NVBit tooling used by optional memory-trace helper scripts.
+- The external memory backend path that connects AccelSim memory partitions to
+  Ramulator2.
+- HBM2e, HBM3 SID, and HBM4-oriented Ramulator2 YAML configs.
+- A100 and H100 AccelSim config variants, including H100 1/5 and full H100
+  HBM3 layouts.
+- A curated main benchmark set and a larger operational benchmark pool.
 
-## What Is Not Included
+Generated result directories, trace dumps, replay outputs, and large paper/spec
+archives are not part of normal commits.
 
-- Generated CMake build trees, object files, and intermediate build products.
-- NVBit trace dumps.
-- Ramulator replay outputs.
-- AccelSim result logs.
-- Large unused benchmark datasets such as Tango/AlexNet and large GraphBIG
-  datasets.
+## Quick Start
 
-## Quick Check
-
-List the packaged benchmark set:
+Check the all-in-one layout:
 
 ```bash
 ./scripts/check_all_in_one.py
@@ -62,7 +59,16 @@ Run a tiny fixed-backend smoke test:
 ./scripts/run_smoke_all_in_one.sh
 ```
 
-Run the main Ramulator2 smoke sweep:
+List the default AccelSim + Ramulator2 benchmark set:
+
+```bash
+cd simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main \
+  --list-benchmarks
+```
+
+Run a bounded A100 HBM2e 5-stack Ramulator2 smoke sweep:
 
 ```bash
 cd simulator/accelsim_ramulator
@@ -76,32 +82,156 @@ cd simulator/accelsim_ramulator
   --max-cycle 50000 \
   --timeout 240 \
   --jobs 32 \
-  --ramulator-inflight-read-limit 128 \
-  --out-dir results/operational_smoke
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --out-dir results/a100_hbm2e_5stack_smoke
 ```
 
-The runner default `--ramulator-finalize-stats auto` emits Ramulator2 internal
-YAML stats into `summary.csv`. If a process is killed before Ramulator2 can
-finalize, the runner falls back to bridge-sourced request counters and marks
-those rows with `ramulator_stats_source=bridge`.
+The runner writes a `summary.csv` in the selected output directory. It includes
+benchmark status, AccelSim metrics, Ramulator2 stats, bridge counters,
+partition activity, and host-side simulator timing metrics.
 
-The runner also defaults to `--ramulator-ticks-per-dram-cycle auto`: it reads
-AccelSim's DRAM clock from `gpgpusim.config`, queries Ramulator2 `tCK`, and
-uses a fractional tick accumulator so the two time domains stay aligned.
+## Common Configurations
 
-Config files can be swapped without editing the runner:
+| Target | AccelSim variant | Ramulator2 config | Shape |
+| --- | --- | --- | --- |
+| A100 HBM2e 1-stack | `a100_1stack` | `configs/ramulator/a100_hbm2e_1stack.yaml` | 8 memory partitions |
+| A100 HBM2e 5-stack | `a100_5stack` | `configs/ramulator/a100_hbm2e_5stack.yaml` | 40 memory partitions |
+| H100 HBM3 1/5 | `h100_1stack` | `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml` | 26 SMs, 16 x 64-bit channels, 10 MiB L2 |
+| H100 HBM3 full | `h100_full` | `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml` | 132 SMs, 80 x 64-bit channels, 50 MiB L2 |
+
+The H100 variants keep the SM80 functional/PTX path for benchmark
+compatibility. They model H100-like performance geometry rather than changing
+compute capability.
+
+Additional config fragments are documented in:
+
+- `simulator/accelsim_ramulator/configs/accelsim/README.md`
+- `simulator/accelsim_ramulator/configs/ramulator/README.md`
+- `simulator/accelsim_ramulator/docs/configuration.md`
+
+## H100 Microbenchmark Examples
+
+Run a natural-completion H100 1/5 microbenchmark check:
 
 ```bash
---gpgpusim-config /path/to/gpgpusim.config
---accelsim-config-override-file configs/accelsim/a100_1stack_8mb_l2.config
---ramulator-config configs/ramulator/a100_hbm2e_80gb.yaml
+cd simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --backend ramulator2 \
+  --preset accelsim_ramulator_main \
+  --benchmarks micro_mem_bw,micro_mem_lat,micro_l2_bw_32f,micro_l2_lat \
+  --config-variant h100_1stack \
+  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
+  --latencies 0 \
+  --queue-limits 128 \
+  --max-cycle 0 \
+  --timeout 0 \
+  --jobs 4 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --ramulator-finalize-stats auto \
+  --out-dir results/h100_1stack_micro
 ```
 
-See `simulator/accelsim_ramulator/docs/configuration.md` for the full flow.
+Run the matching full H100 check:
 
-## Environment
+```bash
+cd simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --backend ramulator2 \
+  --preset accelsim_ramulator_main \
+  --benchmarks micro_mem_bw,micro_mem_lat,micro_l2_bw_32f,micro_l2_lat \
+  --config-variant h100_full \
+  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml \
+  --latencies 0 \
+  --queue-limits 128 \
+  --max-cycle 0 \
+  --timeout 0 \
+  --jobs 4 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --ramulator-finalize-stats auto \
+  --out-dir results/h100_full_micro
+```
 
-The helper scripts set these paths automatically for this all-in-one layout:
+Use `micro_mem_bw` for DRAM-path pressure. The `micro_l2_*` benchmarks can be
+served mostly by cache and may produce little or no Ramulator2 DRAM traffic.
+
+## Timing and Stats
+
+The runner defaults are chosen to keep AccelSim and Ramulator2 aligned:
+
+- `--ramulator-ticks-per-dram-cycle auto` reads AccelSim's DRAM clock and
+  Ramulator2 `tCK`, then uses a fractional tick accumulator.
+- `--ramulator-inflight-read-limit auto` scales the bridge-wide read guard with
+  the Ramulator2 channel count.
+- `--ramulator-finalize-stats auto` enables Ramulator2 internal stats and falls
+  back to bridge counters if a process exits before Ramulator2 finalization.
+- `--gpgpusim-host-timing on` records host-side time spent in core, interconnect,
+  L2, DRAM, and other simulator stages.
+
+Useful `summary.csv` columns include:
+
+- `status`, `max_cycle_hit`, `seconds`
+- `backend_enabled_partitions`, `backend_active_partitions`
+- `backend_total_accepted_reads`, `backend_total_completed_reads`
+- `backend_total_rejected_inflight`, `backend_total_rejected_ramulator`
+- `ramulator_stats_present`, `ramulator_stats_source`
+- `ramulator_total_num_read_requests`, `ramulator_avg_read_latency`
+- `ramulator_tck_ns`, `ramulator_mhz`
+- `gpgpusim_host_timing_*`
+
+## Benchmark Sets
+
+The default benchmark manifest is:
+
+```text
+gpu_benchmark/benchmarks/main/manifest.tsv
+```
+
+It currently contains 44 representative benchmarks:
+
+| Class | Count |
+| --- | ---: |
+| Streaming | 11 |
+| Mixed-locality | 17 |
+| Irregular | 16 |
+
+The broader operational manifest is:
+
+```text
+simulator/accelsim_ramulator/benchmarks/operational_manifest.tsv
+```
+
+It currently contains 91 validated benchmarks:
+
+| Class | Count |
+| --- | ---: |
+| Streaming | 22 |
+| Mixed-locality | 27 |
+| Irregular | 42 |
+
+Add local benchmarks under:
+
+```text
+gpu_benchmark/benchmarks/main/local/
+```
+
+Then add one TSV row to `gpu_benchmark/benchmarks/main/manifest.tsv`. See
+`gpu_benchmark/benchmarks/README.md` for the field format.
+
+Known incompatible candidates are documented in:
+
+```text
+simulator/accelsim_ramulator/benchmarks/exclusions.md
+```
+
+The legacy `stackganged_*` preset names remain for compatibility with earlier
+scripts. New runs should normally use `accelsim_ramulator_main`.
+
+## Environment Variables
+
+The helper scripts set these paths automatically for this all-in-one checkout:
 
 ```bash
 export SGRAM_WORKSPACE_ROOT=$PWD
@@ -111,49 +241,30 @@ export SGRAM_RAMULATOR2_ROOT=$PWD/simulator/ramulator2
 export SGRAM_GPGPU_BUILD=$PWD/simulator/gpgpu-sim_distribution/build/sgram_fixed
 ```
 
-If you move components elsewhere, set the same variables manually before using
+If the simulator, Ramulator2, or benchmark trees are moved elsewhere, set these
+variables manually before invoking
 `simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py`.
 
-`SGRAM_*` is the current environment-variable prefix used by the bridge and
-runner. It is kept for compatibility with the existing code path.
+## Documentation Map
 
-## Benchmark Set
+- `simulator/accelsim_ramulator/README.md`: integration-layer details.
+- `simulator/accelsim_ramulator/docs/project_worklog.md`: current project
+  journal and open work.
+- `simulator/accelsim_ramulator/docs/configuration.md`: how to choose and wire
+  AccelSim and Ramulator2 configs.
+- `simulator/accelsim_ramulator/docs/ramulator2_backend_validation.md`: backend
+  validation notes.
+- `simulator/accelsim_ramulator/docs/ramulator2_reject_inflight_notes.md`:
+  queue and inflight-pressure interpretation.
+- `simulator/accelsim_ramulator/docs/address_mapping_partition_imbalance.md`:
+  partition hashing and balance notes.
+- `gpu_benchmark/README.md`: benchmark tree layout.
 
-The main AccelSim + Ramulator2 benchmark manifest is:
+## Current Caveats
 
-```text
-gpu_benchmark/benchmarks/main/manifest.tsv
-```
-
-It contains 45 representative benchmarks selected from the operational pool.
-Add local benchmarks under:
-
-```text
-gpu_benchmark/benchmarks/main/local/
-```
-
-Then add a TSV row to `gpu_benchmark/benchmarks/main/manifest.tsv`.
-
-The broader operational manifest is:
-
-```text
-simulator/accelsim_ramulator/benchmarks/operational_manifest.tsv
-```
-
-It contains 92 validated benchmarks:
-
-| Class | Count |
-| --- | ---: |
-| Streaming | 22 |
-| Mixed-locality | 27 |
-| Irregular | 43 |
-
-Known incompatible candidates are documented in:
-
-```text
-simulator/accelsim_ramulator/benchmarks/exclusions.md
-```
-
-The default runner preset is `accelsim_ramulator_main`. The legacy
-`stackganged_operational` preset remains for compatibility with earlier scripts
-and refers to the AccelSim + Ramulator2 operational benchmark set above.
+- Full natural benchmark runs can take many hours. Start with bounded smoke
+  runs before launching `--max-cycle 0 --timeout 0` jobs.
+- Large shared-library build products are currently tracked. GitHub may warn
+  about files larger than 50 MiB.
+- Raw result reports, generated CSVs, and paper/spec archives are intentionally
+  kept out of normal commits unless explicitly requested.
