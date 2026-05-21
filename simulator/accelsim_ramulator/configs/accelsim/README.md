@@ -3,14 +3,14 @@
 Place AccelSim/GPGPU-Sim config fragments here for experiments using the
 Ramulator2 backend.
 
-The runner always creates a per-run `gpgpusim.config` by copying a base config
-and appending overrides. Select the base config with:
+The runner always creates a per-run effective `gpgpusim.config` by merging a
+base config with the selected overrides. Select the base config with:
 
 ```bash
 --gpgpusim-config /path/to/gpgpusim.config
 ```
 
-Append one or more fragments with:
+Apply one or more fragments with:
 
 ```bash
 --accelsim-config-override-file configs/accelsim/a100_1stack_8mb_l2.config
@@ -57,11 +57,16 @@ Inline one-off overrides still work:
 --config-overrides '-gpgpu_dram_return_queue_size 256'
 ```
 
-Order inside the generated run config is:
+Precedence for the generated run config is:
 
-1. copied base `gpgpusim.config`
+1. base `gpgpusim.config`
 2. `--a100-l2-8mb` / `--l2-cache-config`
 3. `--config-variant`
 4. `--config-overrides`
 5. each `--accelsim-config-override-file`
 6. runner safety/runtime lines such as `-gpgpu_max_cycle`
+
+If the same option appears more than once across those inputs, only the last
+effective option line is kept in the generated file. This matches AccelSim's
+parser behavior while avoiding stale base values beside architecture-specific
+overrides.

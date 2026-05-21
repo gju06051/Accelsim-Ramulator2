@@ -5,7 +5,7 @@ files instead of editing the script.
 
 ## AccelSim Config
 
-The base AccelSim/GPGPU-Sim config is copied into every run directory as
+The base AccelSim/GPGPU-Sim config is merged into every run directory as
 `gpgpusim.config`.
 
 ```bash
@@ -28,7 +28,11 @@ or as reusable files:
 ```
 
 The generated run config records the source base config and override files in
-comments near the appended runner block.
+comments near the runner block. If the base config, variant, inline overrides,
+override files, or runner settings define the same option more than once, the
+runner keeps only the last effective value in `gpgpusim.config`. This matches
+AccelSim's last-value-wins parser behavior without leaving stale A100 values
+beside H100 overrides in the generated file.
 
 ## Ramulator2 Config
 
