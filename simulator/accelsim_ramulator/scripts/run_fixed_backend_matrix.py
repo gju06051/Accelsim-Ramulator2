@@ -79,9 +79,8 @@ DEFAULT_RAMULATOR_CONFIG = env_path(
     "SGRAM_RAMULATOR_CONFIG",
     INTEGRATION_ROOT / "configs" / "ramulator" / "hbm4.yaml",
 )
-RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = 32
-RAMULATOR_READ_SIDE_BUFFERS_PER_CHANNEL = 2
-A100_L2_8MB_CONFIG = "S:32:128:13,L:B:m:L:X,A:192:4,32:0,32"
+RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = 64
+A100_L2_8MB_CONFIG = "S:128:128:16,L:B:m:L:X,A:192:4,32:0,32"
 A100_HBM_ADDR_MAPPING = (
     "-gpgpu_mem_addr_mapping "
     "dramid@8;00000000.00000000.00000000.00000000."
@@ -532,11 +531,7 @@ def resolve_ramulator_inflight_read_limit(value: str, ramulator_config: Path) ->
     normalized = str(value).strip().lower()
     if normalized == "auto":
         channels = infer_ramulator_channels(ramulator_config)
-        return (
-            channels
-            * RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL
-            * RAMULATOR_READ_SIDE_BUFFERS_PER_CHANNEL
-        )
+        return channels * RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL
     try:
         parsed = int(str(value), 0)
     except ValueError as exc:
@@ -1199,7 +1194,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--queue-limits",
-        default="32",
+        default="64",
         help="Comma-separated SGRAM_QUEUE_LIMIT values.",
     )
     parser.add_argument(
@@ -1246,9 +1241,9 @@ def main() -> int:
         default="auto",
         help=(
             "SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT for --backend ramulator2. "
-            "Use 'auto' to set the bridge-wide read cap near Ramulator2's "
-            "Generic controller read-side buffering: channels * 32 read-buffer "
-            "entries * 2 read-side buffers. Use 0 to disable the guard."
+            "Use 'auto' to set the bridge-wide read cap to the AccelSim-style "
+            "per-channel request queue depth: channels * 64 read-buffer entries. "
+            "Use 0 to disable the guard."
         ),
     )
     parser.add_argument(

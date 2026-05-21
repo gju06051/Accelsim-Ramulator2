@@ -48,6 +48,8 @@ MemorySystem:
 
   Controller:
     impl: Generic
+    read_buffer_size: 64
+    write_buffer_size: 64
     Scheduler:
       impl: FRFCFS
     RefreshManager:

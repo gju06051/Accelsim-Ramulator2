@@ -46,7 +46,7 @@ struct Request {
 
 struct ReqBuffer {
   std::list<Request> buffer;
-  size_t max_size = 32;
+  size_t max_size = 64;
 
 
   using iterator = std::list<Request>::iterator;
@@ -57,7 +57,7 @@ struct ReqBuffer {
   size_t size() const { return buffer.size(); }
 
   bool enqueue(const Request& request) {
-    if (buffer.size() <= max_size) {
+    if (buffer.size() < max_size) {
       buffer.push_back(request);
       return true;
     } else {

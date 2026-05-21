@@ -54,6 +54,12 @@ class GenericDRAMController final : public IDRAMController, public Implementatio
     void init() override {
       m_wr_low_watermark =  param<float>("wr_low_watermark").desc("Threshold for switching back to read mode.").default_val(0.2f);
       m_wr_high_watermark = param<float>("wr_high_watermark").desc("Threshold for switching to write mode.").default_val(0.8f);
+      m_read_buffer.max_size = param<size_t>("read_buffer_size")
+                                   .desc("Read request buffer entries per DRAM channel.")
+                                   .default_val(64);
+      m_write_buffer.max_size = param<size_t>("write_buffer_size")
+                                    .desc("Write request buffer entries per DRAM channel.")
+                                    .default_val(64);
 
       m_scheduler = create_child_ifce<IScheduler>();
       m_refresh = create_child_ifce<IRefreshManager>();    
