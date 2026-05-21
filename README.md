@@ -189,12 +189,12 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 60 representative benchmarks:
+It currently contains 63 representative benchmarks:
 
 | Class | Count |
 | --- | ---: |
 | Streaming | 16 |
-| Mixed-locality | 26 |
+| Mixed-locality | 29 |
 | Irregular | 18 |
 
 Main benchmark coverage by workload field:
@@ -209,7 +209,7 @@ Main benchmark coverage by workload field:
 | Dynamic programming and path-style kernels | `rodinia_nw`, `rodinia_pathfinder`, `pannotia_fw_block` |
 | Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
 | Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
-| Legacy neural-network layer | `rodinia_backprop` |
+| Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm` |
 
 The broader operational manifest is:
 

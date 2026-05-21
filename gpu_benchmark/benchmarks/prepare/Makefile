@@ -24,6 +24,7 @@ TARGETS := \
 
 .PHONY: all clean smoke
 .PHONY: nvcomp nvcomp-smoke nvcomp-check
+.PHONY: tango-fetch tango tango-smoke tango-clean
 
 all: $(TARGETS)
 
@@ -63,6 +64,20 @@ nvcomp-smoke: nvcomp
 	$(BIN_DIR)/nvcomp_codec_bench --codec cascaded --bytes 8388608 --chunk-size 65536 --iters 1
 	$(BIN_DIR)/nvcomp_codec_bench --codec bitcomp --bytes 8388608 --chunk-size 65536 --iters 1
 	$(BIN_DIR)/nvcomp_codec_bench --codec ans --bytes 8388608 --chunk-size 65536 --iters 1
+
+tango-fetch:
+	tango/fetch_tango.sh
+
+tango: tango-fetch
+	tango/build_tango.sh
+
+tango-smoke: tango
+	tango/run_tango.sh cifarnet 1
+	tango/run_tango.sh gru
+	tango/run_tango.sh lstm 1
+
+tango-clean:
+	rm -rf tango/upstream
 
 clean:
 	rm -rf $(BIN_DIR)

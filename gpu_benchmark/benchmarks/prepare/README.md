@@ -25,6 +25,10 @@ Optional RAPIDS cuDF candidates live under `cudf/`. They are Python/RAPIDS
 benchmarks and are not built by default because cuDF is not bundled with this
 workspace.
 
+Optional Tango DNN candidates live under `tango/`. They are pure-CUDA neural
+network inference benchmarks fetched from the upstream Tango repository and are
+not built by default because the upstream model data is external.
+
 ## Build
 
 ```bash
@@ -58,4 +62,12 @@ For cuDF operations, run from a RAPIDS environment with `cudf` installed:
 ```bash
 python gpu_benchmark/benchmarks/prepare/cudf/cudf_microbench.py \
   --op groupby --target-bytes 32MiB --iters 1 --warmup 1
+```
+
+For Tango DNN models, fetch a sparse upstream checkout and build the prepared
+small-model subset:
+
+```bash
+make tango
+make tango-smoke
 ```
