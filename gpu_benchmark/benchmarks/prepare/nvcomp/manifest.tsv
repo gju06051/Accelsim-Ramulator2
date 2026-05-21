@@ -1,0 +1,9 @@
+name	suite	expected_class	workdir	command	main_reason
+nvcomp_lz4	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec lz4 --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP LZ4 byte-level compression/decompression workload
+nvcomp_snappy	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec snappy --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP Snappy tabular byte-level compression/decompression workload
+nvcomp_gdeflate	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec gdeflate --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP GDeflate GPU-friendly compression/decompression workload
+nvcomp_deflate	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec deflate --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP Deflate compatibility compression/decompression workload
+nvcomp_zstd	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec zstd --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP Zstandard compression/decompression workload
+nvcomp_cascaded	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec cascaded --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP Cascaded structured/tabular compression workload
+nvcomp_bitcomp	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec bitcomp --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP Bitcomp scientific-data compression workload
+nvcomp_ans	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/bin/nvcomp_codec_bench --codec ans --bytes 67108864 --chunk-size 65536 --iters 3	nvCOMP ANS entropy compression/decompression workload

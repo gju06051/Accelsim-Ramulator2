@@ -8,6 +8,7 @@ This directory is the user-facing benchmark management area.
 | --- | --- |
 | `main/manifest.tsv` | Main benchmark list loaded by the runner preset `accelsim_ramulator_main` |
 | `main/local/` | Recommended location for new local benchmark binaries, inputs, and wrappers |
+| `prepare/` | Isolated staging area for new benchmark candidates before main promotion |
 | `inventory/` | Archived candidate manifests used while building the benchmark pool |
 
 Do not put large generated traces or run results here. Use the simulator

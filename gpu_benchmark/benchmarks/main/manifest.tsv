@@ -1,5 +1,6 @@
 name	suite	expected_class	workdir	command	main_reason
 polybench_2dconv	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-2DConvolution	Structured sliding-window stencil access
+polybench_3dconv	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-3DConvolution	Structured 3D sliding-window stencil access
 polybench_fdtd2d	polybench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-fdtd2d	Structured grid reuse
 polybench_bicg	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-bicg	Dense matrix-vector style access
 polybench_atax	polybench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/polybench-atax	Dense matrix-vector style access
@@ -13,6 +14,8 @@ graphbig_triangle_count	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_b
 graphbig_kcore	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_kCore/kcore --dataset gpu_benchmark/suites/graphBIG/dataset/small	Graph k-core traversal
 ispass_lps	ispass-2009	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-LPS	Data-dependent search/access benchmark
 ispass_lib	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-LIB	Structured library benchmark
+ispass_nn	ispass-2009	Irregular	gpu_benchmark/generated_inputs/ispass_nn	../../common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-NN 28	Nearest-neighbor style lookup
+ispass_nqu	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-NQU	Structured combinatorial search benchmark
 ispass_ray	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-RAY 256 256	Ray-style structured traversal
 rodinia_streamcluster	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/streamcluster-rodinia-3.1 10 20 256 65536 65536 1000 none output.txt 1	Cluster assignment with scattered accesses
 rodinia_backprop	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/backprop-rodinia-3.1 65536	Neural-network layer access
@@ -20,6 +23,10 @@ rodinia_srad_v1	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection
 rodinia_srad_v2	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v2-rodinia-3.1 128 128 0 31 0 31 0.5 2	Structured image/stencil access
 rodinia_gaussian	rodinia	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/gaussian-rodinia-3.1 -s 64 -q	Dense matrix elimination
 rodinia_lavamd	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lavaMD-rodinia-3.1	Structured particle neighborhood access
+rodinia_myocyte	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/myocyte-rodinia-3.1 100 1 1	Structured cardiac cell simulation access
+rodinia_nw	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/nw-rodinia-3.1 64 10	Dynamic-programming sequence alignment access
+rodinia_particlefilter_naive	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/particlefilter_naive-rodinia-3.1 -x 128 -y 128 -z 10 -np 1000	Particle filter gather/scatter access
+rodinia_pathfinder	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/pathfinder-rodinia-3.1 100 100 20	Grid dynamic-programming access
 proxy_xsbench	proxy-apps	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/XSBench 12 small 0	Randomized cross-section lookup
 proxy_lulesh	proxy-apps	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lulesh	Structured hydrodynamics mesh access
 micro_mem_atom_size	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_atom_size	Memory atom size sensitivity microbenchmark
@@ -30,6 +37,7 @@ micro_l2_bw_32f	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-h
 micro_l2_lat	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_lat	Latency microbenchmark
 micro_atomic_add_bw_conflict	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/atomic_add_bw_conflict	Conflicting atomic update microbenchmark
 micro_l2_access_grain	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_access_grain	L2 access granularity microbenchmark
+parboil_cutcp	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-cutcp -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/cutcp/small/input/watbox.sl40.pqr -o parboil_cutcp_lattice.dat	Cutoff Coulomb potential with spatially structured neighbor access
 parboil_stencil	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-stencil -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/stencil/small/input/128x128x32.bin -o parboil_stencil.out 128 128 32 100	Structured stencil reuse
 parboil_lbm	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-lbm -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/lbm/short/input/120_120_150_ldc.of -o parboil_lbm.out 100	Lattice Boltzmann structured simulation with short dataset
 parboil_mri_q	parboil	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-mri-q -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/mri-q/small/input/32_32_32_dataset.bin -o parboil_mri_q.out	Regular numerical kernel over dense arrays
@@ -43,3 +51,11 @@ pannotia_pagerank_spmv	pannotia	Mixed-locality	.	gpu_benchmark/common/gpu-app-co
 pannotia_fw_block	pannotia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/fw_block gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/fw_block/data/256_16384.gr	Blocked Floyd-Warshall matrix-style graph dynamic programming
 dragon_join	dragon-li	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/testJoin -l 1024 -r 1024	Join kernel over generated input arrays
 dragon_amr	dragon-li	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/testAmr -s 4096 -r 2	Adaptive mesh refinement over hierarchical grid data
+nvcomp_lz4	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec lz4 --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP LZ4 compression workload at uniform 512 chunks for 32MiB compression coverage
+nvcomp_snappy	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec snappy --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP Snappy compression workload validated at 512 chunks for 32MiB L2 convergence
+nvcomp_gdeflate	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec gdeflate --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP GDeflate compression workload at uniform 512 chunks for 32MiB compression coverage
+nvcomp_deflate	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec deflate --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP Deflate compression workload at uniform 512 chunks for 32MiB compression coverage
+nvcomp_zstd	prepare-nvcomp	Streaming	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec zstd --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP Zstandard compression workload at uniform 512 chunks for 32MiB compression coverage
+nvcomp_cascaded	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec cascaded --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP Cascaded structured-data compression workload at uniform 512 chunks
+nvcomp_bitcomp	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec bitcomp --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP Bitcomp scientific-data compression workload at uniform 512 chunks
+nvcomp_ans	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/nvcomp/run_nvcomp_codec.sh --codec ans --bytes 33554432 --chunk-size 65536 --iters 1	nvCOMP ANS entropy compression workload at uniform 512 chunks

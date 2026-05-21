@@ -189,13 +189,13 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 44 representative benchmarks:
+It currently contains 60 representative benchmarks:
 
 | Class | Count |
 | --- | ---: |
-| Streaming | 11 |
-| Mixed-locality | 17 |
-| Irregular | 16 |
+| Streaming | 16 |
+| Mixed-locality | 26 |
+| Irregular | 18 |
 
 The broader operational manifest is:
 

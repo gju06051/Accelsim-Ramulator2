@@ -1,0 +1,5 @@
+name	suite	expected_class	workdir	command	main_reason
+fft_stockham	prepare-signal	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/bin/fft_stockham --points 1024 --batches 4096 --iters 4	Standalone batched FFT for signal, RF, imaging, and spectral workloads
+finance_monte_carlo	prepare-finance	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/finance_monte_carlo --paths 1048576 --steps 64	Financial Monte Carlo path simulation with per-thread RNG and reductions
+sha256_batch	prepare-crypto	Streaming	.	gpu_benchmark/benchmarks/prepare/bin/sha256_batch --messages 1048576 --iters 4	Integer-heavy hash workload for crypto and compression-adjacent coverage
+smith_waterman	prepare-bioinformatics	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/bin/smith_waterman --pairs 32768 --len 128	Batched sequence-alignment dynamic programming for bioinformatics coverage
