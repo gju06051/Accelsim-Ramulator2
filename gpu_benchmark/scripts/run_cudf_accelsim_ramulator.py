@@ -183,6 +183,21 @@ def main() -> int:
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
 
+    for name in [
+        "trace_root",
+        "out_dir",
+        "accel_sim",
+        "base_config",
+        "h100_config",
+        "trace_config",
+        "ramulator_config",
+        "bridge_lib",
+    ]:
+        path = getattr(args, name)
+        if not path.is_absolute():
+            path = ROOT / path
+        setattr(args, name, path.resolve())
+
     args.out_dir.mkdir(parents=True, exist_ok=True)
     base_ld = ":".join(
         [
