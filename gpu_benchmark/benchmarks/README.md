@@ -14,6 +14,9 @@ This directory is the user-facing benchmark management area.
 Do not put large generated traces or run results here. Use the simulator
 `results/` directory or the existing trace storage paths instead.
 
+The top-level `README.md` keeps the current main benchmark count and a
+field-by-field view of the `main/manifest.tsv` benchmark names.
+
 ## Add a Benchmark
 
 1. Create a directory under `main/local/`:

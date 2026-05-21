@@ -197,6 +197,20 @@ It currently contains 60 representative benchmarks:
 | Mixed-locality | 26 |
 | Irregular | 18 |
 
+Main benchmark coverage by workload field:
+
+| Field | Benchmarks |
+| --- | --- |
+| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax`, `polybench_covariance`, `polybench_2mm`, `polybench_gramschmidt`, `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
+| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `polybench_fdtd2d`, `ispass_ray`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_myocyte`, `proxy_lulesh`, `parboil_stencil`, `parboil_lbm`, `dragon_amr` |
+| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `graphbig_kcore`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` |
+| Search, lookup, joins, and data mining | `ispass_lps`, `ispass_lib`, `ispass_nn`, `ispass_nqu`, `rodinia_streamcluster`, `proxy_xsbench`, `dragon_join` |
+| Particle, molecular, and probabilistic tracking | `rodinia_lavamd`, `rodinia_particlefilter_naive`, `parboil_cutcp` |
+| Dynamic programming and path-style kernels | `rodinia_nw`, `rodinia_pathfinder`, `pannotia_fw_block` |
+| Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
+| Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
+| Legacy neural-network layer | `rodinia_backprop` |
+
 The broader operational manifest is:
 
 ```text
