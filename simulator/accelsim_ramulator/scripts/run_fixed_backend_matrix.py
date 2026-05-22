@@ -344,6 +344,7 @@ RAMULATOR_BRIDGE_CREATED_RE = re.compile(
     r"ticks_per_dram_cycle=(?P<ticks>[0-9.]+) source=(?P<source>[A-Za-z0-9_]+)"
 )
 LAUNCH_RE = re.compile(r"GPGPU-Sim PTX: cudaLaunch")
+TRACE_KERNEL_RE = re.compile(r"^Processing kernel ", re.MULTILINE)
 STAT_RE = re.compile(r"^([A-Za-z0-9_]+)\s*=\s*([0-9.]+)")
 RAMULATOR_YAML_STAT_RE = re.compile(
     r"^\s*([A-Za-z][A-Za-z0-9_]*):\s*"
@@ -633,7 +634,7 @@ def prepare_benchmark_inputs(bench: Benchmark, run_dir: Path) -> None:
 
 def classify_status(exit_code: int, timed_out: bool, stdout: str, stderr: str, require_backend: bool) -> str:
     enabled = bool(ENABLED_RE.search(stdout))
-    launched = bool(LAUNCH_RE.search(stdout))
+    launched = bool(LAUNCH_RE.search(stdout) or TRACE_KERNEL_RE.search(stdout))
     max_cycle = "break due to reaching the maximum cycles" in stdout
     dumped = "dumped core" in stderr.lower()
     crash_code = exit_code in (134, 139, -6, -11)
@@ -1259,7 +1260,7 @@ exec {run_cmd}
     core_granularity_stats = extract_core_granularity_profile_stats(
         core_granularity_profile_path, core_granularity_profile
     )
-    launches = len(LAUNCH_RE.findall(stdout))
+    launches = len(LAUNCH_RE.findall(stdout)) + len(TRACE_KERNEL_RE.findall(stdout))
     l2_accesses = extract_last_numeric(stdout, "L2_total_cache_accesses")
     l2_misses = extract_last_numeric(stdout, "L2_total_cache_misses")
 

@@ -1,0 +1,22 @@
+name	trace_path	trace_sm	trace_config	source
+nvcomp_lz4	/tmp/nvcomp_accelsim_ramulator_traces_comp/lz4/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_snappy	/tmp/nvcomp_accelsim_ramulator_traces_comp/snappy/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_gdeflate	/tmp/nvcomp_accelsim_ramulator_traces_comp/gdeflate/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_deflate	/tmp/nvcomp_accelsim_ramulator_traces_comp/deflate/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_zstd	/tmp/nvcomp_accelsim_ramulator_traces_comp/zstd/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_cascaded	/tmp/nvcomp_accelsim_ramulator_traces_comp/cascaded/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_bitcomp	/tmp/nvcomp_accelsim_ramulator_traces_comp/bitcomp/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+nvcomp_ans	/tmp/nvcomp_accelsim_ramulator_traces_comp/ans/traces/kernelslist.g	86		nvCOMP Accel-Sim Ramulator2 trace validation
+tango_cifarnet	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_cifarnet/traces/kernelslist.g	86		Tango SM86 trace validation
+tango_gru	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_gru/traces/kernelslist.g	86		Tango SM86 trace validation
+tango_lstm	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_lstm/traces/kernelslist.g	86		Tango SM86 trace validation
+tango_alexnet	/tmp/tango_large_h100_1stack_validation_sm86_20260522/traces/tango_alexnet/traces/kernelslist.g	86		Tango SM86 trace validation
+cudf_filter	gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/cudf_filter_1MiB/traces/kernelslist.g	80		cuDF profiler-scoped 1MiB trace
+cudf_project	gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/cudf_project_1MiB/traces/kernelslist.g	80		cuDF profiler-scoped 1MiB trace
+cudf_groupby	gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/cudf_groupby_1MiB/traces/kernelslist.g	80		cuDF profiler-scoped 1MiB trace
+cudf_join	gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/cudf_join_1MiB/traces/kernelslist.g	80		cuDF profiler-scoped 1MiB trace
+cudf_sort	gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/cudf_sort_1MiB/traces/kernelslist.g	80		cuDF profiler-scoped 1MiB trace
+cudf_tpch_q1	gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/cudf_tpch_q1_64MiB/traces/kernelslist.g	80		cuDF TPC-H profiler-scoped 64MiB trace
+cudf_tpch_q3	gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/cudf_tpch_q3_64MiB/traces/kernelslist.g	80		cuDF TPC-H profiler-scoped 64MiB trace
+cudf_tpch_q6	gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/cudf_tpch_q6_64MiB/traces/kernelslist.g	80		cuDF TPC-H profiler-scoped 64MiB trace
+cudf_tpch_q10	gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/cudf_tpch_q10_64MiB/traces/kernelslist.g	80		cuDF TPC-H profiler-scoped 64MiB trace
