@@ -17,5 +17,11 @@ __pycache__/
 *.err
 *.trace
 
+# Local reference papers and generated/prepared trace artifacts
+*.pdf
+gpu_benchmark/benchmarks/prepare/results/
+tools/nvbit_release_x86_64/tools/instr_count/instr_count.so
+tools/nvbit_release_x86_64/tools/opcode_hist/opcode_hist.so
+
 # Runtime shared libraries may still be tracked intentionally, but generated
 # build trees and object files should stay out of normal source changes.
