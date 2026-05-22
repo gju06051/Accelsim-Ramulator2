@@ -12,24 +12,34 @@ class HBM3SID : public IDRAM, public Implementation {
       {"HBM3SID_2Gb",   {2<<10,  128,  {1, 2,  4, 4,  4, 1<<11, 1<<6}}},
       {"HBM3SID_4Gb",   {4<<10,  128,  {1, 2,  4, 4,  4, 1<<12, 1<<6}}},
       {"HBM3SID_8Gb",   {8<<10,  128,  {1, 2,  4, 4,  4, 1<<13, 1<<6}}},
+      // Samsung-style 16GB HBM3 stack: 16 physical channels/stack, 2 SIDs,
+      // 2 pseudochannels/channel, 32-bit DQ per pseudochannel, 1KB page/PC.
+      // The model density is per physical channel: 8Gb = 2 PCs * 4Gb/PC.
+      {"HBM3SID_8Gb_2SID_16Gb_8Hi", {8<<10, 32, {1, 2, 2, 4, 4, 1<<14, 1<<8}}},
     };
 
     inline static const std::map<std::string, std::vector<int>> timing_presets = {
       //   name          rate   nBL  nCL  nRCDRD  nRCDWR  nRP  nRAS  nRC  nWR  nRTPS  nRTPL  nCWL  nCCDS  nCCDR  nCCDL  nRRDS  nRRDL  nWTRS  nWTRL  nRTW  nFAW  nRFC  nRFCSB  nREFI  nREFISB  nRREFD  tCK_ps
       {"HBM3SID_2Gbps",  {2000,   4,   7,    7,      7,     7,   17,  19,   8,    2,     3,    2,    1,      2,      2,     2,     3,     3,     4,    3,    15,   -1,   160,   3900,     -1,      8,   2000}},
       // JEDEC HBM3 6.4Gbps/pin uses CK=1600MHz, i.e. tCK=0.625ns.
-      {"HBM3SID_6.4Gbps", {6400,   4,  23,   23,     23,    21,   52,  72,  10,    4,     4,   10,    2,      3,      4,     4,     4,     7,     7,    7,    26,   -1,   256,   6240,     -1,      8,    625}},
+      {"HBM3SID_6.4Gbps", {6400,   4,  23,   23,     23,    21,   52,  72,  10,    4,     4,   10,    2,      3,      4,     4,     4,     7,     7,    7,    26,   -1,   256,   6240,     -1,     13,    625}},
       // H100 SXM effective HBM3 rate: 3.35 TB/s over a 5120-bit interface
-      // is about 5.234 Gbps/pin. Timings are scaled from the 6.4Gbps preset
-      // to keep similar absolute ns values until vendor timing tables are added.
-      {"HBM3SID_H100_SXM_5.234Gbps", {5234,   4,  19,   19,     19,    17,   43,  59,   8,    3,     3,    8,    2,      2,      3,     3,     3,     6,     6,    6,    21,   -1,   209,   5105,     -1,      7,    764}},
+      // is about 5.234 Gbps/pin. Keep Samsung/JEDEC HBM3 column timing shape
+      // (CCDS=2, CCDL=4, SID-crossing CCDR=3) and use conservative row-cycle
+      // values around the JEDEC example tRP=15ns, tRAS=33ns, tRC=48ns at
+      // tCK ~= 0.764ns.
+      {"HBM3SID_H100_SXM_5.234Gbps", {5234,   4,  19,   20,     20,    20,   44,  63,   8,    3,     3,    8,    2,      3,      4,     3,     3,     6,     6,    6,    21,   -1,   262,   5105,     -1,     11,    764}},
+      // Samsung 16GB HBM3 paper device: 1024GB/s per 1024-bit stack, i.e.
+      // 8Gbps/pin and tCK=0.5ns. Keep the Samsung/JEDEC column timing shape
+      // and scale conservative row-cycle values from the same ns anchors.
+      {"HBM3SID_SAMSUNG_8Gbps", {8000,   4,  29,   30,     30,    30,   66,  96,  13,    5,     5,   13,    2,      3,      4,     5,     5,     9,     9,    9,    32,   -1,   400,   7800,     -1,     16,    500}},
     };
 
 
   /************************************************
    *                Organization
    ***********************************************/
-    const int m_internal_prefetch_size = 2;
+    int m_internal_prefetch_size = 2;
 
     inline static constexpr ImplDef m_levels = {
       "channel", "pseudochannel", "sid", "bankgroup", "bank", "row", "column",
@@ -207,15 +217,29 @@ class HBM3SID : public IDRAM, public Implementation {
     };
 
     void set_organization() {
-      // HBM3 exposes 64-bit top-level channels. Existing AccelSim-oriented
-      // configs may still override this to 128-bit logical channels.
-      m_channel_width = param_group("org").param<int>("channel_width").default_val(64);
+      auto preset_name = param_group("org").param<std::string>("preset").optional();
+      bool samsung_16gb_2sid_layout =
+          preset_name && *preset_name == "HBM3SID_8Gb_2SID_16Gb_8Hi";
+
+      // The Samsung-style H100 preset models a 64-bit physical channel as two
+      // 32-bit pseudochannels. A PC column access fetches 256b = 32B, so the
+      // mapper access atom is 8n prefetch * 32-bit PC width.
+      if (samsung_16gb_2sid_layout) {
+        m_internal_prefetch_size = 8;
+      } else {
+        m_internal_prefetch_size = 2;
+      }
+      IDRAM::m_internal_prefetch_size = m_internal_prefetch_size;
+
+      int default_channel_width = samsung_16gb_2sid_layout ? 32 : 64;
+      m_channel_width =
+          param_group("org").param<int>("channel_width").default_val(default_channel_width);
 
       // Organization
       m_organization.count.resize(m_levels.size(), -1);
 
       // Load organization preset if provided
-      if (auto preset_name = param_group("org").param<std::string>("preset").optional()) {
+      if (preset_name) {
         if (org_presets.count(*preset_name) > 0) {
           m_organization = org_presets.at(*preset_name);
         } else {
@@ -257,7 +281,27 @@ class HBM3SID : public IDRAM, public Implementation {
       }
 
       int tx_bytes = m_internal_prefetch_size * m_channel_width / 8;
-      if (tx_bytes != 16 && tx_bytes != 32) {
+      int row_bytes =
+          m_organization.count[m_levels["column"]] * m_channel_width / 8;
+      if (samsung_16gb_2sid_layout && tx_bytes != 32) {
+        throw ConfigurationError(
+            "{} Samsung 16GB HBM3 layout expects a 32B pseudochannel access atom, but internal_prefetch_size={} and channel_width={} produce {}B.",
+            get_name(),
+            m_internal_prefetch_size,
+            m_channel_width,
+            tx_bytes
+        );
+      }
+      if (samsung_16gb_2sid_layout && row_bytes != 1024) {
+        throw ConfigurationError(
+            "{} Samsung 16GB HBM3 layout expects a 1KB pseudochannel row, but column={} and channel_width={} produce {}B.",
+            get_name(),
+            m_organization.count[m_levels["column"]],
+            m_channel_width,
+            row_bytes
+        );
+      }
+      if (!samsung_16gb_2sid_layout && tx_bytes != 16 && tx_bytes != 32) {
         throw ConfigurationError(
             "{} expects a 16B or 32B access atom, but internal_prefetch_size={} and channel_width={} produce {}B.",
             get_name(),

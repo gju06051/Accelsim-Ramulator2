@@ -81,7 +81,15 @@ DEFAULT_RAMULATOR_CONFIG = env_path(
     "SGRAM_RAMULATOR_CONFIG",
     INTEGRATION_ROOT / "configs" / "ramulator" / "hbm4.yaml",
 )
-RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = 64
+ACCELSIM_DRAM_PARTITION_QUEUES = "64:64:64:64"
+ACCELSIM_DRAM_SCHED_QUEUE_SIZE = 64
+ACCELSIM_DRAM_RETURN_QUEUE_SIZE = 192
+RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = ACCELSIM_DRAM_SCHED_QUEUE_SIZE
+ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES: tuple[str, ...] = (
+    f"-gpgpu_dram_partition_queues {ACCELSIM_DRAM_PARTITION_QUEUES}",
+    f"-gpgpu_frfcfs_dram_sched_queue_size {ACCELSIM_DRAM_SCHED_QUEUE_SIZE}",
+    f"-gpgpu_dram_return_queue_size {ACCELSIM_DRAM_RETURN_QUEUE_SIZE}",
+)
 A100_L2_8MB_CONFIG = "S:128:128:16,L:B:m:L:X,A:192:4,32:0,32"
 A100_HBM_ADDR_MAPPING = (
     "-gpgpu_mem_addr_mapping "
@@ -91,19 +99,30 @@ A100_HBM_ADDR_MAPPING = (
 A100_1STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 22",
     "-gpgpu_n_mem 8",
+    *ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
 )
 A100_5STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 108",
     "-gpgpu_n_mem 40",
     "-gpgpu_n_sub_partition_per_mchannel 4",
+    *ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
     "-gpgpu_memory_partition_indexing 2",
     "-gpgpu_mem_address_mask 1",
     A100_HBM_ADDR_MAPPING,
 )
-H100_HBM_ADDR_MAPPING = A100_HBM_ADDR_MAPPING
+H100_HBM_ADDR_MAPPING = (
+    "-gpgpu_mem_addr_mapping "
+    "dramid@8;00000000.00000000.00000000.00000000."
+    "00RRRRRR.RRRRRRRR.BBBBBBCC.CCCSSSSS"
+)
+H100_HBM_DRAM_TIMING = (
+    "-gpgpu_dram_timing_opt "
+    "nbk=64:CCD=2:RRD=5:RCD=30:RAS=66:RP=30:RC=96:CL=29:WL=13:"
+    "CDLR=9:WR=13:nbkgrp=4:CCDL=4:RTPL=5"
+)
 H100_1STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 26",
-    "-gpgpu_clock_domains 1980:1980:1980:1309",
+    "-gpgpu_clock_domains 1980:1980:1980:2000",
     "-ptx_opcode_initiation_fp 1,1,1,1,2",
     "-gpgpu_shmem_option 0,8,16,32,64,100,132,164,196,228",
     "-gpgpu_unified_l1d_size 256",
@@ -111,14 +130,16 @@ H100_1STACK_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_shmem_sizeDefault 233472",
     "-gpgpu_n_mem 16",
     "-gpgpu_n_sub_partition_per_mchannel 2",
+    *ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
     "-gpgpu_cache:dl2 S:128:128:20,L:B:m:L:X,A:192:4,32:0,32",
     "-gpgpu_memory_partition_indexing 2",
     "-gpgpu_mem_address_mask 1",
     H100_HBM_ADDR_MAPPING,
+    H100_HBM_DRAM_TIMING,
 )
 H100_FULL_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_n_clusters 132",
-    "-gpgpu_clock_domains 1980:1980:1980:1309",
+    "-gpgpu_clock_domains 1980:1980:1980:2000",
     "-ptx_opcode_initiation_fp 1,1,1,1,2",
     "-gpgpu_shmem_option 0,8,16,32,64,100,132,164,196,228",
     "-gpgpu_unified_l1d_size 256",
@@ -126,13 +147,15 @@ H100_FULL_OVERRIDES: tuple[str, ...] = (
     "-gpgpu_shmem_sizeDefault 233472",
     "-gpgpu_n_mem 80",
     "-gpgpu_n_sub_partition_per_mchannel 2",
+    *ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
     "-gpgpu_cache:dl2 S:128:128:20,L:B:m:L:X,A:192:4,32:0,32",
     "-gpgpu_memory_partition_indexing 2",
     "-gpgpu_mem_address_mask 1",
     H100_HBM_ADDR_MAPPING,
+    H100_HBM_DRAM_TIMING,
 )
 CONFIG_VARIANTS: dict[str, tuple[str, ...]] = {
-    "a100_full": (),
+    "a100_full": ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
     "a100_1stack": A100_1STACK_OVERRIDES,
     "a100_5stack": A100_5STACK_OVERRIDES,
     "h100_1stack": H100_1STACK_OVERRIDES,
@@ -1339,11 +1362,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--queue-limits",
-        default="64",
+        default=str(ACCELSIM_DRAM_SCHED_QUEUE_SIZE),
         help=(
             "Comma-separated SGRAM_QUEUE_LIMIT values. For --backend ramulator2, "
             "positive values also override Ramulator2 Controller "
-            "read_buffer_size/write_buffer_size in the per-run YAML."
+            "read_buffer_size/write_buffer_size in the per-run YAML. The default "
+            "uses the q64 AccelSim/Ramulator baseline."
         ),
     )
     parser.add_argument(

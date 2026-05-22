@@ -20,6 +20,29 @@ class LinearMapperBase : public IAddrMapper {
 
 
   protected:
+    Addr_t lower_addr_without_external_channel(Addr_t raw_addr,
+                                               int num_channels,
+                                               int channel_start_bit) const {
+      if (channel_start_bit < 0) {
+        Addr_t addr = raw_addr >> m_tx_offset;
+        slice_lower_bits(addr, m_addr_bits[0]);
+        return addr;
+      }
+
+      if (channel_start_bit < m_tx_offset) {
+        throw ConfigurationError(
+            "External channel start bit {} must be >= access atom offset {}.",
+            channel_start_bit, m_tx_offset);
+      }
+
+      Addr_t low_mask = (Addr_t(1) << channel_start_bit) - 1;
+      Addr_t low = raw_addr & low_mask;
+      Addr_t high = raw_addr >> channel_start_bit;
+      Addr_t rest = ((high / static_cast<Addr_t>(num_channels))
+                     << channel_start_bit) | low;
+      return rest >> m_tx_offset;
+    }
+
     void setup(IFrontEnd* frontend, IMemorySystem* memory_system) {
       m_dram = memory_system->get_ifce<IDRAM>();
 
@@ -95,11 +118,15 @@ class RoBaRaCoCh final : public LinearMapperBase, public Implementation {
 class ExternalChannelRoBaRaCoCh final : public LinearMapperBase, public Implementation {
   RAMULATOR_REGISTER_IMPLEMENTATION(IAddrMapper, ExternalChannelRoBaRaCoCh, "ExternalChannelRoBaRaCoCh", "Uses Request::source_id as the channel and RoBaRaCoCh for lower levels.");
 
+  private:
+    int m_channel_start_bit = -1;
+
   public:
     void init() override { };
 
     void setup(IFrontEnd* frontend, IMemorySystem* memory_system) override {
       LinearMapperBase::setup(frontend, memory_system);
+      m_channel_start_bit = param<int>("channel_start_bit").default_val(-1);
     }
 
     void apply(Request& req) override {
@@ -112,11 +139,11 @@ class ExternalChannelRoBaRaCoCh final : public LinearMapperBase, public Implemen
             num_channels, req.source_id));
       }
 
-      Addr_t addr = req.addr >> m_tx_offset;
+      Addr_t addr = lower_addr_without_external_channel(
+          req.addr, num_channels, m_channel_start_bit);
 
       // Keep the lower-level RoBaRaCoCh bit layout identical to the baseline
       // mapper, but take the channel from the external simulator.
-      slice_lower_bits(addr, m_addr_bits[0]);
       req.addr_vec[0] = req.source_id;
       req.addr_vec[m_addr_bits.size() - 1] = slice_lower_bits(addr, m_addr_bits[m_addr_bits.size() - 1]);
       for (int i = 1; i <= m_row_bits_idx; i++) {
@@ -132,6 +159,7 @@ class ExternalChannelGroupRoBaRaCoCh final : public LinearMapperBase, public Imp
     int m_channels_per_source = 1;
     int m_split_granularity_bytes = 32;
     int m_split_granularity_bits = 5;
+    int m_channel_start_bit = -1;
 
   public:
     void init() override { };
@@ -140,6 +168,7 @@ class ExternalChannelGroupRoBaRaCoCh final : public LinearMapperBase, public Imp
       LinearMapperBase::setup(frontend, memory_system);
       m_channels_per_source = param<int>("channels_per_source").default_val(1);
       m_split_granularity_bytes = param<int>("split_granularity_bytes").default_val(32);
+      m_channel_start_bit = param<int>("channel_start_bit").default_val(-1);
 
       if (m_channels_per_source <= 0) {
         throw ConfigurationError("ExternalChannelGroupRoBaRaCoCh channels_per_source must be positive.");
@@ -166,9 +195,9 @@ class ExternalChannelGroupRoBaRaCoCh final : public LinearMapperBase, public Imp
             num_channels, req.source_id, m_channels_per_source, channel_lane));
       }
 
-      Addr_t addr = req.addr >> m_tx_offset;
+      Addr_t addr = lower_addr_without_external_channel(
+          req.addr, num_channels, m_channel_start_bit);
 
-      slice_lower_bits(addr, m_addr_bits[0]);
       req.addr_vec[0] = channel_id;
       req.addr_vec[m_addr_bits.size() - 1] = slice_lower_bits(addr, m_addr_bits[m_addr_bits.size() - 1]);
       for (int i = 1; i <= m_row_bits_idx; i++) {

@@ -1,7 +1,11 @@
 # H100 SXM-style 1-stack HBM3 + SID Ramulator2 config for direct AccelSim mapping.
 #
-# This models one physical HBM3 stack as:
-#   1 stack * 16 channels/stack * 64 bits/channel = 1024 bits
+# This models one physical Samsung-style HBM3 stack under the H100 geometry as:
+#   1 stack * 16 physical channels/stack * 64 bits/channel = 1024 bits
+#   64-bit channel = 2 pseudochannels * 32-bit DQ
+#   16GB/stack = 16Gb dies in an 8-high, two-SID stack
+#   per-PC column access = 256b DQ = 32B, page = 1KB
+#   Samsung paper frequency = 8Gb/s/pin = 1024GB/s per stack
 #
 # Pair this with configs/accelsim/h100_sxm_hbm3_1stack_16ch.config or
 # --config-variant h100_1stack. ExternalChannelRoBaRaCoCh maps each AccelSim
@@ -18,14 +22,16 @@ MemorySystem:
   DRAM:
     impl: HBM3SID
     org:
-      preset: HBM3SID_8Gb
-      channel_width: 64
+      preset: HBM3SID_8Gb_2SID_16Gb_8Hi
+      # Ramulator uses the selected pseudochannel's DQ width here.
+      channel_width: 32
       channel: 16
     timing:
-      preset: HBM3SID_H100_SXM_5.234Gbps
+      preset: HBM3SID_SAMSUNG_8Gbps
 
   Controller:
     impl: Generic
+    # Match official AccelSim SM80_A100 -gpgpu_frfcfs_dram_sched_queue_size.
     read_buffer_size: 64
     write_buffer_size: 64
     Scheduler:
@@ -38,3 +44,4 @@ MemorySystem:
 
   AddrMapper:
     impl: ExternalChannelRoBaRaCoCh
+    channel_start_bit: 8
