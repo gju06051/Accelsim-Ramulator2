@@ -95,7 +95,6 @@ partition activity, and host-side simulator timing metrics.
 
 | Target | AccelSim variant | Ramulator2 config | Shape |
 | --- | --- | --- | --- |
-| A100 HBM2e full / stock | `a100_full` | `configs/ramulator/a100_hbm2e_80gb.yaml` | 108 SMs, 40 x 128-bit channels, 40 MiB L2 |
 | A100 HBM2e 1-stack | `a100_1stack` | `configs/ramulator/a100_hbm2e_1stack.yaml` | 22 SMs, 8 x 128-bit channels, 8 MiB L2 |
 | A100 HBM2e 5-stack | `a100_5stack` | `configs/ramulator/a100_hbm2e_5stack.yaml` | 108 SMs, 40 x 128-bit channels, 40 MiB L2 |
 | H100 HBM3 1/5 | `h100_1stack` | `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml` | 26 SMs, 16 x 64-bit channels, 10 MiB L2 |
@@ -105,8 +104,7 @@ The A100 L2 sizes come from the SM80_A100 L2 config used by the runner:
 256 KiB per L2 sub-partition. `a100_1stack` keeps 8 memory partitions with 4
 sub-partitions each, so it models 8 MiB L2; the 40-partition A100 configs model
 40 MiB L2. `a100_5stack` is the normal 40-channel A100 HBM2e experiment preset
-with explicit balanced partition indexing/address mapping, while `a100_full`
-keeps the stock AccelSim A100 geometry.
+with explicit balanced partition indexing/address mapping.
 
 The H100 variants keep the SM80 functional/PTX path for benchmark
 compatibility. They model H100-like performance geometry rather than changing
@@ -211,13 +209,13 @@ It currently contains 73 representative benchmarks:
 
 Suite sources:
 
-| Manifest suite | Source / staging area | Notes |
-| --- | --- | --- |
-| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | `gpu_benchmark/common/gpu-app-collection-harness` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. |
-| `graphBIG` | `gpu_benchmark/suites/graphBIG` | Standalone GraphBIG GPU checkout using the bundled small graph dataset. |
-| `prepare-nvcomp` | `gpu_benchmark/benchmarks/prepare/nvcomp` and `gpu_benchmark/benchmarks/main/local/nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
-| `prepare-cudf`, `prepare-cudf-query` | `gpu_benchmark/benchmarks/prepare/cudf` and `gpu_benchmark/benchmarks/main/local/cudf` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
-| `prepare-tango` | `gpu_benchmark/benchmarks/prepare/tango` and `gpu_benchmark/benchmarks/main/local/tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
+| Manifest suite | Notes |
+| --- | --- |
+| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. |
+| `graphBIG` | Standalone GraphBIG GPU checkout using the bundled small graph dataset. |
+| `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
+| `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
+| `prepare-tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
 
 Main benchmark coverage by workload field:
 
