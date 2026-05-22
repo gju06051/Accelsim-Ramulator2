@@ -95,10 +95,18 @@ partition activity, and host-side simulator timing metrics.
 
 | Target | AccelSim variant | Ramulator2 config | Shape |
 | --- | --- | --- | --- |
-| A100 HBM2e 1-stack | `a100_1stack` | `configs/ramulator/a100_hbm2e_1stack.yaml` | 8 memory partitions |
-| A100 HBM2e 5-stack | `a100_5stack` | `configs/ramulator/a100_hbm2e_5stack.yaml` | 40 memory partitions |
+| A100 HBM2e full / stock | `a100_full` | `configs/ramulator/a100_hbm2e_80gb.yaml` | 108 SMs, 40 x 128-bit channels, 40 MiB L2 |
+| A100 HBM2e 1-stack | `a100_1stack` | `configs/ramulator/a100_hbm2e_1stack.yaml` | 22 SMs, 8 x 128-bit channels, 8 MiB L2 |
+| A100 HBM2e 5-stack | `a100_5stack` | `configs/ramulator/a100_hbm2e_5stack.yaml` | 108 SMs, 40 x 128-bit channels, 40 MiB L2 |
 | H100 HBM3 1/5 | `h100_1stack` | `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml` | 26 SMs, 16 x 64-bit channels, 10 MiB L2 |
 | H100 HBM3 full | `h100_full` | `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml` | 132 SMs, 80 x 64-bit channels, 50 MiB L2 |
+
+The A100 L2 sizes come from the SM80_A100 L2 config used by the runner:
+256 KiB per L2 sub-partition. `a100_1stack` keeps 8 memory partitions with 4
+sub-partitions each, so it models 8 MiB L2; the 40-partition A100 configs model
+40 MiB L2. `a100_5stack` is the normal 40-channel A100 HBM2e experiment preset
+with explicit balanced partition indexing/address mapping, while `a100_full`
+keeps the stock AccelSim A100 geometry.
 
 The H100 variants keep the SM80 functional/PTX path for benchmark
 compatibility. They model H100-like performance geometry rather than changing
@@ -201,6 +209,16 @@ It currently contains 73 representative benchmarks:
 | Mixed-locality | 36 |
 | Irregular | 18 |
 
+Suite sources:
+
+| Manifest suite | Source / staging area | Notes |
+| --- | --- | --- |
+| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | `gpu_benchmark/common/gpu-app-collection-harness` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. |
+| `graphBIG` | `gpu_benchmark/suites/graphBIG` | Standalone GraphBIG GPU checkout using the bundled small graph dataset. |
+| `prepare-nvcomp` | `gpu_benchmark/benchmarks/prepare/nvcomp` and `gpu_benchmark/benchmarks/main/local/nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
+| `prepare-cudf`, `prepare-cudf-query` | `gpu_benchmark/benchmarks/prepare/cudf` and `gpu_benchmark/benchmarks/main/local/cudf` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
+| `prepare-tango` | `gpu_benchmark/benchmarks/prepare/tango` and `gpu_benchmark/benchmarks/main/local/tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
+
 Main benchmark coverage by workload field:
 
 | Field | Benchmarks |
@@ -215,6 +233,30 @@ Main benchmark coverage by workload field:
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
 | Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
 | Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
+
+Trace-driven rows:
+
+`nvcomp_*`, `cudf_*`, and `tango_*` rows do not execute their original native
+workload inside the AccelSim runtime interceptor. Their manifest commands call
+`gpu_benchmark/scripts/run_accelsim_trace_replay.py --benchmark <name>`. The
+helper looks up the benchmark in
+`gpu_benchmark/benchmarks/main/trace_manifest.tsv`, resolves the local
+`kernelslist.g`, derives an ISA-compatible trace config when needed, and invokes
+`accel-sim.out -trace` from the per-run directory created by the normal
+AccelSim + Ramulator2 runner.
+
+Trace preparation summary:
+
+| Group | Trace creation path | Trace ISA | Main sizing / scope |
+| --- | --- | ---: | --- |
+| `nvcomp_*` | Built `nvcomp_codec_bench` from the optional nvCOMP candidate tree, then captured simulator-ready traces with the Accel-Sim NVBit tracer for each codec. | SM86 | Compression-phase codec traces, with trace paths recorded under `/tmp/nvcomp_accelsim_ramulator_traces_comp/...`. |
+| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | Ran RAPIDS cuDF microbenchmarks from `prepare/cudf` with `cudaProfilerStart/Stop` around only the selected operation, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 1 MiB synthetic-column traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/...`. |
+| `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | Ran compact native-cuDF TPC-H-shaped query scripts over synthetic tables with profiler scoping, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 64 MiB query traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/...`. |
+| `tango_*` | Sparse-fetched Tango upstream models, built the selected CUDA models with `CUDA_ARCH=86`, and captured SM86 NVBit traces for H100 1/5 validation. | SM86 | `CifarNet`, `GRU`, `LSTM`, and `AlexNet`; validation trace directories live under `/tmp/tango_*_h100_1stack_validation_sm86_20260522/...`. |
+
+The trace payloads are intentionally not committed. `trace_manifest.tsv` records
+the expected local paths, and `.gitignore` keeps the large prepared trace
+directories out of GitHub.
 
 The broader operational manifest is:
 
