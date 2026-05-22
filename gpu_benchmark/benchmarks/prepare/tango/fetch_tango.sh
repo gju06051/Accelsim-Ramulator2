@@ -6,7 +6,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 url="${TANGO_URL:-https://gitlab.com/Tango-DNNbench/Tango.git}"
 commit="${TANGO_COMMIT:-59db69914bf5391b8f39b8b8463482794afe3956}"
 dest="${TANGO_SRC_ROOT:-${script_dir}/upstream/Tango}"
-models="${TANGO_MODELS:-CifarNet GRU LSTM}"
+models="${TANGO_MODELS:-CifarNet GRU LSTM AlexNet}"
 
 mkdir -p "$(dirname -- "${dest}")"
 

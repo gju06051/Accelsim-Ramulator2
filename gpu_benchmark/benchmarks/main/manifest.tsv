@@ -62,6 +62,7 @@ nvcomp_ans	prepare-nvcomp	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/n
 tango_cifarnet	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/tango/run_tango.sh cifarnet 1	Tango CifarNet CNN inference validated with SM86 trace on H100 1/5 AccelSim+Ramulator
 tango_gru	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/tango/run_tango.sh gru	Tango GRU recurrent inference validated with SM86 trace on H100 1/5 AccelSim+Ramulator
 tango_lstm	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/tango/run_tango.sh lstm 1	Tango LSTM recurrent inference validated with SM86 trace on H100 1/5 AccelSim+Ramulator
+tango_alexnet	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/tango/run_tango.sh alexnet 1	Tango AlexNet classic CNN inference validated with SM86 trace on H100 1/5 AccelSim+Ramulator
 cudf_filter	prepare-cudf	Streaming	.	gpu_benchmark/benchmarks/main/local/cudf/run_cudf_bench.sh micro --op filter --target-bytes 64MiB --iters 1 --warmup 1	cuDF boolean filtering and row compaction over device-resident columns
 cudf_project	prepare-cudf	Streaming	.	gpu_benchmark/benchmarks/main/local/cudf/run_cudf_bench.sh micro --op project --target-bytes 64MiB --iters 1 --warmup 1	cuDF columnar elementwise projection over device-resident columns
 cudf_groupby	prepare-cudf	Mixed-locality	.	gpu_benchmark/benchmarks/main/local/cudf/run_cudf_bench.sh micro --op groupby --target-bytes 64MiB --iters 1 --warmup 1	cuDF hash groupby aggregation over device-resident columns

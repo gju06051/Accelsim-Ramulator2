@@ -189,12 +189,12 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 72 representative benchmarks:
+It currently contains 73 representative benchmarks:
 
 | Class | Count |
 | --- | ---: |
 | Streaming | 19 |
-| Mixed-locality | 35 |
+| Mixed-locality | 36 |
 | Irregular | 18 |
 
 Main benchmark coverage by workload field:
@@ -210,7 +210,7 @@ Main benchmark coverage by workload field:
 | Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
 | Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
-| Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm` |
+| Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
 
 The broader operational manifest is:
 

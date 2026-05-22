@@ -2,3 +2,4 @@ name	suite	expected_class	workdir	command	main_reason
 tango_cifarnet	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/tango/run_tango.sh cifarnet 1	Pure-CUDA Tango CifarNet CNN inference with convolution, pooling, and fully connected layers
 tango_gru	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/tango/run_tango.sh gru	Pure-CUDA Tango GRU recurrent inference with gate and recurrent-state kernels
 tango_lstm	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/tango/run_tango.sh lstm 1	Pure-CUDA Tango LSTM recurrent inference with gate and cell-state kernels
+tango_alexnet	prepare-tango	Mixed-locality	.	gpu_benchmark/benchmarks/prepare/tango/run_tango.sh alexnet 1	Pure-CUDA Tango AlexNet inference with grouped convolutions, normalization, pooling, and large fully connected layers

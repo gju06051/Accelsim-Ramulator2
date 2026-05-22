@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 src_root="${TANGO_SRC_ROOT:-${script_dir}/upstream/Tango}"
-models="${TANGO_MODELS:-CifarNet GRU LSTM}"
+models="${TANGO_MODELS:-CifarNet GRU LSTM AlexNet}"
 
 nvcc_bin="${NVCC:-nvcc}"
 cuda_host_cxx="${CUDAHOSTCXX:-/usr/bin/g++-11}"
