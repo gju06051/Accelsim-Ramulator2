@@ -126,5 +126,5 @@ Run a bounded smoke on the final set:
 ```
 
 For full runs where Ramulator2 internal row-buffer and queue stats are needed,
-use `--max-cycle 0`. The default `--ramulator-finalize-stats auto` keeps
-bounded smoke runs stable and enables Ramulator2 stats for unbounded runs.
+use `--max-cycle 0`. The default `--ramulator-finalize-stats on` enables
+Ramulator2 stats for runs that exit cleanly.

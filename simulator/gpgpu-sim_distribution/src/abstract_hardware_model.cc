@@ -32,7 +32,11 @@
 #include "abstract_hardware_model.h"
 #include <sys/stat.h>
 #include <algorithm>
+#include <cstdlib>
+#include <cstring>
 #include <iostream>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include "../libcuda/gpgpu_context.h"
 #include "cuda-sim/cuda-sim.h"
@@ -42,6 +46,138 @@
 #include "gpgpu-sim/gpu-sim.h"
 #include "gpgpusim_entrypoint.h"
 #include "option_parser.h"
+
+namespace {
+
+struct core_granularity_profile_key_t {
+  unsigned long long pc;
+  int access_type;
+  bool is_write;
+  bool is_atomic;
+  unsigned access_size;
+  unsigned useful_bytes;
+  unsigned active_lanes;
+  unsigned lane_bytes;
+  unsigned sector_count;
+
+  bool operator<(const core_granularity_profile_key_t &other) const {
+    if (pc != other.pc) return pc < other.pc;
+    if (access_type != other.access_type) return access_type < other.access_type;
+    if (is_write != other.is_write) return is_write < other.is_write;
+    if (is_atomic != other.is_atomic) return is_atomic < other.is_atomic;
+    if (access_size != other.access_size) return access_size < other.access_size;
+    if (useful_bytes != other.useful_bytes)
+      return useful_bytes < other.useful_bytes;
+    if (active_lanes != other.active_lanes)
+      return active_lanes < other.active_lanes;
+    if (lane_bytes != other.lane_bytes) return lane_bytes < other.lane_bytes;
+    return sector_count < other.sector_count;
+  }
+};
+
+struct core_granularity_profile_count_t {
+  unsigned long long transactions;
+  unsigned long long total_useful_bytes;
+  unsigned long long total_access_bytes;
+  unsigned long long total_thread_bytes;
+};
+
+std::once_flag g_core_granularity_profile_init_once;
+std::mutex g_core_granularity_profile_mutex;
+bool g_core_granularity_profile_enabled = false;
+std::map<core_granularity_profile_key_t, core_granularity_profile_count_t>
+    g_core_granularity_profile;
+
+bool env_flag_enabled(const char *value) {
+  return value && value[0] && !(value[0] == '0' && value[1] == '\0') &&
+         strcmp(value, "false") != 0 && strcmp(value, "False") != 0 &&
+         strcmp(value, "FALSE") != 0 && strcmp(value, "off") != 0 &&
+         strcmp(value, "Off") != 0 && strcmp(value, "OFF") != 0;
+}
+
+const char *core_granularity_profile_path() {
+  const char *path = getenv("SGRAM_CORE_GRANULARITY_PROFILE_FILE");
+  return path && path[0] ? path : "core_granularity_profile.csv";
+}
+
+void flush_core_granularity_profile() {
+  if (!g_core_granularity_profile_enabled) return;
+
+  std::lock_guard<std::mutex> lock(g_core_granularity_profile_mutex);
+  FILE *fp = fopen(core_granularity_profile_path(), "w");
+  if (!fp) {
+    fprintf(stderr, "failed to open %s for SGRAM core granularity profile\n",
+            core_granularity_profile_path());
+    return;
+  }
+
+  fprintf(fp,
+          "pc,access_type,is_write,is_atomic,access_size,useful_bytes,"
+          "active_lanes,lane_bytes,sector_count,transactions,"
+          "total_useful_bytes,total_access_bytes,total_thread_bytes,"
+          "sector_efficiency\n");
+  for (std::map<core_granularity_profile_key_t,
+                core_granularity_profile_count_t>::const_iterator it =
+           g_core_granularity_profile.begin();
+       it != g_core_granularity_profile.end(); ++it) {
+    const core_granularity_profile_key_t &key = it->first;
+    const core_granularity_profile_count_t &count = it->second;
+    double efficiency =
+        count.total_access_bytes
+            ? static_cast<double>(count.total_useful_bytes) /
+                  static_cast<double>(count.total_access_bytes)
+            : 0.0;
+    fprintf(fp,
+            "0x%llx,%s,%u,%u,%u,%u,%u,%u,%u,%llu,%llu,%llu,%llu,%.6f\n",
+            key.pc, mem_access_type_str((mem_access_type)key.access_type),
+            key.is_write ? 1 : 0, key.is_atomic ? 1 : 0, key.access_size,
+            key.useful_bytes, key.active_lanes, key.lane_bytes,
+            key.sector_count, count.transactions, count.total_useful_bytes,
+            count.total_access_bytes, count.total_thread_bytes, efficiency);
+  }
+  fclose(fp);
+}
+
+void init_core_granularity_profile() {
+  g_core_granularity_profile_enabled =
+      env_flag_enabled(getenv("SGRAM_CORE_GRANULARITY_PROFILE"));
+  if (g_core_granularity_profile_enabled) {
+    atexit(flush_core_granularity_profile);
+  }
+}
+
+void record_core_granularity_profile(unsigned long long pc,
+                                     mem_access_type access_type,
+                                     bool is_write, bool is_atomic,
+                                     unsigned access_size,
+                                     unsigned useful_bytes,
+                                     unsigned active_lanes,
+                                     unsigned lane_bytes) {
+  std::call_once(g_core_granularity_profile_init_once,
+                 init_core_granularity_profile);
+  if (!g_core_granularity_profile_enabled) return;
+
+  core_granularity_profile_key_t key;
+  key.pc = pc;
+  key.access_type = access_type;
+  key.is_write = is_write;
+  key.is_atomic = is_atomic;
+  key.access_size = access_size;
+  key.useful_bytes = useful_bytes;
+  key.active_lanes = active_lanes;
+  key.lane_bytes = lane_bytes;
+  key.sector_count = (access_size + SECTOR_SIZE - 1) / SECTOR_SIZE;
+
+  std::lock_guard<std::mutex> lock(g_core_granularity_profile_mutex);
+  core_granularity_profile_count_t &count = g_core_granularity_profile[key];
+  count.transactions++;
+  count.total_useful_bytes += useful_bytes;
+  count.total_access_bytes += access_size;
+  count.total_thread_bytes +=
+      static_cast<unsigned long long>(active_lanes) * lane_bytes;
+}
+
+}  // namespace
 
 void mem_access_t::init(gpgpu_context *ctx) {
   gpgpu_ctx = ctx;
@@ -744,6 +880,9 @@ void warp_inst_t::memory_coalescing_arch_reduce_and_send(
       assert(lower_half_used && upper_half_used);
     }
   }
+  record_core_granularity_profile(pc, access_type, is_write, isatomic(), size,
+                                  info.bytes.count(), info.active.count(),
+                                  data_size);
   m_accessq.push_back(mem_access_t(access_type, addr, size, is_write,
                                    info.active, info.bytes, info.chunks,
                                    m_config->gpgpu_ctx));

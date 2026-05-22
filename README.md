@@ -129,7 +129,6 @@ cd simulator/accelsim_ramulator
   --jobs 4 \
   --ramulator-inflight-read-limit auto \
   --ramulator-ticks-per-dram-cycle auto \
-  --ramulator-finalize-stats auto \
   --out-dir results/h100_1stack_micro
 ```
 
@@ -150,7 +149,6 @@ cd simulator/accelsim_ramulator
   --jobs 4 \
   --ramulator-inflight-read-limit auto \
   --ramulator-ticks-per-dram-cycle auto \
-  --ramulator-finalize-stats auto \
   --out-dir results/h100_full_micro
 ```
 
@@ -163,10 +161,16 @@ The runner defaults are chosen to keep AccelSim and Ramulator2 aligned:
 
 - `--ramulator-ticks-per-dram-cycle auto` reads AccelSim's DRAM clock and
   Ramulator2 `tCK`, then uses a fractional tick accumulator.
-- `--ramulator-inflight-read-limit auto` scales the bridge-wide read guard with
-  the Ramulator2 channel count.
-- `--ramulator-finalize-stats auto` enables Ramulator2 internal stats and falls
+- Positive `--queue-limits` values set both AccelSim `SGRAM_QUEUE_LIMIT` and
+  the per-run Ramulator2 `read_buffer_size` / `write_buffer_size`.
+- `--ramulator-inflight-read-limit auto` scales the bridge-wide read guard as
+  `channels * read_buffer_size`.
+- `--ramulator-finalize-stats on` enables Ramulator2 internal stats and falls
   back to bridge counters if a process exits before Ramulator2 finalization.
+- `--core-granularity-profile on` records core-side coalesced request
+  granularity and promotes aggregate ratios into `summary.csv`.
+- `--timeout 0` is the default so long-running experiments are not killed before
+  Ramulator2 finalizes stats.
 - `--gpgpusim-host-timing on` records host-side time spent in core, interconnect,
   L2, DRAM, and other simulator stages.
 

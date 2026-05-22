@@ -234,7 +234,7 @@ Ramulator2 stats finalization when outstanding requests remain, so max-cycle
 smoke runs complete cleanly and still preserve AccelSim-side backend counters.
 
 For AccelSim benchmark sweeps, `run_fixed_backend_matrix.py` controls this with
-`--ramulator-finalize-stats {auto,on,off}`. The default `auto` mode enables
+`--ramulator-finalize-stats {auto,on,off}`. The default `on` mode enables
 Ramulator2's internal finalizer and promotes selected Ramulator2 fields into
 `summary.csv` when the process exits cleanly. If the finalizer output is not
 available, the runner falls back to the bridge-side request counters:

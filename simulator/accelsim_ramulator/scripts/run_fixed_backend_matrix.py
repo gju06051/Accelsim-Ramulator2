@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from shlex import quote, split
 
+import yaml
+
 
 INTEGRATION_ROOT = Path(__file__).resolve().parents[1]
 
@@ -513,9 +515,29 @@ def write_config(
     (run_dir / "gpgpusim.config").write_text("".join(effective_lines), encoding="utf-8")
 
 
-def prepare_ramulator_config(run_dir: Path, source_config: Path) -> Path:
+def ramulator_controller_buffer_sizes(config_path: Path) -> tuple[int, int]:
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    controller = config.get("MemorySystem", {}).get("Controller", {})
+    read_buffer = int(controller.get("read_buffer_size", RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL))
+    write_buffer = int(controller.get("write_buffer_size", RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL))
+    return read_buffer, write_buffer
+
+
+def prepare_ramulator_config(
+    run_dir: Path, source_config: Path, queue_limit: int
+) -> Path:
     copied_config = run_dir / "ramulator2.yaml"
-    shutil.copyfile(source_config, copied_config)
+    config = yaml.safe_load(source_config.read_text(encoding="utf-8")) or {}
+    if queue_limit > 0:
+        try:
+            controller = config["MemorySystem"]["Controller"]
+        except KeyError as exc:
+            raise ValueError(
+                f"{source_config} is missing MemorySystem.Controller"
+            ) from exc
+        controller["read_buffer_size"] = queue_limit
+        controller["write_buffer_size"] = queue_limit
+    copied_config.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     return copied_config.resolve()
 
 
@@ -531,7 +553,8 @@ def resolve_ramulator_inflight_read_limit(value: str, ramulator_config: Path) ->
     normalized = str(value).strip().lower()
     if normalized == "auto":
         channels = infer_ramulator_channels(ramulator_config)
-        return channels * RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL
+        read_buffer, _ = ramulator_controller_buffer_sizes(ramulator_config)
+        return channels * read_buffer
     try:
         parsed = int(str(value), 0)
     except ValueError as exc:
@@ -637,10 +660,11 @@ def classify_status(exit_code: int, timed_out: bool, stdout: str, stderr: str, r
 
 def extract_last_numeric(stdout: str, key: str) -> str:
     value = ""
-    prefix = f"{key} ="
+    pattern = re.compile(rf"^\s*{re.escape(key)}\s*=\s*(\S+)")
     for line in stdout.splitlines():
-        if line.startswith(prefix):
-            value = line.split("=", 1)[1].strip().split()[0]
+        match = pattern.match(line)
+        if match:
+            value = match.group(1)
     return value
 
 
@@ -697,6 +721,95 @@ def compute_ratio(numer: str, denom: str) -> str:
     if d == 0:
         return ""
     return f"{n / d:.6f}"
+
+
+def extract_core_granularity_profile_stats(
+    profile_path: Path, enabled: str
+) -> dict[str, str | int]:
+    stats: dict[str, str | int] = {
+        "core_granularity_profile_enabled": enabled,
+        "core_granularity_profile_present": 0,
+        "core_granularity_profile_csv": str(profile_path) if enabled == "on" else "",
+        "core_granularity_transactions": "",
+        "core_granularity_total_useful_bytes": "",
+        "core_granularity_total_access_bytes": "",
+        "core_granularity_sector_efficiency": "",
+        "core_granularity_avg_useful_bytes": "",
+        "core_granularity_useful_8b_ratio": "",
+        "core_granularity_useful_16b_ratio": "",
+        "core_granularity_useful_32b_ratio": "",
+        "core_granularity_lane_4b_ratio": "",
+        "core_granularity_lane_8b_ratio": "",
+        "core_granularity_access_32b_ratio": "",
+    }
+    if enabled != "on" or not profile_path.exists():
+        return stats
+
+    transactions = 0
+    total_useful_bytes = 0
+    total_access_bytes = 0
+    useful_8b_transactions = 0
+    useful_16b_transactions = 0
+    useful_32b_transactions = 0
+    lane_4b_transactions = 0
+    lane_8b_transactions = 0
+    access_32b_transactions = 0
+
+    with profile_path.open(newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            txn = int(row.get("transactions") or 0)
+            useful_bytes = int(row.get("useful_bytes") or 0)
+            lane_bytes = int(row.get("lane_bytes") or 0)
+            access_size = int(row.get("access_size") or 0)
+            transactions += txn
+            total_useful_bytes += int(row.get("total_useful_bytes") or 0)
+            total_access_bytes += int(row.get("total_access_bytes") or 0)
+            if useful_bytes == 8:
+                useful_8b_transactions += txn
+            if useful_bytes == 16:
+                useful_16b_transactions += txn
+            if useful_bytes == 32:
+                useful_32b_transactions += txn
+            if lane_bytes == 4:
+                lane_4b_transactions += txn
+            if lane_bytes == 8:
+                lane_8b_transactions += txn
+            if access_size == 32:
+                access_32b_transactions += txn
+
+    stats.update(
+        {
+            "core_granularity_profile_present": 1,
+            "core_granularity_transactions": transactions,
+            "core_granularity_total_useful_bytes": total_useful_bytes,
+            "core_granularity_total_access_bytes": total_access_bytes,
+            "core_granularity_sector_efficiency": compute_ratio(
+                str(total_useful_bytes), str(total_access_bytes)
+            ),
+            "core_granularity_avg_useful_bytes": compute_ratio(
+                str(total_useful_bytes), str(transactions)
+            ),
+            "core_granularity_useful_8b_ratio": compute_ratio(
+                str(useful_8b_transactions), str(transactions)
+            ),
+            "core_granularity_useful_16b_ratio": compute_ratio(
+                str(useful_16b_transactions), str(transactions)
+            ),
+            "core_granularity_useful_32b_ratio": compute_ratio(
+                str(useful_32b_transactions), str(transactions)
+            ),
+            "core_granularity_lane_4b_ratio": compute_ratio(
+                str(lane_4b_transactions), str(transactions)
+            ),
+            "core_granularity_lane_8b_ratio": compute_ratio(
+                str(lane_8b_transactions), str(transactions)
+            ),
+            "core_granularity_access_32b_ratio": compute_ratio(
+                str(access_32b_transactions), str(transactions)
+            ),
+        }
+    )
+    return stats
 
 
 def format_int_list(values: list[int]) -> str:
@@ -1026,9 +1139,10 @@ def run_one(
     config_overrides: tuple[str, ...],
     gpgpusim_host_timing: str,
     ramulator_config: Path,
-    ramulator_inflight_read_limit: int,
+    ramulator_inflight_read_limit_arg: str,
     ramulator_ticks_per_dram_cycle: str,
     ramulator_finalize_stats: str,
+    core_granularity_profile: str,
 ) -> dict[str, str | int | float]:
     run_dir = (out_dir / config_variant / bench.name / f"{backend}_lat{latency}_q{queue_limit}").resolve()
     if run_dir.exists():
@@ -1052,6 +1166,10 @@ def run_one(
     run_ramulator_config = ""
     stdout_path = run_dir / "stdout.log"
     stderr_path = run_dir / "stderr.log"
+    core_granularity_profile_path = run_dir / "core_granularity_profile.csv"
+    ramulator_read_buffer_size: int | str = ""
+    ramulator_write_buffer_size: int | str = ""
+    ramulator_inflight_read_limit: int | str = ""
 
     backend_env = ""
     if backend == "fixed":
@@ -1062,7 +1180,16 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
 """.strip()
     elif backend == "ramulator2":
         bridge_lib = INTEGRATION_ROOT / "build" / "ramulator2_bridge" / "libsgram_ramulator2_bridge.so"
-        run_ramulator_config = str(prepare_ramulator_config(run_dir, ramulator_config))
+        run_ramulator_config_path = prepare_ramulator_config(
+            run_dir, ramulator_config, queue_limit
+        )
+        run_ramulator_config = str(run_ramulator_config_path)
+        ramulator_read_buffer_size, ramulator_write_buffer_size = (
+            ramulator_controller_buffer_sizes(run_ramulator_config_path)
+        )
+        ramulator_inflight_read_limit = resolve_ramulator_inflight_read_limit(
+            ramulator_inflight_read_limit_arg, run_ramulator_config_path
+        )
         skip_finalize_stats = ramulator_finalize_stats == "off"
         finalize_stats_env = (
             "export SGRAM_RAMULATOR_SKIP_FINALIZE_STATS=1"
@@ -1080,6 +1207,16 @@ export SGRAM_ACCELSIM_DRAM_FREQ_MHZ={quote(str(dram_freq_mhz))}
 {finalize_stats_env}
 """.strip()
 
+    profile_env = """
+unset SGRAM_CORE_GRANULARITY_PROFILE
+unset SGRAM_CORE_GRANULARITY_PROFILE_FILE
+""".strip()
+    if core_granularity_profile == "on":
+        profile_env = f"""
+export SGRAM_CORE_GRANULARITY_PROFILE=1
+export SGRAM_CORE_GRANULARITY_PROFILE_FILE={quote(str(core_granularity_profile_path))}
+""".strip()
+
     run_cmd = shell_join(cmd)
     if timeout_s > 0:
         run_cmd = f"timeout --kill-after=5s {timeout_s}s {run_cmd}"
@@ -1089,6 +1226,7 @@ set -euo pipefail
 source {quote(str(GPGPU_SETUP))}
 export LD_LIBRARY_PATH={quote(str(GPGPU_BUILD))}:{quote(str(INTEGRATION_ROOT / "build" / "ramulator2_bridge"))}:{quote(str(RAMULATOR2_ROOT))}:${{LD_LIBRARY_PATH:-}}
 {backend_env}
+{profile_env}
 exec {run_cmd}
 """.strip()
 
@@ -1118,6 +1256,9 @@ exec {run_cmd}
     ramulator_stats = extract_ramulator_stats(stdout)
     ramulator_clock_stats = extract_ramulator_clock_stats(stdout)
     host_timing_stats = extract_host_timing_stats(stdout)
+    core_granularity_stats = extract_core_granularity_profile_stats(
+        core_granularity_profile_path, core_granularity_profile
+    )
     launches = len(LAUNCH_RE.findall(stdout))
     l2_accesses = extract_last_numeric(stdout, "L2_total_cache_accesses")
     l2_misses = extract_last_numeric(stdout, "L2_total_cache_misses")
@@ -1141,7 +1282,9 @@ exec {run_cmd}
         "backend": backend,
         "ramulator_config_source": str(ramulator_config) if backend == "ramulator2" else "",
         "ramulator_config_run": run_ramulator_config,
-        "ramulator_inflight_read_limit": ramulator_inflight_read_limit if backend == "ramulator2" else "",
+        "ramulator_read_buffer_size": ramulator_read_buffer_size,
+        "ramulator_write_buffer_size": ramulator_write_buffer_size,
+        "ramulator_inflight_read_limit": ramulator_inflight_read_limit,
         "ramulator_ticks_per_dram_cycle": ramulator_ticks_per_dram_cycle if backend == "ramulator2" else "",
         "ramulator_finalize_stats": ramulator_finalize_stats if backend == "ramulator2" else "",
         **ramulator_clock_stats,
@@ -1156,6 +1299,7 @@ exec {run_cmd}
         **backend_partition_stats,
         **ramulator_stats,
         **host_timing_stats,
+        **core_granularity_stats,
         "kernel_launches": launches,
         "max_cycle_hit": int("break due to reaching the maximum cycles" in stdout),
         "l2_accesses": l2_accesses,
@@ -1195,7 +1339,11 @@ def main() -> int:
     parser.add_argument(
         "--queue-limits",
         default="64",
-        help="Comma-separated SGRAM_QUEUE_LIMIT values.",
+        help=(
+            "Comma-separated SGRAM_QUEUE_LIMIT values. For --backend ramulator2, "
+            "positive values also override Ramulator2 Controller "
+            "read_buffer_size/write_buffer_size in the per-run YAML."
+        ),
     )
     parser.add_argument(
         "--backend",
@@ -1234,15 +1382,20 @@ def main() -> int:
         ),
     )
     parser.add_argument("--max-cycle", type=int, default=50_000)
-    parser.add_argument("--timeout", type=int, default=120, help="Per-run wall-clock timeout in seconds. Use 0 to disable.")
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=0,
+        help="Per-run wall-clock timeout in seconds. The default 0 disables it.",
+    )
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 32))
     parser.add_argument(
         "--ramulator-inflight-read-limit",
         default="auto",
         help=(
             "SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT for --backend ramulator2. "
-            "Use 'auto' to set the bridge-wide read cap to the AccelSim-style "
-            "per-channel request queue depth: channels * 64 read-buffer entries. "
+            "Use 'auto' to set the bridge-wide read cap to channels * effective "
+            "Ramulator2 read_buffer_size, normally channels * --queue-limits. "
             "Use 0 to disable the guard."
         ),
     )
@@ -1262,12 +1415,21 @@ def main() -> int:
         help="Apply -gpgpu_host_timing to collect GPGPU-Sim stage wall-time metrics.",
     )
     parser.add_argument(
+        "--core-granularity-profile",
+        choices=("on", "off"),
+        default="on",
+        help=(
+            "Enable coalesced core memory granularity profiling. When on, each "
+            "run writes core_granularity_profile.csv in its run directory."
+        ),
+    )
+    parser.add_argument(
         "--ramulator-finalize-stats",
         choices=("auto", "on", "off"),
-        default="auto",
+        default="on",
         help=(
-            "Control Ramulator2 finalize stats. auto enables internal stats and "
-            "falls back to bridge counters if the process exits before finalization."
+            "Control Ramulator2 finalize stats. on/auto enable internal stats and "
+            "fall back to bridge counters if the process exits before finalization."
         ),
     )
     parser.add_argument(
@@ -1366,17 +1528,15 @@ def main() -> int:
         for path in missing:
             print(f"missing required file: {path}", file=sys.stderr)
         return 2
-    try:
-        ramulator_inflight_read_limit = (
-            resolve_ramulator_inflight_read_limit(
-                args.ramulator_inflight_read_limit, ramulator_config
-            )
-            if args.backend == "ramulator2"
-            else 0
-        )
-    except ValueError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
+    if args.backend == "ramulator2" and args.ramulator_inflight_read_limit.strip().lower() != "auto":
+        try:
+            parsed_inflight_read_limit = int(args.ramulator_inflight_read_limit, 0)
+        except ValueError:
+            print("--ramulator-inflight-read-limit must be an integer or 'auto'", file=sys.stderr)
+            return 2
+        if parsed_inflight_read_limit < 0:
+            print("--ramulator-inflight-read-limit must be non-negative", file=sys.stderr)
+            return 2
     (GPGPU_BUILD / "libcudart.so.12").symlink_to("libcudart.so") if not (
         GPGPU_BUILD / "libcudart.so.12"
     ).exists() else None
@@ -1400,10 +1560,11 @@ def main() -> int:
         f"gpu_benchmark_root={GPU_BENCHMARK_ROOT} "
         f"l2_cache_config={l2_cache_config or 'base-config'} "
         f"gpgpusim_host_timing={args.gpgpusim_host_timing} "
+        f"core_granularity_profile={args.core_granularity_profile} "
         f"config_override_files={';'.join(str(path) for path in config_override_files) or 'none'} "
         f"config_overrides={';'.join(config_overrides) or 'none'} "
         f"ramulator_config={ramulator_config if args.backend == 'ramulator2' else 'n/a'} "
-        f"ramulator_inflight_read_limit={ramulator_inflight_read_limit} "
+        f"ramulator_inflight_read_limit={args.ramulator_inflight_read_limit if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_ticks_per_dram_cycle={args.ramulator_ticks_per_dram_cycle} "
         f"ramulator_finalize_stats={args.ramulator_finalize_stats}"
         ,
@@ -1429,9 +1590,10 @@ def main() -> int:
                 config_overrides,
                 args.gpgpusim_host_timing,
                 ramulator_config,
-                ramulator_inflight_read_limit,
+                args.ramulator_inflight_read_limit,
                 args.ramulator_ticks_per_dram_cycle,
                 args.ramulator_finalize_stats,
+                args.core_granularity_profile,
             )
             for bench, latency, queue_limit in tasks
         ]
@@ -1461,6 +1623,20 @@ def main() -> int:
         "config_override_files",
         "config_overrides",
         "gpgpusim_host_timing",
+        "core_granularity_profile_enabled",
+        "core_granularity_profile_present",
+        "core_granularity_profile_csv",
+        "core_granularity_transactions",
+        "core_granularity_total_useful_bytes",
+        "core_granularity_total_access_bytes",
+        "core_granularity_sector_efficiency",
+        "core_granularity_avg_useful_bytes",
+        "core_granularity_useful_8b_ratio",
+        "core_granularity_useful_16b_ratio",
+        "core_granularity_useful_32b_ratio",
+        "core_granularity_lane_4b_ratio",
+        "core_granularity_lane_8b_ratio",
+        "core_granularity_access_32b_ratio",
         "accelsim_core_freq_mhz",
         "accelsim_icnt_freq_mhz",
         "accelsim_l2_freq_mhz",
@@ -1468,6 +1644,8 @@ def main() -> int:
         "backend",
         "ramulator_config_source",
         "ramulator_config_run",
+        "ramulator_read_buffer_size",
+        "ramulator_write_buffer_size",
         "ramulator_inflight_read_limit",
         "ramulator_ticks_per_dram_cycle",
         "ramulator_effective_ticks_per_dram_cycle",

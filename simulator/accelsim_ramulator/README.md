@@ -141,9 +141,34 @@ The preset name `stackganged_operational` is kept for compatibility with earlier
 scripts. New runs should normally start from `accelsim_ramulator_main`.
 
 By default, `--ramulator-ticks-per-dram-cycle auto` derives the Ramulator tick
-ratio from AccelSim's DRAM clock and Ramulator2 `tCK`. The runner also enables
-GPGPU-Sim host timing metrics in `summary.csv`; use `--gpgpusim-host-timing off`
-to disable that instrumentation.
+ratio from AccelSim's DRAM clock and Ramulator2 `tCK`. With `--backend
+ramulator2`, each positive `--queue-limits` value is applied both to AccelSim's
+`SGRAM_QUEUE_LIMIT` and to the per-run Ramulator2 `read_buffer_size` /
+`write_buffer_size`; `--ramulator-inflight-read-limit auto` then resolves to
+`channels * read_buffer_size`. The effective Ramulator buffer sizes and inflight
+limit are recorded in `summary.csv`.
+
+The runner also enables GPGPU-Sim host timing metrics in `summary.csv`; use
+`--gpgpusim-host-timing off` to disable that instrumentation. Ramulator finalize
+stats are enabled by default for `--backend ramulator2` so row-buffer and latency
+metrics are populated when the run exits cleanly. Wall-clock timeout is disabled
+by default; pass `--timeout <seconds>` for bounded smoke runs.
+
+The runner profiles core-side memory granularity after coalescing by default:
+
+```bash
+--core-granularity-profile on
+```
+
+Each run directory will contain `core_granularity_profile.csv`, aggregated by
+PC, access type, access size, useful bytes, active lanes, and per-lane byte
+width. The top-level `summary.csv` also includes ratios such as useful-8B,
+useful-32B, lane-4B, lane-8B, and overall sector efficiency.
+Use `--core-granularity-profile off` to disable this instrumentation.
+
+For ad hoc binary runs without the matrix runner, set
+`SGRAM_CORE_GRANULARITY_PROFILE=1`; optionally set
+`SGRAM_CORE_GRANULARITY_PROFILE_FILE=/path/to/core_granularity_profile.csv`.
 
 Config selection notes:
 
