@@ -84,3 +84,22 @@ python3 gpu_benchmark/scripts/run_cudf_accelsim_trace.py \
   --workload tpch --query q3 --size 256KiB \
   --out-dir results/cudf_tpch_accelsim_traces --gpu 0
 ```
+
+## Memory-Intensive Trace Set
+
+The current main manifest uses small cuDF micro traces and 64 MiB TPC-H traces.
+For H100 1/5-stack memory-pressure studies, regenerate larger profiler-scoped
+traces before promoting cuDF rows:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py \
+  --skip-nvcomp \
+  --cudf-micro-size 64MiB \
+  --cudf-tpch-size 128MiB
+```
+
+The helper writes
+`gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv`, pointing
+cuDF micro rows at 64 MiB traces and TPC-H rows at 128 MiB traces. Use
+`SGRAM_TRACE_MANIFEST=...` for validation first, then activate the generated
+manifest only after the trace replay passes.

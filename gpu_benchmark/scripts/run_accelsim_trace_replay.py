@@ -18,7 +18,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_TRACE_MANIFEST = ROOT / "gpu_benchmark" / "benchmarks" / "main" / "trace_manifest.tsv"
+DEFAULT_TRACE_MANIFEST = Path(
+    os.environ.get(
+        "SGRAM_TRACE_MANIFEST",
+        str(ROOT / "gpu_benchmark" / "benchmarks" / "main" / "trace_manifest.tsv"),
+    )
+)
 
 ACCEL_SIM_CANDIDATES = (
     Path(os.environ.get("SGRAM_ACCELSIM_TRACE_BIN", "")),

@@ -71,6 +71,44 @@ The 2026-05-21 run and interpretation are recorded in
 `NSIGHT_COMPUTE_COMPRESSION_PHASE_20260521.md`, and
 `NSIGHT_COMPUTE_SIZE_SWEEP_2M_TO_512M_20260521.md`.
 
+## Memory-Intensive Accel-Sim Trace Generation
+
+Use the Accel-Sim NVBit tracer helper when promoting nvCOMP rows into the main
+trace-driven benchmark set. The default traces the compression kernel
+(`DYNAMIC_KERNEL_RANGE=3`) with a 64 MiB input and 64 KiB chunks:
+
+```bash
+gpu_benchmark/scripts/run_nvcomp_accelsim_trace.py \
+  --codec lz4 \
+  --bytes 64MiB \
+  --chunk-size 64KiB \
+  --out-dir gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB
+```
+
+For all staged nvCOMP codecs plus the cuDF memory-intensive trace set, use:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py
+```
+
+That writes
+`gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv`. After the
+new traces exist and a bounded AccelSim + Ramulator2 replay passes, either run
+the main benchmark with:
+
+```bash
+SGRAM_TRACE_MANIFEST=gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv \
+  simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main ...
+```
+
+or activate the generated manifest explicitly:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py \
+  --activate-main-manifest
+```
+
 ## NVBit / GPGPU-Sim note
 
 The bundled NVBit tools can instrument the prebuilt nvCOMP kernels during native
