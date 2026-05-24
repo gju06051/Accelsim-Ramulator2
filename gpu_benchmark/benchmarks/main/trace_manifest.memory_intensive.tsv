@@ -1,12 +1,12 @@
 name	trace_path	trace_sm	trace_config	source
-nvcomp_lz4	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_lz4_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_snappy	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_snappy_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_gdeflate	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_gdeflate_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_deflate	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_deflate_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_zstd	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_zstd_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_cascaded	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_cascaded_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_bitcomp	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_bitcomp_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
-nvcomp_ans	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_64MiB/nvcomp_ans_64MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 64MiB compression trace
+nvcomp_lz4	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_lz4_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_snappy	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_snappy_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_gdeflate	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_gdeflate_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_deflate	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_deflate_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_zstd	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_zstd_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_cascaded	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_cascaded_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_bitcomp	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_bitcomp_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
+nvcomp_ans	gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/nvcomp_ans_4MiB/traces/kernelslist.g	86		nvCOMP memory-intensive 4MiB compression trace
 tango_cifarnet	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_cifarnet/traces/kernelslist.g	86		Tango SM86 trace validation
 tango_gru	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_gru/traces/kernelslist.g	86		Tango SM86 trace validation
 tango_lstm	/tmp/tango_h100_1stack_validation_sm86_20260522/traces/tango_lstm/traces/kernelslist.g	86		Tango SM86 trace validation

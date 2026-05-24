@@ -91,6 +91,14 @@ For all staged nvCOMP codecs plus the cuDF memory-intensive trace set, use:
 gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py
 ```
 
+The current checked `trace_manifest.memory_intensive.tsv` records the validated
+4 MiB nvCOMP trace paths. Regenerate that exact nvCOMP size with:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py \
+  --nvcomp-size 4MiB
+```
+
 That writes
 `gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv`. After the
 new traces exist and a bounded AccelSim + Ramulator2 replay passes, either run

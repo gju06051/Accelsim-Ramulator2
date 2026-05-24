@@ -211,8 +211,8 @@ Suite sources:
 
 | Manifest suite | Notes |
 | --- | --- |
-| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. |
-| `graphBIG` | Standalone GraphBIG GPU checkout using the bundled small graph dataset. |
+| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. Lonestar main rows use generated medium RMAT `.gr` inputs. |
+| `graphBIG` | Standalone GraphBIG GPU checkout using the staged LDBC medium graph dataset. |
 | `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
 | `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
 | `prepare-tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
@@ -231,6 +231,19 @@ Main benchmark coverage by workload field:
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
 | Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
 | Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
+
+Graph input sizing:
+
+| Benchmark rows | Main input | Arguments |
+| --- | --- | --- |
+| `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp` | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset .../LDBC_100k --root 90628` |
+| `graphbig_triangle_count`, `graphbig_kcore` | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset .../LDBC_100k` |
+| `lonestar_bfs_wlw`, `lonestar_sssp_wln` | `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr` | executable path plus the `.gr` input path |
+
+Additional medium/large graph validation rows live in
+`gpu_benchmark/benchmarks/main/manifest.graph_medium_large.tsv`. The detailed
+input layout, command arguments, generation path, and validation notes are in
+`gpu_benchmark/benchmarks/main/GRAPH_INPUTS.md`.
 
 Trace-driven rows:
 
@@ -318,6 +331,8 @@ variables manually before invoking
 - `simulator/accelsim_ramulator/docs/address_mapping_partition_imbalance.md`:
   partition hashing and balance notes.
 - `gpu_benchmark/README.md`: benchmark tree layout.
+- `gpu_benchmark/benchmarks/main/GRAPH_INPUTS.md`: GraphBIG and Lonestar input
+  arguments, generation, and validation notes.
 
 ## Current Caveats
 

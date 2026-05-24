@@ -12,7 +12,7 @@ benchmark manifests used by the AccelSim + Ramulator2 integration.
 | `benchmarks/main/local/` | Place new local benchmark directories here |
 | `benchmarks/inventory/` | Archived TSV inventories from benchmark bring-up |
 | `common/gpu-app-collection-harness/` | Built gpu-app-collection binaries and shared datasets |
-| `suites/graphBIG/` | GraphBIG GPU benchmarks and small graph dataset |
+| `suites/graphBIG/` | GraphBIG GPU benchmarks and staged graph datasets |
 | `scripts/` | Build, smoke, trace, and classification helpers |
 | `docs/` | Historical notes, suite audits, footprint notes, and exclusions |
 | `generated_inputs/` | Small generated inputs used by specific workloads |
@@ -51,3 +51,17 @@ Run one added benchmark by name:
 ```
 
 See `benchmarks/README.md` for the benchmark-addition workflow.
+
+## Graph Inputs
+
+The main graph rows are intentionally larger than the original sample inputs:
+
+| Suite | Main input | Notes |
+| --- | --- | --- |
+| GraphBIG | `suites/graphBIG/dataset/LDBC_100k` | Used by all five main GraphBIG rows. BFS/SSSP rows start from high-degree root `90628`. |
+| LonestarGPU | `common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr` | Generated deterministic RMAT medium graph in the Galois/Lonestar `.gr` binary format. |
+
+`benchmarks/main/manifest.graph_medium_large.tsv` keeps extra GraphBIG
+`LDBC_1000k` and Lonestar `rmat20.sym.gr` validation rows. The large datasets
+are staged locally and ignored by Git. See
+`benchmarks/main/GRAPH_INPUTS.md` for the argument table and generation notes.

@@ -17,6 +17,11 @@ Do not put large generated traces or run results here. Use the simulator
 The top-level `README.md` keeps the current main benchmark count and a
 field-by-field view of the `main/manifest.tsv` benchmark names.
 
+The current graph benchmark input policy is documented in
+`main/GRAPH_INPUTS.md`. It records the GraphBIG and Lonestar command
+arguments, dataset sizes, generation path, and the smoke-test results used
+before promotion to the main manifest.
+
 ## Add a Benchmark
 
 1. Create a directory under `main/local/`:
@@ -91,3 +96,7 @@ Keep experimental additions in `main/local/` until they pass a bounded
 Ramulator2 run. If a benchmark becomes part of the stable shared set, mirror the
 row into `simulator/accelsim_ramulator/benchmarks/final_manifest.tsv` and add a
 short note to `simulator/accelsim_ramulator/benchmarks/final_manifest_notes.md`.
+
+For larger graph inputs, keep generated or copied dataset payloads out of Git
+unless there is a specific reason to version them. Commit the manifest row, the
+dataset-generation script, and documentation instead.

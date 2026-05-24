@@ -23,5 +23,11 @@ gpu_benchmark/benchmarks/prepare/results/
 tools/nvbit_release_x86_64/tools/instr_count/instr_count.so
 tools/nvbit_release_x86_64/tools/opcode_hist/opcode_hist.so
 
+# Large graph inputs staged locally for GraphBIG/Lonestar validation.
+gpu_benchmark/suites/graphBIG/dataset/LDBC_100k/
+gpu_benchmark/suites/graphBIG/dataset/LDBC_1000k/
+gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr
+gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat20.sym.gr
+
 # Runtime shared libraries may still be tracked intentionally, but generated
 # build trees and object files should stay out of normal source changes.
