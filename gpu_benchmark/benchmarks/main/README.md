@@ -47,6 +47,9 @@ the helper resolves the trace path from `trace_manifest.tsv`.
 This keeps the normal AccelSim + Ramulator2 runner path intact: the runner still
 creates the per-run `gpgpusim.config`, Ramulator2 YAML, and backend environment,
 then the helper replays `kernelslist.g` with `accel-sim.out -trace`.
+The helper first checks the repo-local ignored trace runtime at
+`gpu_benchmark/benchmarks/prepare/results/accelsim_trace_runtime/`, then falls
+back to the older `/tmp/accel-sim-framework-*` locations.
 
 The replay helper reads `trace_manifest.tsv` by default. For a generated
 memory-intensive trace set, pass an alternate manifest through:
@@ -66,6 +69,19 @@ The currently staged alternate manifest points to:
 | `nvcomp_*` | 4 MiB compression traces |
 | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces |
 | `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | 128 MiB profiler-scoped TPC-H-shaped traces |
+
+## Representative-Set Checks
+
+Use `gpu_benchmark/scripts/classify_benchmark_representativeness.py` to flag
+rows that are too small for memory-system studies. The script reads
+AccelSim + Ramulator2 `summary.csv` files and classifies each row from
+Ramulator request counters, L2 misses, and active memory-partition coverage.
+
+The current H100 SXM Samsung HBM3 q64 snapshot is summarized in
+`REPRESENTATIVENESS.md`. In short, the larger cuDF traces now generate
+representative memory traffic, while some codec and Tango rows remain small and
+should be treated as functional coverage unless their traces are regenerated
+with heavier inputs.
 
 ## Scaled Native Inputs
 

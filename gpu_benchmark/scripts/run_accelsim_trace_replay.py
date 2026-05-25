@@ -28,12 +28,14 @@ DEFAULT_TRACE_MANIFEST = Path(
 ACCEL_SIM_CANDIDATES = (
     Path(os.environ.get("SGRAM_ACCELSIM_TRACE_BIN", "")),
     Path(os.environ.get("ACCELSIM_TRACE_BIN", "")),
+    ROOT / "gpu_benchmark/benchmarks/prepare/results/accelsim_trace_runtime/bin/release/accel-sim.out",
     Path("/tmp/accel-sim-framework-dev-ramulator/gpu-simulator/bin/release/accel-sim.out"),
     Path("/tmp/accel-sim-framework-dev/gpu-simulator/bin/release/accel-sim.out"),
 )
 TRACE_CONFIG_CANDIDATES = (
     Path(os.environ.get("SGRAM_ACCELSIM_TRACE_CONFIG", "")),
     Path(os.environ.get("ACCELSIM_TRACE_CONFIG", "")),
+    ROOT / "gpu_benchmark/benchmarks/prepare/results/accelsim_trace_runtime/configs/tested-cfgs/SM80_A100/trace.config",
     Path("/tmp/accel-sim-framework-dev-ramulator/gpu-simulator/configs/tested-cfgs/SM80_A100/trace.config"),
     Path("/tmp/accel-sim-framework-dev/gpu-simulator/configs/tested-cfgs/SM80_A100/trace.config"),
 )
