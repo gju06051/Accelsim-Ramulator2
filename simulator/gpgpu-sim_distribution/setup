@@ -1,5 +1,5 @@
 export GPGPUSIM_SETUP_ENVIRONMENT_WAS_RUN=1
-export GPGPUSIM_ROOT=/home/gju06051/StackGanged/simulator/gpgpu-sim_distribution
+export GPGPUSIM_ROOT=/home/gju06051/Accelsim-Ramulator/simulator/gpgpu-sim_distribution
 export GPGPUSIM_CONFIG=gcc-13.3.0/cuda-12030/release
 export CUDA_INSTALL_PATH=/usr/local/cuda-12.3
 export PATH=`echo $PATH | sed 's#$GPGPUSIM_ROOT/bin:$CUDA_INSTALL_PATH/bin:##'`

@@ -1,0 +1,9 @@
+name	suite	expected_class	workdir	command	main_reason
+micro_mem_atom_size	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_atom_size	Memory atom size sensitivity microbenchmark for DRAM request granularity and bridge counter checks
+micro_mem_bw	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_bw	Streaming DRAM bandwidth microbenchmark for queue pressure and channel throughput checks
+micro_mem_lat	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/mem_lat	Pointer-chasing memory latency microbenchmark for read-latency sanity checks
+micro_l1_bw_128	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l1_bw_128	L1 bandwidth microbenchmark for cache-path sanity checks
+micro_l2_bw_32f	microbench	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_bw_32f	L2 bandwidth microbenchmark for cache-path sanity checks
+micro_l2_lat	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_lat	L2 latency microbenchmark for cache-latency sanity checks
+micro_atomic_add_bw_conflict	microbench	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/atomic_add_bw_conflict	Conflicting atomic update microbenchmark for atomic/cache serialization checks
+micro_l2_access_grain	microbench	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/l2_access_grain	L2 access granularity microbenchmark for line/sector behavior checks

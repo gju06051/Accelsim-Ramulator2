@@ -13,7 +13,7 @@ environment variables.
 | --- | --- |
 | `operational_manifest.tsv` | Canonical validated benchmark list for AccelSim + Ramulator2 runs |
 | `operational_manifest_notes.md` | Source, class, suite, and validation notes for the manifest |
-| `final_manifest.tsv` | Smaller representative benchmark set recommended for routine sweeps |
+| `final_manifest.tsv` | Smaller application benchmark set recommended for routine sweeps |
 | `final_manifest_notes.md` | Selection policy and family-level de-duplication notes for the final set |
 | `exclusions.md` | Benchmarks excluded from the operational set and the reason for exclusion |
 
@@ -42,15 +42,17 @@ The operational manifest currently has 91 benchmarks:
 
 ## Final Representative Set
 
-The final manifest has 44 benchmarks selected from the operational pool. It
-keeps all major suites represented, removes near-duplicate variants, and avoids
-the two current-repo input/problem cases found during validation.
+The final manifest has 36 application benchmarks selected from the operational
+pool. It keeps all major application suites represented, removes near-duplicate
+variants, and avoids current-repo input/problem cases found during validation.
+Synthetic microbenchmarks live in
+`gpu_benchmark/benchmarks/system/manifest.tsv`.
 
 | Class | Count |
 | --- | ---: |
-| Streaming | 11 |
-| Mixed-locality | 17 |
-| Irregular | 16 |
+| Streaming | 8 |
+| Mixed-locality | 15 |
+| Irregular | 13 |
 
 | Suite | Count |
 | --- | ---: |
@@ -59,7 +61,6 @@ the two current-repo input/problem cases found during validation.
 | ispass-2009 | 3 |
 | rodinia | 6 |
 | proxy-apps | 2 |
-| microbench | 8 |
 | parboil | 4 |
 | lonestar | 2 |
 | pannotia | 5 |
@@ -93,9 +94,10 @@ export SGRAM_GPGPU_BUILD=/path/to/gpgpu-sim_distribution/build/sgram_fixed
 
 The recommended user-facing preset is `accelsim_ramulator_main`. It loads
 `gpu_benchmark/benchmarks/main/manifest.tsv`, so local benchmark additions can
-be made without editing the simulator tree. The frozen 45-benchmark set is also
-available as `accelsim_ramulator_final`, and the broader validated pool is
-available as `accelsim_ramulator_operational`. Legacy `stackganged_*` preset
+be made without editing the simulator tree. The frozen application subset is
+available as `accelsim_ramulator_final`, the microbenchmark sanity-check set is
+available as `accelsim_ramulator_system_check`, and the broader validated pool
+is available as `accelsim_ramulator_operational`. Legacy `stackganged_*` preset
 names remain for compatibility with earlier scripts.
 
 List the final benchmark set without requiring an AccelSim build:

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Classify AccelSim + Ramulator2 benchmark rows by memory-traffic size.
+"""Classify AccelSim + Ramulator2 benchmark rows by memory traffic.
 
 This helper reads one or more `summary.csv` files produced by
 `run_fixed_backend_matrix.py` and emits a compact TSV.  It is intentionally a
 heuristic pass: the goal is to flag benchmark rows that are too small to be
-useful as memory-system representatives before spending time on long natural
-runs.
+useful as memory-system representatives, and to separately label rows that are
+actually memory-intensive after normalizing DRAM requests by simulated
+instructions.
 """
 
 from __future__ import annotations
@@ -97,6 +98,50 @@ def classify(row: dict[str, str], args: argparse.Namespace) -> tuple[str, str]:
     return "representative", f"{bounded}dram_reqs={dram_reqs} l2_misses={l2_misses}"
 
 
+def classify_intensity(
+    dram_reqs: int, instructions: int, args: argparse.Namespace
+) -> tuple[str, str, float, float]:
+    if instructions <= 0:
+        return "unknown-intensity", "no instruction count", 0.0, 0.0
+
+    dram_req_per_kinst = dram_reqs * 1000.0 / instructions
+    dram_bytes_per_inst = dram_reqs * args.dram_request_bytes / instructions
+    if dram_reqs < args.min_intensity_dram_requests:
+        if dram_req_per_kinst >= args.high_dram_req_per_kinst:
+            return (
+                "small-high-intensity",
+                f"req_per_kinst={dram_req_per_kinst:.3f} but dram_reqs={dram_reqs}",
+                dram_req_per_kinst,
+                dram_bytes_per_inst,
+            )
+        return (
+            "small-low-intensity",
+            f"req_per_kinst={dram_req_per_kinst:.3f} dram_reqs={dram_reqs}",
+            dram_req_per_kinst,
+            dram_bytes_per_inst,
+        )
+    if dram_req_per_kinst >= args.high_dram_req_per_kinst:
+        return (
+            "high-intensity",
+            f"req_per_kinst={dram_req_per_kinst:.3f}",
+            dram_req_per_kinst,
+            dram_bytes_per_inst,
+        )
+    if dram_req_per_kinst >= args.moderate_dram_req_per_kinst:
+        return (
+            "moderate-intensity",
+            f"req_per_kinst={dram_req_per_kinst:.3f}",
+            dram_req_per_kinst,
+            dram_bytes_per_inst,
+        )
+    return (
+        "low-intensity",
+        f"req_per_kinst={dram_req_per_kinst:.3f}",
+        dram_req_per_kinst,
+        dram_bytes_per_inst,
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("summaries", nargs="+", help="summary.csv path or glob.")
@@ -111,6 +156,10 @@ def main() -> int:
     parser.add_argument("--small-l2-misses", type=int, default=50_000)
     parser.add_argument("--large-dram-requests", type=int, default=100_000)
     parser.add_argument("--min-active-partition-ratio", type=float, default=0.5)
+    parser.add_argument("--min-intensity-dram-requests", type=int, default=10_000)
+    parser.add_argument("--moderate-dram-req-per-kinst", type=float, default=1.0)
+    parser.add_argument("--high-dram-req-per-kinst", type=float, default=5.0)
+    parser.add_argument("--dram-request-bytes", type=int, default=32)
     parser.add_argument("--only-flagged", action="store_true")
     args = parser.parse_args()
 
@@ -124,9 +173,15 @@ def main() -> int:
             "status",
             "class",
             "reason",
+            "intensity_class",
+            "intensity_reason",
             "dram_requests",
             "reads",
             "writes",
+            "instructions",
+            "dram_req_per_kinst",
+            "dram_bytes_per_inst",
+            "l2miss_per_kinst",
             "l2_misses",
             "active_partitions",
             "partitions",
@@ -152,6 +207,21 @@ def main() -> int:
                     parse_int(row.get("ramulator_total_num_write_requests")),
                     parse_int(row.get("backend_total_accepted_writes")),
                 )
+                dram_reqs = reads + writes
+                instructions = max(
+                    parse_int(row.get("tot_sim_insn")),
+                    parse_int(row.get("sim_insn")),
+                )
+                l2_misses = parse_int(row.get("l2_misses"))
+                (
+                    intensity_class,
+                    intensity_reason,
+                    dram_req_per_kinst,
+                    dram_bytes_per_inst,
+                ) = classify_intensity(dram_reqs, instructions, args)
+                l2miss_per_kinst = (
+                    l2_misses * 1000.0 / instructions if instructions else 0.0
+                )
                 writer.writerow(
                     [
                         summary,
@@ -160,10 +230,16 @@ def main() -> int:
                         row.get("status", ""),
                         row_class,
                         reason,
-                        reads + writes,
+                        intensity_class,
+                        intensity_reason,
+                        dram_reqs,
                         reads,
                         writes,
-                        parse_int(row.get("l2_misses")),
+                        instructions,
+                        f"{dram_req_per_kinst:.6f}",
+                        f"{dram_bytes_per_inst:.6f}",
+                        f"{l2miss_per_kinst:.6f}",
+                        l2_misses,
                         parse_int(row.get("backend_active_partitions")),
                         parse_int(row.get("backend_runtime_print_partitions")),
                         parse_int(row.get("max_cycle_hit")),

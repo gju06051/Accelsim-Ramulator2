@@ -1,9 +1,157 @@
 # Main Benchmark Set
 
-`manifest.tsv` is the main AccelSim + Ramulator2 run list for this benchmark
-tree. The simulator preset `accelsim_ramulator_main` loads this file.
+`manifest.tsv` is the active AccelSim + Ramulator2 benchmark list. The
+simulator runner preset `accelsim_ramulator_main` loads this file directly.
 
-Use `local/` for benchmarks that are added directly in this repo:
+The current main set has 61 application/trace rows after moving synthetic
+microbenchmarks to the system-check set and removing long-tail PolyBench rows
+that cannot be shortened without rebuilding their sources.
+
+## How To Run
+
+List the active rows:
+
+```bash
+cd ../../../simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main \
+  --list-benchmarks
+```
+
+Run one benchmark through the H100 SXM Samsung HBM3 1/5-stack config:
+
+```bash
+./scripts/run_fixed_backend_matrix.py \
+  --backend ramulator2 \
+  --config-variant h100_1stack \
+  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
+  --preset accelsim_ramulator_main \
+  --benchmarks <benchmark-name> \
+  --latencies 0 \
+  --queue-limits 64 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --gpgpusim-host-timing on \
+  --max-cycle 0 \
+  --timeout 0 \
+  --jobs 1 \
+  --out-dir results/<run-name>
+```
+
+Run the full-stack H100 SXM Samsung HBM3 config by changing:
+
+```bash
+--config-variant h100_full
+--ramulator-config configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml
+```
+
+For full row-by-row benchmark arguments, inputs, and trace provenance, see
+`../README.md`.
+
+## Manifest Files
+
+| File | Role |
+| --- | --- |
+| `manifest.tsv` | Active main run list. |
+| `../system/manifest.tsv` | Synthetic microbenchmarks for simulator and memory-system sanity checks. |
+| `trace_manifest.tsv` | Default trace replay paths for `nvcomp_*`, `tango_*`, and `cudf_*` rows. |
+| `trace_manifest.memory_intensive.tsv` | Larger generated trace paths for H100 memory-pressure validation. |
+| `manifest.graph_medium_large.tsv` | Extra GraphBIG/Lonestar medium and large validation rows. |
+| `GRAPH_INPUTS.md` | GraphBIG/Lonestar input sizes, arguments, and generation notes. |
+| `REPRESENTATIVENESS.md` | Current memory-intensity and representative-set classification. |
+
+## Native And Trace Rows
+
+Native rows launch CUDA binaries through the AccelSim runtime interception path.
+These include PolyBench, GraphBIG, ISPASS, Rodinia, Parboil, Lonestar,
+Pannotia, Dragon-Li, and proxy apps.
+
+Trace rows launch:
+
+```bash
+gpu_benchmark/scripts/run_accelsim_trace_replay.py --benchmark <name>
+```
+
+The runner still creates the per-run `gpgpusim.config`, Ramulator2 YAML, and
+SGRAM/Ramulator environment. The helper then replays the selected
+`kernelslist.g` with `accel-sim.out -trace`.
+
+By default trace replay reads `trace_manifest.tsv`. To validate the larger
+memory-intensive trace set, pass:
+
+```bash
+SGRAM_TRACE_MANIFEST=gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv
+```
+
+The memory-intensive trace manifest currently points to:
+
+| Trace group | Trace input size |
+| --- | --- |
+| `nvcomp_*` | 4 MiB compression traces, generated from `nvcomp_codec_bench` with 64 KiB chunks. |
+| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces. |
+| `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | 128 MiB profiler-scoped synthetic TPC-H-shaped traces. |
+| `tango_*` | Existing SM86 Tango traces; not yet regenerated into a larger memory-intensive set. |
+
+Regenerate the larger trace manifest with:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py
+```
+
+Activate it as the default trace manifest only after replay validation passes:
+
+```bash
+gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py \
+  --activate-main-manifest
+```
+
+## Scaled Inputs
+
+Some rows are intentionally larger than their default sample settings so the
+H100 1/5-stack config still produces meaningful DRAM pressure.
+
+| Group | Active scaling |
+| --- | --- |
+| GraphBIG | Main rows use `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k`; BFS/SSSP use root `90628`. |
+| Lonestar | Main rows use generated `rmat16.sym.gr`; large validation rows use `rmat20.sym.gr`. |
+| Rodinia | Several rows use explicit larger CLI sizes, for example SRAD v2 `512x512`, Gaussian `-s 256`, LavaMD `-boxes1d 10`, NW `512 10`, and Pathfinder `1000 1000 20`. |
+| Dragon-Li | `dragon_join` uses `-l 65536 -r 65536 -m 65536`; `dragon_amr` keeps `-s 4096 -r 2`. |
+| cuDF/nvCOMP | Larger inputs are handled by regenerating trace files rather than changing the replay manifest row itself. |
+
+Rows with fixed local graph/input files or prepared traces should be scaled by
+staging a larger dataset or regenerating traces first. Do not only change a
+manifest row unless the binary actually accepts that runtime parameter.
+
+## Excluded Long-Tail Rows
+
+The active main set excludes:
+
+```text
+polybench_fdtd2d
+polybench_gramschmidt
+polybench_covariance
+polybench_2mm
+```
+
+These rows are useful PolyBench coverage, but the packaged binaries do not
+expose a simple runtime input-size knob and the current binaries became
+multi-day unbounded runs under H100 SXM Samsung HBM3 1/5-stack validation. Keep
+them in inventory manifests for bounded smoke tests or source-rebuild
+experiments, then promote them back only after smaller rebuilt inputs are
+validated with AccelSim + Ramulator2.
+
+`rodinia_particlefilter_float` is also excluded from the main set because it
+crashed during previous validation. `rodinia_particlefilter_naive` remains as
+the particle-filter representative.
+
+The `micro_*` rows are not failure exclusions. They live in
+`../system/manifest.tsv` and are loaded with the
+`accelsim_ramulator_system_check` preset so bandwidth, latency, atomic, cache,
+and bridge-counter probes do not distort application benchmark summaries.
+
+## Add A Local Benchmark
+
+Put new repo-local benchmarks under:
 
 ```text
 local/<benchmark-name>/
@@ -12,99 +160,26 @@ local/<benchmark-name>/
   README.md
 ```
 
-After adding a local benchmark, add a row to `manifest.tsv` and test it with:
+Add one row to `manifest.tsv`:
+
+```text
+name    suite    expected_class    workdir    command    main_reason
+```
+
+Use `gpu_benchmark/...` paths for input files so the runner can resolve them
+from per-benchmark result directories.
+
+Smoke the row first:
 
 ```bash
 cd ../../../simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
+  --backend ramulator2 \
   --preset accelsim_ramulator_main \
   --benchmarks <benchmark-name> \
-  --list-benchmarks
+  --latencies 0 \
+  --queue-limits 64 \
+  --max-cycle 50000 \
+  --timeout 600 \
+  --out-dir results/<benchmark-name>_smoke
 ```
-
-For the full add-and-validate workflow, see `../README.md`.
-
-## Graph Input Rows
-
-The active GraphBIG and Lonestar rows are described in `GRAPH_INPUTS.md`.
-Those rows use medium graph inputs rather than the original small samples:
-
-| Suite | Active input | Main argument pattern |
-| --- | --- | --- |
-| GraphBIG | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset <dataset>` and, for BFS/SSSP, `--root 90628` |
-| LonestarGPU | `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr` | executable followed by the `.gr` input path |
-
-Use `manifest.graph_medium_large.tsv` for additional medium/large validation
-rows, including GraphBIG `LDBC_1000k` and Lonestar `rmat20.sym.gr`.
-
-## Trace-Driven Rows
-
-Rows such as `nvcomp_*`, `tango_*`, and `cudf_*` use prepared Accel-Sim traces
-instead of native CUDA execution. Their `manifest.tsv` command calls
-`gpu_benchmark/scripts/run_accelsim_trace_replay.py --benchmark <name>`, and
-the helper resolves the trace path from `trace_manifest.tsv`.
-
-This keeps the normal AccelSim + Ramulator2 runner path intact: the runner still
-creates the per-run `gpgpusim.config`, Ramulator2 YAML, and backend environment,
-then the helper replays `kernelslist.g` with `accel-sim.out -trace`.
-The helper first checks the repo-local ignored trace runtime at
-`gpu_benchmark/benchmarks/prepare/results/accelsim_trace_runtime/`, then falls
-back to the older `/tmp/accel-sim-framework-*` locations.
-
-The replay helper reads `trace_manifest.tsv` by default. For a generated
-memory-intensive trace set, pass an alternate manifest through:
-
-```bash
-SGRAM_TRACE_MANIFEST=gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv
-```
-
-Generate that alternate manifest and its target trace paths with
-`gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py`; activate it
-as the default only after the larger traces exist and replay validation passes.
-
-The currently staged alternate manifest points to:
-
-| Trace group | Alternate trace size |
-| --- | --- |
-| `nvcomp_*` | 4 MiB compression traces |
-| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces |
-| `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | 128 MiB profiler-scoped TPC-H-shaped traces |
-
-## Representative-Set Checks
-
-Use `gpu_benchmark/scripts/classify_benchmark_representativeness.py` to flag
-rows that are too small for memory-system studies. The script reads
-AccelSim + Ramulator2 `summary.csv` files and classifies each row from
-Ramulator request counters, L2 misses, and active memory-partition coverage.
-
-The current H100 SXM Samsung HBM3 q64 snapshot is summarized in
-`REPRESENTATIVENESS.md`. In short, the larger cuDF traces now generate
-representative memory traffic, while some codec and Tango rows remain small and
-should be treated as functional coverage unless their traces are regenerated
-with heavier inputs.
-
-## Scaled Native Inputs
-
-Some native CUDA rows are intentionally larger than their default sample
-settings so the 1/5-stack H100 configuration still produces enough DRAM traffic
-for representative AccelSim + Ramulator2 metrics. These rows are scaled directly
-through command-line arguments in `manifest.tsv`:
-
-```text
-rodinia_srad_v2, rodinia_gaussian, rodinia_lavamd, rodinia_nw
-rodinia_pathfinder
-dragon_join
-graphbig_bfs_data_warp, graphbig_bfs_topo_atomic, graphbig_sssp_data_warp
-graphbig_triangle_count, graphbig_kcore
-lonestar_bfs_wlw, lonestar_sssp_wln
-```
-
-Rows that depend on fixed local graph/input files or prepared traces should be
-scaled by adding a larger dataset or regenerating traces first, rather than only
-changing the manifest row.
-
-`ispass_ray`, `ispass_nqu`, `rodinia_particlefilter_naive`, and `dragon_amr`
-were left at their original sample settings because larger command-line inputs
-did not produce enough Ramulator DRAM traffic to make them useful as
-representative memory benchmarks, or made the run much longer without a
-proportional memory-traffic gain.

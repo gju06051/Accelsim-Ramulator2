@@ -19,20 +19,22 @@ validated pool.
   outside Ramulator2-specific paths.
 - Collapse near-duplicate algorithm variants while preserving distinct memory
   behavior.
-- Keep all major suites represented instead of letting graph or microbenchmark
-  variants dominate the run list.
+- Keep all major application suites represented instead of letting one family
+  dominate the run list.
+- Keep synthetic microbenchmarks in
+  `gpu_benchmark/benchmarks/system/manifest.tsv` for simulator checks.
 - Balance the final set across streaming, mixed-locality, and irregular memory
   behavior.
 
 ## Final Set Size
 
-The final manifest has 44 benchmarks.
+The final manifest has 36 application benchmarks.
 
 | Class | Count |
 | --- | ---: |
-| Streaming | 11 |
-| Mixed-locality | 17 |
-| Irregular | 16 |
+| Streaming | 8 |
+| Mixed-locality | 15 |
+| Irregular | 13 |
 
 | Suite | Count |
 | --- | ---: |
@@ -41,7 +43,6 @@ The final manifest has 44 benchmarks.
 | ispass-2009 | 3 |
 | rodinia | 6 |
 | proxy-apps | 2 |
-| microbench | 8 |
 | parboil | 4 |
 | lonestar | 2 |
 | pannotia | 5 |
@@ -57,7 +58,6 @@ The final manifest has 44 benchmarks.
 | graphBIG structural graph kernels | `graphbig_triangle_count`, `graphbig_kcore` | `graphbig_betweenness`, `graphbig_connected_comp`, `graphbig_degree_centr`, `graphbig_gc_topo_thread` |
 | ISPASS | `ispass_lps`, `ispass_lib`, `ispass_ray` | BFS/NQU/NN/STO variants for routine sweeps |
 | Rodinia | `rodinia_streamcluster`, `rodinia_backprop`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_gaussian`, `rodinia_lavamd` | `rodinia_particlefilter_float`, `rodinia_particlefilter_naive`, `rodinia_pathfinder`, `rodinia_nw`, `rodinia_myocyte`, `rodinia_nn`, `rodinia_heartwall` |
-| Microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` | Other L1/L2/cacheline/atomic width variants |
 | Parboil | `parboil_stencil`, `parboil_lbm`, `parboil_mri_q`, `parboil_sgemm` | `parboil_bfs`, `parboil_mri_gridding` |
 | Lonestar | `lonestar_bfs_wlw`, `lonestar_sssp_wln` | `lonestar_bfs`, `lonestar_bfs_wla`, `lonestar_sssp` |
 | Pannotia | `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv`, `pannotia_fw_block` | `pannotia_color_max`, `pannotia_sssp`, `pannotia_fw` |
@@ -75,6 +75,9 @@ The final manifest has 44 benchmarks.
   Ramulator2 runs hit a GPGPU-Sim deadlock under both A100 1-stack and 5-stack
   configs, so it is excluded from routine sweeps until that benchmark-specific
   issue is debugged separately.
+- Synthetic microbenchmarks are not in the final set. Use
+  `--preset accelsim_ramulator_system_check` when checking latency, bandwidth,
+  cache paths, atomics, queue pressure, or bridge counters.
 - The broader operational manifest is still useful when coverage matters more
   than runtime. Use this final manifest when sweep cost, result readability, and
   variant de-duplication are the priority.

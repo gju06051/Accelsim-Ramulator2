@@ -18,6 +18,12 @@ void sgram_ramulator2_tick(void *handle);
 void sgram_ramulator2_finalize(void *handle);
 double sgram_ramulator2_tck_ns(void *handle);
 unsigned long long sgram_ramulator2_ticks(void *handle);
+unsigned long long sgram_ramulator2_outstanding_reads(void *handle);
+unsigned long long sgram_ramulator2_callback_untracked_writes(void *handle);
+unsigned long long sgram_ramulator2_accepted_reads(void *handle);
+unsigned long long sgram_ramulator2_completed_reads(void *handle);
+unsigned long long sgram_ramulator2_accepted_writes(void *handle);
+unsigned long long sgram_ramulator2_completed_writes(void *handle);
 
 #ifdef __cplusplus
 }

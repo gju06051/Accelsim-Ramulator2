@@ -24,6 +24,7 @@ typedef void (*r2_tick_fn)(void *handle);
 typedef void (*r2_finalize_fn)(void *handle);
 typedef double (*r2_tck_ns_fn)(void *handle);
 typedef unsigned long long (*r2_ticks_fn)(void *handle);
+typedef unsigned long long (*r2_counter_fn)(void *handle);
 
 struct ramulator2_api_t {
   r2_create_fn create;
@@ -33,6 +34,12 @@ struct ramulator2_api_t {
   r2_finalize_fn finalize;
   r2_tck_ns_fn tck_ns;
   r2_ticks_fn ticks;
+  r2_counter_fn outstanding_reads;
+  r2_counter_fn callback_untracked_writes;
+  r2_counter_fn accepted_reads;
+  r2_counter_fn completed_reads;
+  r2_counter_fn accepted_writes;
+  r2_counter_fn completed_writes;
 };
 
 void *g_ramulator2_dso = NULL;
@@ -110,6 +117,19 @@ void load_ramulator2_api() {
       reinterpret_cast<r2_tck_ns_fn>(load_symbol("sgram_ramulator2_tck_ns"));
   g_ramulator2_api.ticks =
       reinterpret_cast<r2_ticks_fn>(load_symbol("sgram_ramulator2_ticks"));
+  g_ramulator2_api.outstanding_reads = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_outstanding_reads"));
+  g_ramulator2_api.callback_untracked_writes =
+      reinterpret_cast<r2_counter_fn>(
+          load_symbol("sgram_ramulator2_callback_untracked_writes"));
+  g_ramulator2_api.accepted_reads = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_accepted_reads"));
+  g_ramulator2_api.completed_reads = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_completed_reads"));
+  g_ramulator2_api.accepted_writes = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_accepted_writes"));
+  g_ramulator2_api.completed_writes = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_completed_writes"));
 }
 
 void create_ramulator2_if_needed() {
@@ -405,13 +425,41 @@ void sgram_backend_t::print(FILE *fp) const {
   if (m_backend_kind == BACKEND_RAMULATOR2) {
     unsigned long long ticks =
         g_ramulator2_handle ? g_ramulator2_api.ticks(g_ramulator2_handle) : 0;
+    unsigned long long global_outstanding_reads =
+        g_ramulator2_handle
+            ? g_ramulator2_api.outstanding_reads(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_callback_untracked_writes =
+        g_ramulator2_handle
+            ? g_ramulator2_api.callback_untracked_writes(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_accepted_reads =
+        g_ramulator2_handle
+            ? g_ramulator2_api.accepted_reads(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_completed_reads =
+        g_ramulator2_handle
+            ? g_ramulator2_api.completed_reads(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_accepted_writes =
+        g_ramulator2_handle
+            ? g_ramulator2_api.accepted_writes(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_completed_writes =
+        g_ramulator2_handle
+            ? g_ramulator2_api.completed_writes(g_ramulator2_handle)
+            : 0;
     fprintf(fp,
             "SGRAM Ramulator2 backend partition %u: pending=%zu completed=%zu "
             "returnq_full=%u queue_limit=%u bridge_ticks=%llu "
             "ticks_per_dram_cycle=%.6f "
             "accepted_reads=%llu completed_reads=%llu accepted_writes=%llu "
             "rejected=%llu rejected_inflight=%llu rejected_ramulator=%llu "
-            "backend_full=%llu global_inflight_reads=%u inflight_limit=%u\n",
+            "backend_full=%llu global_inflight_reads=%u inflight_limit=%u "
+            "global_outstanding_reads=%llu "
+            "global_callback_untracked_writes=%llu "
+            "global_accepted_reads=%llu global_completed_reads=%llu "
+            "global_accepted_writes=%llu global_completed_writes=%llu\n",
             m_partition_id, m_pending.size(), m_completed.size(),
             m_returnq->full() ? 1 : 0, m_queue_limit, ticks,
             g_ramulator2_ticks_per_dram_cycle,
@@ -420,7 +468,10 @@ void sgram_backend_t::print(FILE *fp) const {
             m_num_ramulator2_accepted_writes, m_num_rejected,
             m_num_rejected_inflight, m_num_rejected_ramulator,
             m_num_backend_full, g_ramulator2_inflight_reads,
-            g_ramulator2_inflight_read_limit);
+            g_ramulator2_inflight_read_limit, global_outstanding_reads,
+            global_callback_untracked_writes, global_accepted_reads,
+            global_completed_reads, global_accepted_writes,
+            global_completed_writes);
   } else {
     fprintf(fp,
             "SGRAM fixed backend partition %u: pending=%zu returnq_full=%u "

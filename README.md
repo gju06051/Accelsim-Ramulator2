@@ -19,6 +19,7 @@ Accelsim-Ramulator/
     accelsim_ramulator/       # bridge, configs, docs, validation runners
   gpu_benchmark/
     benchmarks/main/          # default benchmark manifest and local drop zone
+    benchmarks/system/        # synthetic microbenchmarks for simulator checks
     benchmarks/inventory/     # broader candidate manifests
     common/                   # packaged benchmark harness, binaries, and data
     docs/                     # benchmark layout notes
@@ -40,10 +41,17 @@ Ramulator2 bridge, runtime config files, benchmark runner, and project notes.
 - HBM2e, HBM3 SID, and HBM4-oriented Ramulator2 YAML configs.
 - A100 and H100 AccelSim config variants, including H100 1/5 and full H100
   HBM3 layouts.
-- A curated main benchmark set and a larger operational benchmark pool.
+- A curated main benchmark set, a separate microbenchmark system-check set, and
+  a larger operational benchmark pool.
 
 Generated result directories, trace dumps, replay outputs, and large paper/spec
 archives are not part of normal commits.
+
+If this repository is cloned on another machine, the git-tracked sources are
+not enough for the prepared main trace/graph benchmark set.  Use
+`gpu_benchmark/scripts/package_local_artifacts.py` to move the ignored local
+payloads as one tarball; the current workstation bundle is documented in
+`gpu_benchmark/benchmarks/README.md`.
 
 ## Quick Start
 
@@ -124,7 +132,7 @@ Run a natural-completion H100 1/5 microbenchmark check:
 cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset accelsim_ramulator_main \
+  --preset accelsim_ramulator_system_check \
   --benchmarks micro_mem_bw,micro_mem_lat,micro_l2_bw_32f,micro_l2_lat \
   --config-variant h100_1stack \
   --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
@@ -144,7 +152,7 @@ Run the matching full H100 check:
 cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset accelsim_ramulator_main \
+  --preset accelsim_ramulator_system_check \
   --benchmarks micro_mem_bw,micro_mem_lat,micro_l2_bw_32f,micro_l2_lat \
   --config-variant h100_full \
   --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml \
@@ -199,19 +207,19 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 73 representative benchmarks:
+It currently contains 61 representative application/trace benchmarks:
 
 | Class | Count |
 | --- | ---: |
-| Streaming | 19 |
-| Mixed-locality | 36 |
-| Irregular | 18 |
+| Streaming | 13 |
+| Mixed-locality | 33 |
+| Irregular | 15 |
 
 Suite sources:
 
 | Manifest suite | Notes |
 | --- | --- |
-| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li`, `microbench` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. Lonestar main rows use generated medium RMAT `.gr` inputs. |
+| `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. Lonestar main rows use generated medium RMAT `.gr` inputs. |
 | `graphBIG` | Standalone GraphBIG GPU checkout using the staged LDBC medium graph dataset. |
 | `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
 | `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
@@ -221,16 +229,28 @@ Main benchmark coverage by workload field:
 
 | Field | Benchmarks |
 | --- | --- |
-| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax`, `polybench_covariance`, `polybench_2mm`, `polybench_gramschmidt`, `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
-| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `polybench_fdtd2d`, `ispass_ray`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_myocyte`, `proxy_lulesh`, `parboil_stencil`, `parboil_lbm`, `dragon_amr` |
+| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax`, `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
+| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `ispass_ray`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_myocyte`, `proxy_lulesh`, `parboil_stencil`, `parboil_lbm`, `dragon_amr` |
 | Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `graphbig_kcore`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` |
 | Search, lookup, joins, and data mining | `ispass_lps`, `ispass_lib`, `ispass_nn`, `ispass_nqu`, `rodinia_streamcluster`, `proxy_xsbench`, `dragon_join` |
 | Particle, molecular, and probabilistic tracking | `rodinia_lavamd`, `rodinia_particlefilter_naive`, `parboil_cutcp` |
 | Dynamic programming and path-style kernels | `rodinia_nw`, `rodinia_pathfinder`, `pannotia_fw_block` |
 | Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
-| Memory-system microbenchmarks | `micro_mem_atom_size`, `micro_mem_bw`, `micro_mem_lat`, `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_atomic_add_bw_conflict`, `micro_l2_access_grain` |
 | Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
+
+Synthetic memory-system microbenchmarks now live in:
+
+```text
+gpu_benchmark/benchmarks/system/manifest.tsv
+```
+
+Run them with `--preset accelsim_ramulator_system_check` when validating bridge
+counters, queue pressure, latency, bandwidth, cache-path behavior, or atomics.
+
+Long-running native PolyBench rows `polybench_fdtd2d`,
+`polybench_gramschmidt`, `polybench_covariance`, and `polybench_2mm` are kept
+out of the main set until smaller rebuilt PolyBench inputs are available.
 
 Graph input sizing:
 

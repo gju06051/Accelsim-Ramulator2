@@ -68,8 +68,10 @@ GRAPHBIG_DATA = GPU_BENCHMARK_ROOT / "suites" / "graphBIG" / "dataset" / "small"
 PARBOIL_DATA = GPU_BENCHMARK_ROOT / "common" / "gpu-app-collection-harness" / "data_dirs" / "parboil" / "datasets"
 LOCAL_BENCHMARK_DIR = INTEGRATION_ROOT / "benchmarks"
 GPU_BENCHMARK_MAIN_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "main"
+GPU_BENCHMARK_SYSTEM_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "system"
 GPU_BENCHMARK_INVENTORY_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "inventory"
 MANIFEST_MAIN = GPU_BENCHMARK_MAIN_DIR / "manifest.tsv"
+MANIFEST_SYSTEM_CHECK = GPU_BENCHMARK_SYSTEM_DIR / "manifest.tsv"
 MANIFEST_OPERATIONAL = LOCAL_BENCHMARK_DIR / "operational_manifest.tsv"
 MANIFEST_FINAL = LOCAL_BENCHMARK_DIR / "final_manifest.tsv"
 MANIFEST_BROAD = GPU_BENCHMARK_INVENTORY_DIR / "sg_hbm_benchmark_manifest_broad.tsv"
@@ -306,6 +308,7 @@ def load_manifest_benchmarks(path: Path) -> tuple[Benchmark, ...]:
 
 
 MANIFEST_MAIN_BENCHMARKS = load_manifest_benchmarks(MANIFEST_MAIN)
+MANIFEST_SYSTEM_CHECK_BENCHMARKS = load_manifest_benchmarks(MANIFEST_SYSTEM_CHECK)
 MANIFEST_OPERATIONAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_OPERATIONAL)
 MANIFEST_FINAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_FINAL)
 MANIFEST_BROAD_BENCHMARKS = load_manifest_benchmarks(MANIFEST_BROAD)
@@ -319,6 +322,7 @@ BENCHMARK_PRESETS: dict[str, tuple[Benchmark, ...]] = {
     "core": CORE_BENCHMARKS,
     "graphbig": GRAPHBIG_BENCHMARKS,
     "accelsim_ramulator_main": MANIFEST_MAIN_BENCHMARKS or MANIFEST_FINAL_BENCHMARKS,
+    "accelsim_ramulator_system_check": MANIFEST_SYSTEM_CHECK_BENCHMARKS,
     "accelsim_ramulator_operational": MANIFEST_OPERATIONAL_BENCHMARKS,
     "accelsim_ramulator_final": MANIFEST_FINAL_BENCHMARKS,
     "stackganged": CORE_BENCHMARKS + GRAPHBIG_BENCHMARKS,
@@ -351,7 +355,12 @@ BACKEND_PARTITION_STAT_RE = re.compile(
     r"accepted_reads=(\d+) completed_reads=(\d+) "
     r"accepted_writes=(\d+) rejected=(\d+)"
     r"(?: rejected_inflight=(\d+) rejected_ramulator=(\d+) "
-    r"backend_full=(\d+) global_inflight_reads=(\d+) inflight_limit=(\d+))?"
+    r"backend_full=(\d+) global_inflight_reads=(\d+) inflight_limit=(\d+)"
+    r"(?: global_outstanding_reads=(\d+) "
+    r"global_callback_untracked_writes=(\d+) "
+    r"global_accepted_reads=(\d+) global_completed_reads=(\d+) "
+    r"global_accepted_writes=(\d+) global_completed_writes=(\d+))?"
+    r")?"
 )
 BACKEND_RAMULATOR_STAT_RE = re.compile(
     r"SGRAM Ramulator2 backend partition (?P<partition>\d+): .*?"
@@ -1032,6 +1041,12 @@ def extract_backend_partition_stats(
     stats: dict[int, tuple[int, int, int, int, int, int, int]] = {}
     global_inflight_reads = ""
     inflight_limit = ""
+    global_outstanding_reads = ""
+    global_callback_untracked_writes = ""
+    global_accepted_reads = ""
+    global_completed_reads = ""
+    global_accepted_writes = ""
+    global_completed_writes = ""
     for match in BACKEND_PARTITION_STAT_RE.finditer(stdout):
         partition = int(match.group(1))
         accepted_reads = int(match.group(2))
@@ -1045,6 +1060,13 @@ def extract_backend_partition_stats(
             global_inflight_reads = match.group(9)
         if match.group(10) is not None:
             inflight_limit = match.group(10)
+        if match.group(11) is not None:
+            global_outstanding_reads = match.group(11)
+            global_callback_untracked_writes = match.group(12)
+            global_accepted_reads = match.group(13)
+            global_completed_reads = match.group(14)
+            global_accepted_writes = match.group(15)
+            global_completed_writes = match.group(16)
         stats[partition] = (
             accepted_reads,
             completed_reads,
@@ -1069,6 +1091,12 @@ def extract_backend_partition_stats(
             "backend_total_full_stalls": "",
             "backend_global_inflight_reads": "",
             "backend_inflight_limit": "",
+            "backend_global_outstanding_reads": "",
+            "backend_global_callback_untracked_writes": "",
+            "backend_global_accepted_reads": "",
+            "backend_global_completed_reads": "",
+            "backend_global_accepted_writes": "",
+            "backend_global_completed_writes": "",
             "backend_accepted_reads_by_partition": "",
             "backend_accepted_writes_by_partition": "",
             "backend_rejected_by_partition": "",
@@ -1131,6 +1159,12 @@ def extract_backend_partition_stats(
         "backend_total_full_stalls": sum(backend_full_by_partition),
         "backend_global_inflight_reads": global_inflight_reads,
         "backend_inflight_limit": inflight_limit,
+        "backend_global_outstanding_reads": global_outstanding_reads,
+        "backend_global_callback_untracked_writes": global_callback_untracked_writes,
+        "backend_global_accepted_reads": global_accepted_reads,
+        "backend_global_completed_reads": global_completed_reads,
+        "backend_global_accepted_writes": global_accepted_writes,
+        "backend_global_completed_writes": global_completed_writes,
         "backend_accepted_reads_by_partition": format_int_list(
             accepted_reads_by_partition
         ),
@@ -1698,6 +1732,12 @@ def main() -> int:
         "backend_total_full_stalls",
         "backend_global_inflight_reads",
         "backend_inflight_limit",
+        "backend_global_outstanding_reads",
+        "backend_global_callback_untracked_writes",
+        "backend_global_accepted_reads",
+        "backend_global_completed_reads",
+        "backend_global_accepted_writes",
+        "backend_global_completed_writes",
         "backend_accepted_reads_by_partition",
         "backend_accepted_writes_by_partition",
         "backend_rejected_by_partition",

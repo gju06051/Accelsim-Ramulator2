@@ -16,7 +16,12 @@ struct sgram_ramulator2_system {
   Ramulator::IFrontEnd *frontend = nullptr;
   Ramulator::IMemorySystem *memory_system = nullptr;
   bool finalized = false;
-  unsigned long long outstanding = 0;
+  unsigned long long accepted_reads = 0;
+  unsigned long long completed_reads = 0;
+  unsigned long long outstanding_reads = 0;
+  unsigned long long accepted_writes = 0;
+  unsigned long long completed_writes = 0;
+  unsigned long long callback_untracked_writes = 0;
   unsigned long long ticks = 0;
 };
 
@@ -51,10 +56,10 @@ extern "C" void sgram_ramulator2_destroy(void *handle) {
   auto *system = static_cast<sgram_ramulator2_system *>(handle);
   if (!system) return;
   sgram_ramulator2_finalize(handle);
-  if (system->outstanding != 0) {
+  if (system->outstanding_reads != 0) {
     std::cerr << "sgram_ramulator2_destroy: leaving Ramulator2 objects alive "
-              << "because " << system->outstanding
-              << " requests are still outstanding" << std::endl;
+              << "because " << system->outstanding_reads
+              << " read callbacks are still outstanding" << std::endl;
     delete system;
     return;
   }
@@ -70,11 +75,20 @@ extern "C" int sgram_ramulator2_send(
   if (!system || !system->memory_system) return 0;
 
   bool counted = false;
+  bool is_read = type == Ramulator::Request::Type::Read;
+  bool is_write = type == Ramulator::Request::Type::Write;
   try {
     Ramulator::Request req(
         static_cast<Ramulator::Addr_t>(addr), type, source_id,
         [system, payload, user, callback](Ramulator::Request &completed) {
-          if (system->outstanding > 0) system->outstanding--;
+          if (completed.type_id == Ramulator::Request::Type::Read) {
+            if (system->outstanding_reads > 0) system->outstanding_reads--;
+            system->completed_reads++;
+          } else if (completed.type_id == Ramulator::Request::Type::Write) {
+            if (system->callback_untracked_writes > 0)
+              system->callback_untracked_writes--;
+            system->completed_writes++;
+          }
           if (callback) {
             callback(user, payload,
                      static_cast<unsigned long long>(completed.addr),
@@ -84,13 +98,33 @@ extern "C" int sgram_ramulator2_send(
           }
         });
     req.m_payload = payload;
-    system->outstanding++;
+    if (is_read) {
+      system->outstanding_reads++;
+    } else if (is_write) {
+      system->callback_untracked_writes++;
+    }
     counted = true;
-    if (system->memory_system->send(req)) return 1;
-    system->outstanding--;
+    if (system->memory_system->send(req)) {
+      if (is_read) {
+        system->accepted_reads++;
+      } else if (is_write) {
+        system->accepted_writes++;
+      }
+      return 1;
+    }
+    if (is_read && system->outstanding_reads > 0) {
+      system->outstanding_reads--;
+    } else if (is_write && system->callback_untracked_writes > 0) {
+      system->callback_untracked_writes--;
+    }
     return 0;
   } catch (const std::exception &e) {
-    if (counted && system->outstanding > 0) system->outstanding--;
+    if (counted && is_read && system->outstanding_reads > 0) {
+      system->outstanding_reads--;
+    } else if (counted && is_write &&
+               system->callback_untracked_writes > 0) {
+      system->callback_untracked_writes--;
+    }
     print_exception("send", e);
     return 0;
   }
@@ -122,9 +156,16 @@ extern "C" void sgram_ramulator2_finalize(void *handle) {
       system->finalized = true;
       return;
     }
-    if (system->outstanding != 0) {
+    if (system->outstanding_reads != 0 ||
+        system->callback_untracked_writes != 0) {
       std::cerr << "sgram_ramulator2_finalize: emitting Ramulator2 stats with "
-                << system->outstanding << " requests still outstanding"
+                << "outstanding_reads=" << system->outstanding_reads
+                << " callback_untracked_writes="
+                << system->callback_untracked_writes
+                << " accepted_reads=" << system->accepted_reads
+                << " completed_reads=" << system->completed_reads
+                << " accepted_writes=" << system->accepted_writes
+                << " completed_writes=" << system->completed_writes
                 << std::endl;
     }
     if (system->frontend) system->frontend->finalize();
@@ -150,4 +191,35 @@ extern "C" double sgram_ramulator2_tck_ns(void *handle) {
 extern "C" unsigned long long sgram_ramulator2_ticks(void *handle) {
   auto *system = static_cast<sgram_ramulator2_system *>(handle);
   return system ? system->ticks : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_outstanding_reads(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->outstanding_reads : 0;
+}
+
+extern "C" unsigned long long
+sgram_ramulator2_callback_untracked_writes(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->callback_untracked_writes : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_accepted_reads(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->accepted_reads : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_completed_reads(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->completed_reads : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_accepted_writes(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->accepted_writes : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_completed_writes(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->completed_writes : 0;
 }
