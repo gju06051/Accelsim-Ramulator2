@@ -3,7 +3,7 @@
 `manifest.tsv` is the active AccelSim + Ramulator2 benchmark list. The
 simulator runner preset `accelsim_ramulator_main` loads this file directly.
 
-The current main set has 61 application/trace rows after moving synthetic
+The current main set has 74 application/trace rows after moving synthetic
 microbenchmarks to the system-check set and removing long-tail PolyBench rows
 that cannot be shortened without rebuilding their sources.
 
@@ -59,12 +59,27 @@ For full row-by-row benchmark arguments, inputs, and trace provenance, see
 | `manifest.graph_medium_large.tsv` | Extra GraphBIG/Lonestar medium and large validation rows. |
 | `GRAPH_INPUTS.md` | GraphBIG/Lonestar input sizes, arguments, and generation notes. |
 | `REPRESENTATIVENESS.md` | Current memory-intensity and representative-set classification. |
+| `../prepare/OFFICIAL_MEMORY_BENCHMARKS.md` | Source provenance and validation notes for the promoted DLRM/GNN/CORAL2 proxy rows. |
 
 ## Native And Trace Rows
 
 Native rows launch CUDA binaries through the AccelSim runtime interception path.
 These include PolyBench, GraphBIG, ISPASS, Rodinia, Parboil, Lonestar,
-Pannotia, Dragon-Li, and proxy apps.
+Pannotia, Dragon-Li, proxy apps, and the promoted DLRM/GNN/CORAL2
+`official_memory_proxy` rows.
+
+The official-derived proxy binary is not checked in. Build it before running
+the DLRM/GNN/CORAL2 rows:
+
+```bash
+cd ../../../gpu_benchmark/benchmarks/prepare
+make official_memory_proxy CUDA_ARCH=80
+```
+
+The proxy is built with shared CUDA runtime linkage so AccelSim can intercept
+the launches. Its inputs are initialized on the host and copied to the device,
+so the first simulated launch is the benchmark kernel rather than an input-fill
+kernel.
 
 Trace rows launch:
 
@@ -117,6 +132,7 @@ H100 1/5-stack config still produces meaningful DRAM pressure.
 | Rodinia | Several rows use explicit larger CLI sizes, for example SRAD v2 `512x512`, Gaussian `-s 256`, LavaMD `-boxes1d 10`, NW `512 10`, and Pathfinder `1000 1000 20`. |
 | Dragon-Li | `dragon_join` uses `-l 65536 -r 65536 -m 65536`; `dragon_amr` keeps `-s 4096 -r 2`. |
 | cuDF/nvCOMP | Larger inputs are handled by regenerating trace files rather than changing the replay manifest row itself. |
+| DLRM/GNN/CORAL2 proxy | Promoted rows use deterministic synthetic inputs with official-source-derived fanout, graph dimensions, and CORAL2/RAJAPerf access motifs. |
 
 Rows with fixed local graph/input files or prepared traces should be scaled by
 staging a larger dataset or regenerating traces first. Do not only change a

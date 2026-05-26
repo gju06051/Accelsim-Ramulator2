@@ -13,20 +13,24 @@ NVCCFLAGS ?= -O3 -std=c++17 -lineinfo -ccbin $(CUDAHOSTCXX) \
 	-gencode arch=compute_$(CUDA_ARCH),code=sm_$(CUDA_ARCH) \
 	-gencode arch=compute_$(CUDA_ARCH),code=compute_$(CUDA_ARCH)
 LDFLAGS ?=
+OFFICIAL_MEMORY_NVCCFLAGS ?= $(filter-out -lineinfo,$(NVCCFLAGS)) --cudart shared
 NVCOMP_CPPFLAGS ?= -I$(NVCOMP_INCLUDE_DIR)
 NVCOMP_LDFLAGS ?= -L$(NVCOMP_LIB_DIR) -l:$(notdir $(NVCOMP_LIB))
 
 TARGETS := \
 	$(BIN_DIR)/fft_stockham \
 	$(BIN_DIR)/finance_monte_carlo \
+	$(BIN_DIR)/official_memory_proxy \
 	$(BIN_DIR)/sha256_batch \
 	$(BIN_DIR)/smith_waterman
 
-.PHONY: all clean smoke
+.PHONY: all clean smoke official_memory_proxy
 .PHONY: nvcomp nvcomp-smoke nvcomp-check
 .PHONY: tango-fetch tango tango-smoke tango-clean
 
 all: $(TARGETS)
+
+official_memory_proxy: $(BIN_DIR)/official_memory_proxy
 
 $(BIN_DIR):
 	mkdir -p $@
@@ -34,9 +38,15 @@ $(BIN_DIR):
 $(BIN_DIR)/%: $(SRC_DIR)/%.cu | $(BIN_DIR)
 	$(NVCC) $(NVCCFLAGS) $< -o $@ $(LDFLAGS)
 
+$(BIN_DIR)/official_memory_proxy: $(SRC_DIR)/official_memory_proxy.cu | $(BIN_DIR)
+	$(NVCC) $(OFFICIAL_MEMORY_NVCCFLAGS) $< -o $@ $(LDFLAGS)
+
 smoke: all
 	$(BIN_DIR)/fft_stockham --points 1024 --batches 256 --iters 1
 	$(BIN_DIR)/finance_monte_carlo --paths 262144 --steps 32
+	$(BIN_DIR)/official_memory_proxy --mode dlrm_embedding_fixed --bags 4096 --lookups 16 --dim 32 --entries 32768
+	$(BIN_DIR)/official_memory_proxy --mode gnn_feature_fetch --edges 32768 --nodes 8192 --dim 64
+	$(BIN_DIR)/official_memory_proxy --mode coral_stream_triad --elements 1048576 --iters 1
 	$(BIN_DIR)/sha256_batch --messages 262144 --iters 1
 	$(BIN_DIR)/smith_waterman --pairs 8192 --len 96
 

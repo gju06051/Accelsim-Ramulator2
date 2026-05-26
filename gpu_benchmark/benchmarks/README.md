@@ -31,7 +31,7 @@ cd simulator/accelsim_ramulator
   --list-benchmarks
 ```
 
-The current main set has 61 application/trace rows. Native rows run CUDA binaries through the
+The current main set has 74 application/trace rows. Native rows run CUDA binaries through the
 AccelSim runtime interception path. Trace rows run
 `gpu_benchmark/scripts/run_accelsim_trace_replay.py --benchmark <name>`, which
 replays a prepared `kernelslist.g` through trace-driven AccelSim while keeping
@@ -123,6 +123,39 @@ SGRAM_TRACE_MANIFEST=gpu_benchmark/benchmarks/main/trace_manifest.memory_intensi
   simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py \
   --preset accelsim_ramulator_main ...
 ```
+
+## Official-Derived Native Proxy Rows
+
+The promoted `prepare-dlrm`, `prepare-gnn`, and `prepare-coral2` rows are
+native CUDA proxy kernels built from
+`gpu_benchmark/benchmarks/prepare/src/official_memory_proxy.cu`. They are not
+MLPerf or CORAL2 submission-compliance workloads. They preserve memory-system
+motifs from the locally staged official sources while staying small and stable
+enough for AccelSim + Ramulator2.
+
+Preparation details:
+
+| Group | Local source used while preparing | What was preserved | How it runs now |
+| --- | --- | --- | --- |
+| DLRM | Local MLCommons DLRM-v2 and DLRM-v3 checkouts under `prepare/dlrm/` | Embedding-bag fanout, high-fanout quantile gather, and long sequence gather structure | Native `official_memory_proxy` embedding gather kernels with deterministic synthetic tables and indices |
+| GNN | Local MLCommons R-GAT and gSuite/PubMed checkouts under `prepare/dlrm/inference/graph/R-GAT` and `prepare/gnn/gsuite` | Irregular neighbor feature fetch, relation-aware gather, and PubMed node/edge/feature dimensions | Native feature-fetch and relation-gather kernels with destination-indexed edge outputs |
+| CORAL2 | Local CORAL2/RAJAPerf source archives under `prepare/coral2/` | STREAM, LTimes/Kripke-like tensor contraction, ENERGY, PLANCKIAN, and REDUCE3 access motifs | Native CUDA kernels with deterministic synthetic arrays |
+
+The source checkouts/archives above are preparation provenance and are not
+required to run the promoted rows after the proxy source is committed. Build
+the runnable binary with:
+
+```bash
+cd gpu_benchmark/benchmarks/prepare
+make official_memory_proxy CUDA_ARCH=80
+```
+
+Two AccelSim compatibility choices are intentional. The proxy uses shared CUDA
+runtime linkage so AccelSim can intercept launches, and it initializes inputs
+on the host before `cudaMemcpy` so bounded validation reaches the benchmark
+kernel first. The relation-GNN rows avoid CUDA 12 `red.global.add.f32` because
+that PTX atomic reduction form crashed the current AccelSim PTX path during
+validation.
 
 ## Main Benchmark Run Reference
 
@@ -229,6 +262,34 @@ and has 65,536 vertices and 1,048,450 edges.
 | --- | --- | --- | --- |
 | `dragon_join` | Native CUDA binary through AccelSim runtime interception. | Args: `-l 65536 -r 65536 -m 65536`. | Join kernel over generated left/right/match arrays. |
 | `dragon_amr` | Native CUDA binary through AccelSim runtime interception. | Args: `-s 4096 -r 2`. | Adaptive mesh refinement over generated hierarchical grid data. |
+
+### Official-Derived Memory Proxy Rows
+
+All rows below run the native CUDA binary
+`gpu_benchmark/benchmarks/prepare/bin/official_memory_proxy` through AccelSim
+runtime interception. Build it from
+`gpu_benchmark/benchmarks/prepare/src/official_memory_proxy.cu` with
+`make official_memory_proxy CUDA_ARCH=80`.
+
+| Benchmark | How it runs | Arguments and input | Notes |
+| --- | --- | --- | --- |
+| `dlrm_v2_embeddingbag_fixed` | Native CUDA proxy through AccelSim runtime interception. | `--mode dlrm_embedding_fixed --bags 32768 --lookups 32 --dim 64 --entries 262144 --iters 1`. Inputs are deterministic synthetic embedding tables and multi-hot indices. | Prepared from local MLCommons DLRM-v2 settings; fixed fanout embedding-bag gather/reduce. |
+| `dlrm_v2_embeddingbag_quantile` | Native CUDA proxy through AccelSim runtime interception. | `--mode dlrm_embedding_quantile --bags 16384 --lookups 100 --dim 64 --entries 262144 --iters 1`. Inputs are deterministic synthetic embedding tables and high-fanout indices. | Prepared from DLRM-v2 high-fanout quantile behavior; strongest request/KI row in bounded 1/5-stack smoke. |
+| `dlrm_v3_sequence_gather` | Native CUDA proxy through AccelSim runtime interception. | `--mode dlrm_v3_sequence_gather --sequences 32768 --seq-len 64 --dim 32 --entries 524288 --iters 1`. Inputs are deterministic synthetic sequence indices. | Prepared from DLRM-v3 sequential recommendation gather structure. |
+| `mlperf_rgat_feature_fetch` | Native CUDA proxy through AccelSim runtime interception. | `--mode gnn_feature_fetch --edges 262144 --nodes 65536 --dim 64 --iters 1`. Inputs are synthetic graph edge sources and node features. | Prepared from MLCommons R-GAT/IGBH-style irregular neighbor feature fetch. |
+| `mlperf_rgat_relation_agg` | Native CUDA proxy through AccelSim runtime interception. | `--mode gnn_relation_agg --edges 131072 --nodes 32768 --dim 32 --relations 4 --iters 1`. Inputs are synthetic src/dst/relation arrays, features, and relation weights. | Prepared from R-GAT relation-aware aggregation; writes destination-indexed edge outputs instead of atomics for AccelSim PTX stability. |
+| `gsuite_gcn_mp_pubmed` | Native CUDA proxy through AccelSim runtime interception. | `--mode gsuite_gcn_mp_pubmed --edges 44338 --nodes 19717 --dim 500 --iters 1`. Inputs use synthetic PubMed-shaped graph dimensions. | Prepared from gSuite PubMed GCN message-passing dimensions. |
+| `gsuite_sage_mp_pubmed` | Native CUDA proxy through AccelSim runtime interception. | `--mode gsuite_sage_mp_pubmed --edges 44338 --nodes 19717 --dim 128 --relations 4 --iters 1`. Inputs use synthetic PubMed-shaped graph dimensions. | Prepared from gSuite PubMed SAGE-style aggregation; destination-indexed edge outputs avoid current PTX atomic crash. |
+| `gsuite_gin_wl_pubmed` | Native CUDA proxy through AccelSim runtime interception. | `--mode gsuite_gin_wl_pubmed --edges 44338 --nodes 19717 --dim 256 --iters 1`. Inputs use synthetic PubMed-shaped graph dimensions. | Prepared from gSuite GIN/WL-style feature gather dimensions. |
+| `coral2_rajaperf_stream_triad` | Native CUDA proxy through AccelSim runtime interception. | `--mode coral_stream_triad --elements 4194304 --iters 3`. Inputs are deterministic synthetic arrays. | Prepared from RAJAPerf STREAM TRIAD. |
+| `coral2_rajaperf_ltimes` | Native CUDA proxy through AccelSim runtime interception. | `--mode coral_ltimes --zones 8192 --groups 32 --dirs 32 --moments 8 --iters 1`. Inputs are deterministic synthetic `phi` and `ell` arrays. | Prepared from CORAL2 transport/Kripke-like LTimes tensor contraction. |
+| `coral2_rajaperf_energy` | Native CUDA proxy through AccelSim runtime interception. | `--mode coral_energy --elements 4194304 --iters 2`. Inputs are deterministic synthetic hydro arrays. | Prepared from RAJAPerf ENERGY-style hydro update. |
+| `coral2_rajaperf_planckian` | Native CUDA proxy through AccelSim runtime interception. | `--mode coral_planckian --elements 1048576 --groups 16 --iters 1`. Inputs are deterministic synthetic temperature arrays. | Prepared from RAJAPerf PLANCKIAN-style grouped physics table computation; bounded smoke shows low early request/KI, so treat as functional CORAL2 coverage rather than a strong memory-pressure row. |
+| `coral2_rajaperf_reduce3` | Native CUDA proxy through AccelSim runtime interception. | `--mode coral_reduce3 --elements 4194304 --iters 2`. Inputs are deterministic synthetic arrays and block partial output. | Prepared from RAJAPerf REDUCE3_INT-style multi-array reduction. |
+
+The promoted proxy rows passed H100 1/5-stack Samsung HBM3SID q64 bounded
+validation with `status_counts=MAX_CYCLE_OK:13`. The validation result is
+`simulator/accelsim_ramulator/results/h100_1stack_official_memory_smoke_q64_20260526_v6/summary.csv`.
 
 ### nvCOMP Trace Rows
 
