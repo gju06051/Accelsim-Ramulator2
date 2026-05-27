@@ -207,13 +207,13 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 61 representative application/trace benchmarks:
+It currently contains 74 representative application/trace benchmarks:
 
 | Class | Count |
 | --- | ---: |
-| Streaming | 13 |
-| Mixed-locality | 33 |
-| Irregular | 15 |
+| Streaming | 15 |
+| Mixed-locality | 38 |
+| Irregular | 21 |
 
 Suite sources:
 
@@ -224,6 +224,9 @@ Suite sources:
 | `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
 | `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
 | `prepare-tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
+| `prepare-dlrm` | Official-derived native CUDA proxy rows prepared from locally staged MLCommons DLRM-v2/v3 sources. |
+| `prepare-gnn` | Official-derived native CUDA proxy rows prepared from locally staged MLCommons R-GAT and gSuite/PubMed sources. |
+| `prepare-coral2` | Official-derived native CUDA proxy rows prepared from locally staged CORAL2/RAJAPerf source archives. |
 
 Main benchmark coverage by workload field:
 
@@ -238,6 +241,9 @@ Main benchmark coverage by workload field:
 | Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
 | Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
+| Recommendation embedding and sequence gathers | `dlrm_v2_embeddingbag_fixed`, `dlrm_v2_embeddingbag_quantile`, `dlrm_v3_sequence_gather` |
+| Graph neural network proxy kernels | `mlperf_rgat_feature_fetch`, `mlperf_rgat_relation_agg`, `gsuite_gcn_mp_pubmed`, `gsuite_sage_mp_pubmed`, `gsuite_gin_wl_pubmed` |
+| CORAL2 scientific proxy kernels | `coral2_rajaperf_stream_triad`, `coral2_rajaperf_ltimes`, `coral2_rajaperf_energy`, `coral2_rajaperf_planckian`, `coral2_rajaperf_reduce3` |
 
 Synthetic memory-system microbenchmarks now live in:
 
@@ -264,6 +270,26 @@ Additional medium/large graph validation rows live in
 `gpu_benchmark/benchmarks/main/manifest.graph_medium_large.tsv`. The detailed
 input layout, command arguments, generation path, and validation notes are in
 `gpu_benchmark/benchmarks/main/GRAPH_INPUTS.md`.
+
+Official-derived native proxy rows:
+
+The promoted DLRM, GNN, and CORAL2 rows run
+`gpu_benchmark/benchmarks/prepare/bin/official_memory_proxy` through the normal
+AccelSim CUDA runtime interception path. Build the proxy before running these
+rows:
+
+```bash
+cd gpu_benchmark/benchmarks/prepare
+make official_memory_proxy CUDA_ARCH=80
+```
+
+The proxy source is committed at
+`gpu_benchmark/benchmarks/prepare/src/official_memory_proxy.cu`. It uses
+deterministic synthetic inputs with dimensions and memory motifs chosen from the
+locally staged official DLRM, GNN, and CORAL2 sources. These rows are intended
+for memory-system studies, not MLPerf or CORAL2 compliance reporting. Full
+row-by-row arguments are documented in
+`gpu_benchmark/benchmarks/main/README.md`.
 
 Trace-driven rows:
 
