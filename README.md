@@ -50,8 +50,11 @@ archives are not part of normal commits.
 If this repository is cloned on another machine, the git-tracked sources are
 not enough for the prepared main trace/graph benchmark set.  Use
 `gpu_benchmark/scripts/package_local_artifacts.py` to move the ignored local
-payloads as one tarball; the current workstation bundle is documented in
-`gpu_benchmark/benchmarks/README.md`.
+payloads as one tarball; the current workstation bundle and optional trace-only
+groups are documented in `gpu_benchmark/benchmarks/README.md`. DLRM/GNN/CORAL2
+proxy traces, when generated, are moved with `--group trace-official-memory`;
+the default main manifest can still run those rows natively from committed
+source without that optional trace bundle.
 
 ## Quick Start
 
@@ -310,6 +313,7 @@ Trace preparation summary:
 | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | Ran RAPIDS cuDF microbenchmarks from `prepare/cudf` with `cudaProfilerStart/Stop` around only the selected operation, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 1 MiB synthetic-column traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/...`. |
 | `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | Ran compact native-cuDF TPC-H-shaped query scripts over synthetic tables with profiler scoping, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 64 MiB query traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/...`. |
 | `tango_*` | Sparse-fetched Tango upstream models, built the selected CUDA models with `CUDA_ARCH=86`, and captured SM86 NVBit traces for H100 1/5 validation. | SM86 | `CifarNet`, `GRU`, `LSTM`, and `AlexNet`; validation trace directories live under `/tmp/tango_*_h100_1stack_validation_sm86_20260522/...`. |
+| `dlrm_*`, `mlperf_rgat_*`, `gsuite_*`, `coral2_*` | Optional trace set generated from the committed `official_memory_proxy` binary with `run_official_memory_accelsim_trace.py`. | SM80 | Paths are recorded in `gpu_benchmark/benchmarks/main/trace_manifest.official_memory.tsv` and packaged with `--group trace-official-memory`. |
 
 The trace payloads are intentionally not committed. `trace_manifest.tsv` records
 the expected local paths, and `.gitignore` keeps the large prepared trace

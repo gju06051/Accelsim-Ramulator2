@@ -34,11 +34,14 @@ GRAPH_MAIN = (
     ),
 )
 
-TRACE_DEFAULT = (
+TRACE_RUNTIME = (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/accelsim_trace_runtime",
         "Trace replay accel-sim.out and trace.config runtime",
     ),
+)
+
+TRACE_DEFAULT = TRACE_RUNTIME + (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_ramulator_traces_comp",
         "Default nvCOMP Accel-Sim traces",
@@ -58,6 +61,13 @@ TRACE_DEFAULT = (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/tango_large_h100_1stack_validation_sm86_20260522",
         "Default Tango AlexNet SM86 validation trace",
+    ),
+)
+
+TRACE_OFFICIAL_MEMORY = (
+    Artifact(
+        "gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces",
+        "Optional DLRM/GNN/CORAL2 official-derived proxy Accel-Sim traces",
     ),
 )
 
@@ -88,8 +98,10 @@ LARGE_GRAPHS = (
 GROUPS: dict[str, tuple[Artifact, ...]] = {
     "main-minimal": GRAPH_MAIN + TRACE_DEFAULT,
     "graphs-main": GRAPH_MAIN,
+    "trace-runtime": TRACE_RUNTIME,
     "trace-default": TRACE_DEFAULT,
     "trace-memory": TRACE_MEMORY,
+    "trace-official-memory": TRACE_OFFICIAL_MEMORY,
     "large-graphs": LARGE_GRAPHS,
     "docs": (Artifact("docs", "Local reference PDFs"),),
     "prepare-bin": (Artifact("gpu_benchmark/benchmarks/prepare/bin", "Optional prepared binaries"),),
@@ -98,6 +110,7 @@ GROUPS: dict[str, tuple[Artifact, ...]] = {
 
 ALIASES: dict[str, tuple[str, ...]] = {
     "all-inputs": ("main-minimal", "trace-memory", "large-graphs"),
+    "all-traces": ("trace-default", "trace-memory", "trace-official-memory"),
     "all-local": ("main-minimal", "trace-memory", "large-graphs", "docs", "prepare-bin"),
 }
 

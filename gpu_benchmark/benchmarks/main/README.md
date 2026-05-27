@@ -53,9 +53,11 @@ For full row-by-row benchmark arguments, inputs, and trace provenance, see
 | File | Role |
 | --- | --- |
 | `manifest.tsv` | Active main run list. |
+| `manifest.official_memory_trace.tsv` | Optional trace-replay run list for DLRM/GNN/CORAL2 proxy rows. |
 | `../system/manifest.tsv` | Synthetic microbenchmarks for simulator and memory-system sanity checks. |
 | `trace_manifest.tsv` | Default trace replay paths for `nvcomp_*`, `tango_*`, and `cudf_*` rows. |
 | `trace_manifest.memory_intensive.tsv` | Larger generated trace paths for H100 memory-pressure validation. |
+| `trace_manifest.official_memory.tsv` | Optional DLRM/GNN/CORAL2 proxy trace paths. |
 | `manifest.graph_medium_large.tsv` | Extra GraphBIG/Lonestar medium and large validation rows. |
 | `GRAPH_INPUTS.md` | GraphBIG/Lonestar input sizes, arguments, and generation notes. |
 | `REPRESENTATIVENESS.md` | Current memory-intensity and representative-set classification. |
@@ -163,6 +165,17 @@ The memory-intensive trace manifest currently points to:
 | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces. |
 | `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | 128 MiB profiler-scoped synthetic TPC-H-shaped traces. |
 | `tango_*` | Existing SM86 Tango traces; not yet regenerated into a larger memory-intensive set. |
+
+DLRM/GNN/CORAL2 proxy rows are native in `manifest.tsv`. If those rows should
+be moved as trace files, generate the optional trace bundle with:
+
+```bash
+gpu_benchmark/scripts/run_official_memory_accelsim_trace.py --force
+```
+
+Then package/unpack `--group trace-official-memory` and run
+`manifest.official_memory_trace.tsv`, whose commands read
+`trace_manifest.official_memory.tsv`.
 
 Regenerate the larger trace manifest with:
 

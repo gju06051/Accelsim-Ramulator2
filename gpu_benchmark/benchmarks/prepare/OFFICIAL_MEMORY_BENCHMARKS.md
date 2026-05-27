@@ -63,6 +63,40 @@ cd simulator/accelsim_ramulator
 
 Use `--max-cycle 0` only after the bounded backend smoke passes.
 
+## Optional Trace Replay
+
+The promoted main rows use native CUDA runtime interception by default. To move
+these rows to another clone as Accel-Sim trace files, generate the optional
+trace bundle:
+
+```bash
+gpu_benchmark/scripts/run_official_memory_accelsim_trace.py --force
+```
+
+This writes traces under:
+
+```text
+gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/
+```
+
+and records replay paths in:
+
+```text
+gpu_benchmark/benchmarks/main/trace_manifest.official_memory.tsv
+```
+
+Package the generated trace directory separately from git-tracked source:
+
+```bash
+gpu_benchmark/scripts/package_local_artifacts.py pack \
+  --group trace-official-memory \
+  --output /tmp/official_memory_accelsim_traces.tar
+```
+
+After unpacking the tarball in a fresh clone, run
+`gpu_benchmark/benchmarks/main/manifest.official_memory_trace.tsv` to replay
+the DLRM/GNN/CORAL2 traces through the normal AccelSim + Ramulator2 runner.
+
 ## Local Validation
 
 The H100 1/5-stack Samsung HBM3SID q64 bounded smoke passed on 2026-05-26:

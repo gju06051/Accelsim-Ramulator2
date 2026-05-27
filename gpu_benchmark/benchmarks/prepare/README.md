@@ -107,3 +107,20 @@ The proxy is built with shared CUDA runtime linkage so AccelSim can intercept
 kernel launches. Its data arrays are initialized on the host and copied to the
 device so the first simulated launch is the benchmark kernel, not an input-fill
 kernel.
+
+To generate optional Accel-Sim trace replay artifacts for the DLRM/GNN/CORAL2
+proxy rows, run:
+
+```bash
+gpu_benchmark/scripts/run_official_memory_accelsim_trace.py --force
+```
+
+The generated traces live under
+`gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/`.
+They are ignored by git and can be moved to another clone with:
+
+```bash
+gpu_benchmark/scripts/package_local_artifacts.py pack \
+  --group trace-official-memory \
+  --output /tmp/official_memory_accelsim_traces.tar
+```

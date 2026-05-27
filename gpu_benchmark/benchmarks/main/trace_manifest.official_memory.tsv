@@ -1,0 +1,14 @@
+name	trace_path	trace_sm	trace_config	source
+dlrm_v2_embeddingbag_fixed	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/dlrm_v2_embeddingbag_fixed/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+dlrm_v2_embeddingbag_quantile	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/dlrm_v2_embeddingbag_quantile/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+dlrm_v3_sequence_gather	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/dlrm_v3_sequence_gather/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+mlperf_rgat_feature_fetch	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/mlperf_rgat_feature_fetch/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+mlperf_rgat_relation_agg	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/mlperf_rgat_relation_agg/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+gsuite_gcn_mp_pubmed	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/gsuite_gcn_mp_pubmed/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+gsuite_sage_mp_pubmed	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/gsuite_sage_mp_pubmed/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+gsuite_gin_wl_pubmed	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/gsuite_gin_wl_pubmed/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+coral2_rajaperf_stream_triad	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/coral2_rajaperf_stream_triad/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+coral2_rajaperf_ltimes	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/coral2_rajaperf_ltimes/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+coral2_rajaperf_energy	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/coral2_rajaperf_energy/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+coral2_rajaperf_planckian	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/coral2_rajaperf_planckian/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
+coral2_rajaperf_reduce3	gpu_benchmark/benchmarks/prepare/results/official_memory_accelsim_traces/coral2_rajaperf_reduce3/traces/kernelslist.g	80		Official-derived DLRM/GNN/CORAL2 proxy trace
