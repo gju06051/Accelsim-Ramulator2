@@ -81,6 +81,63 @@ the launches. Its inputs are initialized on the host and copied to the device,
 so the first simulated launch is the benchmark kernel rather than an input-fill
 kernel.
 
+## Promoted DLRM/GNN/CORAL2 Rows
+
+These rows were prepared from locally staged official sources, but they are
+proxy kernels rather than compliance workloads. The source checkouts and
+archives under `../prepare/dlrm/`, `../prepare/gnn/`, and `../prepare/coral2/`
+were used to choose dimensions and memory access motifs; the runnable main rows
+only need the committed `official_memory_proxy.cu` source and the built binary.
+
+Build before running:
+
+```bash
+cd ../../../gpu_benchmark/benchmarks/prepare
+make official_memory_proxy CUDA_ARCH=80
+```
+
+Preparation choices:
+
+| Group | Preparation source | Main-row behavior |
+| --- | --- | --- |
+| DLRM | MLCommons DLRM-v2 and DLRM-v3 local sources | Deterministic embedding-table gathers preserving fixed fanout, high-fanout quantile gather, and long sequence gather patterns. |
+| GNN | MLCommons R-GAT plus gSuite/PubMed local sources | Deterministic graph feature/relation gathers preserving irregular neighbor access and PubMed-scale node/edge/feature dimensions. |
+| CORAL2 | CORAL2/RAJAPerf local source archives | Deterministic CUDA kernels preserving STREAM, LTimes/Kripke-like contraction, ENERGY, PLANCKIAN, and REDUCE3 memory motifs. |
+
+DLRM rows:
+
+| Benchmark | Arguments | Prepared behavior |
+| --- | --- | --- |
+| `dlrm_v2_embeddingbag_fixed` | `--mode dlrm_embedding_fixed --bags 32768 --lookups 32 --dim 64 --entries 262144 --iters 1` | DLRM-v2-style fixed multi-hot embedding-bag gather/reduce. |
+| `dlrm_v2_embeddingbag_quantile` | `--mode dlrm_embedding_quantile --bags 16384 --lookups 100 --dim 64 --entries 262144 --iters 1` | High-fanout embedding-bag gather based on DLRM-v2 quantile-style fanout. |
+| `dlrm_v3_sequence_gather` | `--mode dlrm_v3_sequence_gather --sequences 32768 --seq-len 64 --dim 32 --entries 524288 --iters 1` | DLRM-v3-style long sequence embedding gather. |
+
+GNN rows:
+
+| Benchmark | Arguments | Prepared behavior |
+| --- | --- | --- |
+| `mlperf_rgat_feature_fetch` | `--mode gnn_feature_fetch --edges 262144 --nodes 65536 --dim 64 --iters 1` | MLCommons R-GAT/IGBH-style irregular neighbor feature fetch. |
+| `mlperf_rgat_relation_agg` | `--mode gnn_relation_agg --edges 131072 --nodes 32768 --dim 32 --relations 4 --iters 1` | R-GAT-style relation-aware gather with destination-indexed edge outputs. |
+| `gsuite_gcn_mp_pubmed` | `--mode gsuite_gcn_mp_pubmed --edges 44338 --nodes 19717 --dim 500 --iters 1` | gSuite PubMed GCN message-passing feature fetch. |
+| `gsuite_sage_mp_pubmed` | `--mode gsuite_sage_mp_pubmed --edges 44338 --nodes 19717 --dim 128 --relations 4 --iters 1` | gSuite PubMed SAGE-style relation gather with destination-indexed edge outputs. |
+| `gsuite_gin_wl_pubmed` | `--mode gsuite_gin_wl_pubmed --edges 44338 --nodes 19717 --dim 256 --iters 1` | gSuite PubMed GIN/WL-style gathered feature transform. |
+
+CORAL2 rows:
+
+| Benchmark | Arguments | Prepared behavior |
+| --- | --- | --- |
+| `coral2_rajaperf_stream_triad` | `--mode coral_stream_triad --elements 4194304 --iters 3` | RAJAPerf STREAM TRIAD-style streaming bandwidth kernel. |
+| `coral2_rajaperf_ltimes` | `--mode coral_ltimes --zones 8192 --groups 32 --dirs 32 --moments 8 --iters 1` | CORAL2 transport/Kripke-like LTimes tensor contraction. |
+| `coral2_rajaperf_energy` | `--mode coral_energy --elements 4194304 --iters 2` | RAJAPerf ENERGY-style hydro array update. |
+| `coral2_rajaperf_planckian` | `--mode coral_planckian --elements 1048576 --groups 16 --iters 1` | RAJAPerf PLANCKIAN-style grouped physics table computation. |
+| `coral2_rajaperf_reduce3` | `--mode coral_reduce3 --elements 4194304 --iters 2` | RAJAPerf REDUCE3_INT-style multi-array reduction. |
+
+Validation note: the promoted proxy rows passed H100 1/5-stack Samsung HBM3SID
+q64 bounded validation with `status_counts=MAX_CYCLE_OK:13` in
+`simulator/accelsim_ramulator/results/h100_1stack_official_memory_smoke_q64_20260526_v6/summary.csv`.
+Because that validation used `--max-cycle 50000`, it verifies backend wiring
+and early memory behavior rather than full application completion.
+
 Trace rows launch:
 
 ```bash
