@@ -77,7 +77,8 @@ system-check benchmark and inspect:
   `analysis_backend_accepted_read_partition_cv` are reasonable for the selected
   benchmark.
 
-The same checks can be automated with:
+The matrix runner writes `summary_check.txt` and `summary_check.json`
+automatically after each run. Existing summaries can be checked manually with:
 
 ```bash
 simulator/accelsim_ramulator/scripts/check_summary.py \

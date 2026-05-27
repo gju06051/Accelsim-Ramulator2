@@ -684,6 +684,62 @@ def resolve_ramulator_inflight_read_limit(value: str, ramulator_config: Path) ->
     return parsed
 
 
+def resolve_summary_check_expected_partitions(value: str, backend: str, ramulator_config: Path) -> int | None:
+    normalized = value.strip().lower()
+    if normalized in {"", "none", "off"}:
+        return None
+    if normalized == "auto":
+        if backend != "ramulator2":
+            return None
+        return infer_ramulator_channels(ramulator_config)
+    try:
+        parsed = int(value, 0)
+    except ValueError as exc:
+        raise ValueError("--summary-check-expected-partitions must be auto, none, or an integer") from exc
+    if parsed <= 0:
+        raise ValueError("--summary-check-expected-partitions must be positive")
+    return parsed
+
+
+def run_summary_check(
+    summary: Path,
+    out_dir: Path,
+    mode: str,
+    fail_on: str,
+    expected_partitions: int | None,
+) -> int:
+    checker = Path(__file__).resolve().with_name("check_summary.py")
+    text_report = out_dir / "summary_check.txt"
+    json_report = out_dir / "summary_check.json"
+    cmd = [
+        sys.executable,
+        str(checker),
+        str(summary),
+        "--mode",
+        mode,
+        "--fail-on",
+        fail_on,
+        "--json-out",
+        str(json_report),
+    ]
+    if expected_partitions is not None:
+        cmd.extend(["--expected-partitions", str(expected_partitions)])
+
+    proc = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+    report_text = proc.stdout
+    if proc.stderr:
+        if report_text and not report_text.endswith("\n"):
+            report_text += "\n"
+        report_text += "\n[stderr]\n" + proc.stderr
+    text_report.write_text(report_text, encoding="utf-8")
+    print(f"summary_check={text_report}", flush=True)
+    print(f"summary_check_json={json_report}", flush=True)
+    print(f"summary_check_exit={proc.returncode}", flush=True)
+    if report_text:
+        print(report_text.rstrip(), flush=True)
+    return proc.returncode
+
+
 def prepare_benchmark_inputs(bench: Benchmark, run_dir: Path) -> None:
     if bench.name == "ispass_bfs":
         (run_dir / "SampleGraph.txt").write_text(
@@ -1945,6 +2001,36 @@ def main() -> int:
             "each run directory as ramulator2.yaml before being passed to the bridge."
         ),
     )
+    parser.add_argument(
+        "--summary-check",
+        choices=("on", "off"),
+        default="on",
+        help="Run scripts/check_summary.py after writing summary.csv.",
+    )
+    parser.add_argument(
+        "--summary-check-mode",
+        choices=("auto", "bounded", "unbounded"),
+        default="auto",
+        help="Mode passed to check_summary.py for bounded/unbounded interpretation.",
+    )
+    parser.add_argument(
+        "--summary-check-fail-on",
+        choices=("P0", "P1", "P2", "never"),
+        default="never",
+        help=(
+            "Quality-gate severity for the automatic post-run summary check. "
+            "The default writes summary_check.txt/json without failing the matrix run."
+        ),
+    )
+    parser.add_argument(
+        "--summary-check-expected-partitions",
+        default="auto",
+        help=(
+            "Expected backend partitions for check_summary.py. Use auto for the "
+            "Ramulator2 YAML channel count, none to disable the partition-count check, "
+            "or an explicit integer."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=0, help="Limit benchmark count for smoke tests.")
     parser.add_argument(
         "--preset",
@@ -2069,6 +2155,13 @@ def main() -> int:
         if parsed_inflight_read_limit < 0:
             print("--ramulator-inflight-read-limit must be non-negative", file=sys.stderr)
             return 2
+    try:
+        summary_check_expected_partitions = resolve_summary_check_expected_partitions(
+            args.summary_check_expected_partitions, args.backend, ramulator_config
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     (GPGPU_BUILD / "libcudart.so.12").symlink_to("libcudart.so") if not (
         GPGPU_BUILD / "libcudart.so.12"
     ).exists() else None
@@ -2098,7 +2191,10 @@ def main() -> int:
         f"ramulator_config={ramulator_config if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_inflight_read_limit={args.ramulator_inflight_read_limit if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_ticks_per_dram_cycle={args.ramulator_ticks_per_dram_cycle} "
-        f"ramulator_finalize_stats={args.ramulator_finalize_stats}"
+        f"ramulator_finalize_stats={args.ramulator_finalize_stats} "
+        f"summary_check={args.summary_check} "
+        f"summary_check_mode={args.summary_check_mode} "
+        f"summary_check_expected_partitions={summary_check_expected_partitions if summary_check_expected_partitions is not None else 'none'}"
         ,
         flush=True,
     )
@@ -2327,6 +2423,16 @@ def main() -> int:
         status_counts[str(row["status"])] = status_counts.get(str(row["status"]), 0) + 1
     print(f"summary={summary}", flush=True)
     print("status_counts=" + ",".join(f"{k}:{v}" for k, v in sorted(status_counts.items())), flush=True)
+    if args.summary_check == "on":
+        check_exit = run_summary_check(
+            summary,
+            out_dir,
+            args.summary_check_mode,
+            args.summary_check_fail_on,
+            summary_check_expected_partitions,
+        )
+        if check_exit != 0 and args.summary_check_fail_on != "never":
+            return check_exit
     return 0
 
 

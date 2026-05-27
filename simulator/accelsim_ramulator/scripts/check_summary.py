@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import sys
 from collections import Counter, defaultdict
@@ -103,6 +104,12 @@ def parse_args() -> argparse.Namespace:
         choices=("P0", "P1", "P2", "never"),
         default="P0",
         help="Exit nonzero if any issue at or above this severity is found.",
+    )
+    parser.add_argument(
+        "--json-out",
+        type=Path,
+        default=None,
+        help="Optional path to write a machine-readable JSON report.",
     )
     return parser.parse_args()
 
@@ -399,17 +406,67 @@ def format_number(value: float) -> str:
     return f"{value:.6g}"
 
 
-def print_file_report(path: Path, rows: list[dict[str, str]], issues: list[Issue], args: argparse.Namespace) -> None:
+def make_file_report(
+    path: Path, rows: list[dict[str, str]], issues: list[Issue], args: argparse.Namespace
+) -> dict:
     status_counts = Counter(get(row, "status") or "<missing>" for row in rows)
     backend_counts = Counter(get(row, "backend") or "<missing>" for row in rows)
     severity_counts = Counter(issue.severity for issue in issues)
     bounded_rows = sum(1 for row in rows if is_bounded(row, args.mode))
     ramulator_rows = sum(1 for row in rows if get(row, "backend") == "ramulator2")
 
-    print(f"Summary check: {path}")
-    print(f"  rows: {len(rows)}  ramulator2_rows: {ramulator_rows}  bounded_rows: {bounded_rows}")
-    print(f"  status: {format_counts(status_counts)}")
-    print(f"  backend: {format_counts(backend_counts)}")
+    return {
+        "path": str(path),
+        "row_count": len(rows),
+        "ramulator2_rows": ramulator_rows,
+        "bounded_rows": bounded_rows,
+        "status_counts": dict(sorted(status_counts.items())),
+        "backend_counts": dict(sorted(backend_counts.items())),
+        "issue_counts": {
+            severity: severity_counts.get(severity, 0)
+            for severity in ("P0", "P1", "P2")
+        },
+        "issues": [
+            {
+                "severity": issue.severity,
+                "check": issue.check,
+                "benchmark": issue.benchmark,
+                "message": issue.message,
+                "value": issue.value,
+            }
+            for issue in sorted(
+                issues,
+                key=lambda item: (
+                    SEVERITY_ORDER[item.severity],
+                    item.check,
+                    item.benchmark,
+                ),
+            )
+        ],
+    }
+
+
+def print_file_report(report: dict, args: argparse.Namespace) -> None:
+    issues = [
+        Issue(
+            str(issue["severity"]),
+            str(issue["check"]),
+            str(issue["benchmark"]),
+            str(issue["message"]),
+            str(issue.get("value", "")),
+        )
+        for issue in report["issues"]
+    ]
+    severity_counts = Counter(issue.severity for issue in issues)
+
+    print(f"Summary check: {report['path']}")
+    print(
+        f"  rows: {report['row_count']}  "
+        f"ramulator2_rows: {report['ramulator2_rows']}  "
+        f"bounded_rows: {report['bounded_rows']}"
+    )
+    print(f"  status: {format_counts(Counter(report['status_counts']))}")
+    print(f"  backend: {format_counts(Counter(report['backend_counts']))}")
     if severity_counts:
         print(
             "  issues: "
@@ -468,6 +525,7 @@ def main() -> int:
         return 2
 
     all_issues: list[Issue] = []
+    reports: list[dict] = []
     for path in paths:
         rows, fields = read_rows(path)
         field_set = set(fields)
@@ -476,10 +534,29 @@ def main() -> int:
             issues.append(Issue("P0", "schema", "<file>", "summary.csv has no rows"))
         for row in rows:
             check_row(row, field_set, args, issues)
-        print_file_report(path, rows, issues, args)
+        report = make_file_report(path, rows, issues, args)
+        reports.append(report)
+        print_file_report(report, args)
         all_issues.extend(issues)
 
-    if should_fail(all_issues, args.fail_on):
+    exit_code = 1 if should_fail(all_issues, args.fail_on) else 0
+    if args.json_out:
+        payload = {
+            "exit_code": exit_code,
+            "fail_on": args.fail_on,
+            "mode": args.mode,
+            "expected_partitions": args.expected_partitions,
+            "file_count": len(reports),
+            "issue_counts": {
+                severity: sum(report["issue_counts"].get(severity, 0) for report in reports)
+                for severity in ("P0", "P1", "P2")
+            },
+            "reports": reports,
+        }
+        args.json_out.parent.mkdir(parents=True, exist_ok=True)
+        args.json_out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    if exit_code:
         return 1
     return 0
 

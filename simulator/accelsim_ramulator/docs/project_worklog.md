@@ -121,6 +121,9 @@ main research target.
   files. It reports P0/P1/P2 findings for status, Ramulator stats, command
   stats, partitions, completion gaps, zero-request rows, bounded run state,
   partition/channel CV, and queue rejection pressure.
+- Wired the checker into `scripts/run_fixed_backend_matrix.py`; each completed
+  matrix run now writes `summary_check.txt` and `summary_check.json` in the
+  output directory by default.
 
 ### Runtime Build Artifact Cleanup
 
@@ -270,8 +273,9 @@ main research target.
 1. Run native AccelSim DRAM vs Ramulator2 cross-checks on a small fixed set and
    compare read/write totals, row locality, queue pressure, IPC, and runtime
    trends.
-2. Wire `scripts/check_summary.py` into long-run workflows so each completed
-   result directory gets an automatic quality report next to `summary.csv`.
+2. Use the automatic `summary_check.txt/json` reports as the first triage step
+   for long runs, and tune thresholds if a workload class needs stricter CV or
+   queue-pressure rules.
 3. Decide how strongly write timing should be modeled:
    - keep current fire-and-forget completion semantics,
    - add delayed write completion,

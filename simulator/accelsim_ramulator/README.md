@@ -186,8 +186,16 @@ For ad hoc binary runs without the matrix runner, set
 `SGRAM_CORE_GRANULARITY_PROFILE=1`; optionally set
 `SGRAM_CORE_GRANULARITY_PROFILE_FILE=/path/to/core_granularity_profile.csv`.
 
-After a run finishes, check the generated `summary.csv` before interpreting the
-numbers:
+After a run finishes, the matrix runner automatically checks the generated
+`summary.csv` and writes:
+
+```text
+summary_check.txt
+summary_check.json
+```
+
+Re-run the checker manually when inspecting older result directories or changing
+thresholds:
 
 ```bash
 ./scripts/check_summary.py \
@@ -200,8 +208,10 @@ Use `--mode bounded` for intentional `--max-cycle` smoke runs and
 statuses, missing Ramulator stats, missing command stats, partition-count
 mismatches, inactive partitions, read/write completion gaps, zero-request rows,
 high partition/channel CV, and high reject/accept ratios. Default exit behavior
-is nonzero only for P0 findings; pass `--fail-on P1` or `--fail-on P2` for a
-stricter quality gate.
+is nonzero only for P0 findings in manual mode. The runner defaults to
+`--summary-check-fail-on never` so it always leaves the quality report; pass
+`--summary-check-fail-on P0`, `P1`, or `P2` to make the matrix command itself
+fail on quality-gate findings.
 
 Config selection notes:
 

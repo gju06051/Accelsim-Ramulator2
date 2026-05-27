@@ -262,7 +262,15 @@ Useful `summary.csv` columns include:
 - `ramulator_tck_ns`, `ramulator_mhz`
 - `gpgpusim_host_timing_*`
 
-Run the post-run checker before using a result directory for reports:
+The matrix runner automatically writes a post-run quality report next to each
+`summary.csv`:
+
+```text
+summary_check.txt
+summary_check.json
+```
+
+Re-run the checker manually before using an older result directory for reports:
 
 ```bash
 cd simulator/accelsim_ramulator
@@ -275,7 +283,9 @@ cd simulator/accelsim_ramulator
 The checker reports P0/P1/P2 findings for failed statuses, missing Ramulator or
 command stats, inactive partitions, read/write completion gaps, zero-request
 rows, bounded stop conditions, high partition/channel CV, and high queue
-rejection pressure. By default it exits nonzero when any P0 issue is found.
+rejection pressure. The runner uses `--summary-check-fail-on never` by default
+so experiments finish and leave reports even when warnings exist; manual checker
+runs default to failing on P0 findings.
 
 ## Benchmark Sets
 
