@@ -31,6 +31,19 @@ The `SGRAM_*` prefix and `sgram_backend_t` type name are legacy/internal names
 for the external memory-backend hook. The functional goal is AccelSim +
 Ramulator2 co-simulation.
 
+For a fresh clone, build the local runtime shared libraries before running
+benchmarks:
+
+```bash
+./scripts/build_runtime_artifacts.sh --cuda /usr/local/cuda-12.3
+```
+
+This regenerates the ignored runtime artifacts:
+
+- `../gpgpu-sim_distribution/build/sgram_fixed/libcudart.so`
+- `../ramulator2/libramulator.so`
+- `build/ramulator2_bridge/libsgram_ramulator2_bridge.so`
+
 ## Development Boundary
 
 Keep integration-specific code here when possible:
@@ -62,7 +75,8 @@ export SGRAM_BACKEND=fixed
 export SGRAM_FIXED_LATENCY=100
 ```
 
-Build the Ramulator2 C bridge:
+Build only the Ramulator2 C bridge after Ramulator2 itself has already been
+built:
 
 ```bash
 ./scripts/build_ramulator2_bridge.sh
@@ -171,6 +185,23 @@ Use `--core-granularity-profile off` to disable this instrumentation.
 For ad hoc binary runs without the matrix runner, set
 `SGRAM_CORE_GRANULARITY_PROFILE=1`; optionally set
 `SGRAM_CORE_GRANULARITY_PROFILE_FILE=/path/to/core_granularity_profile.csv`.
+
+After a run finishes, check the generated `summary.csv` before interpreting the
+numbers:
+
+```bash
+./scripts/check_summary.py \
+  results/operational_smoke/summary.csv \
+  --expected-partitions 40
+```
+
+Use `--mode bounded` for intentional `--max-cycle` smoke runs and
+`--mode unbounded` for final natural-completion runs. The checker flags failed
+statuses, missing Ramulator stats, missing command stats, partition-count
+mismatches, inactive partitions, read/write completion gaps, zero-request rows,
+high partition/channel CV, and high reject/accept ratios. Default exit behavior
+is nonzero only for P0 findings; pass `--fail-on P1` or `--fail-on P2` for a
+stricter quality gate.
 
 Config selection notes:
 

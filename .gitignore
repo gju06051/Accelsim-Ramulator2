@@ -32,5 +32,8 @@ gpu_benchmark/suites/graphBIG/dataset/LDBC_1000k/
 gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr
 gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat20.sym.gr
 
-# Runtime shared libraries may still be tracked intentionally, but generated
-# build trees and object files should stay out of normal source changes.
+# Runtime shared libraries and build trees are generated locally.
+simulator/gpgpu-sim_distribution/build/
+simulator/accelsim_ramulator/build/
+simulator/ramulator2/build/
+simulator/ramulator2/libramulator.so

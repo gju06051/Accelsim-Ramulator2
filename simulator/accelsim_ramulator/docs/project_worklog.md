@@ -1,11 +1,11 @@
 # AccelSim + Ramulator2 Project Worklog
 
-Last updated: 2026-05-21
+Last updated: 2026-05-27
 
-This note is a working journal for the current AccelSim + Ramulator2
-integration repository. It is intentionally separate from raw result reports:
-keep long CSVs, benchmark output directories, and paper/spec archives out of
-this file.
+This note is the compact project journal for the current AccelSim + Ramulator2
+integration repository. It records implementation state, validated operating
+assumptions, and remaining cleanup work. Keep raw result directories, large
+CSVs, trace dumps, and paper/spec archives out of this file.
 
 ## Project Goal
 
@@ -16,177 +16,338 @@ important path is:
 AccelSim memory partition -> external backend hook -> Ramulator2 bridge
 ```
 
-StackGanged naming remains only as legacy compatibility in some scripts and
-manifests. New work should use the AccelSim + Ramulator2 terminology.
+Some scripts and types still use the historical `sgram` label. Treat that name
+as a legacy internal label for the external memory backend hook, not as the
+main research target.
 
-## Completed Work
+## Current State Summary
 
-### Repository and Benchmark Layout
+- The Ramulator2 backend path is implemented and is the normal memory backend
+  for current experiments.
+- The fixed-latency backend remains as a small integration sanity-check path.
+- A100 and H100 geometry variants exist in both historical runner override form
+  and clean canonical config form.
+- H100 SXM Samsung-style HBM3SID configs are the current primary study target.
+- Main application benchmarks, optional application benchmarks, and system
+  microbenchmarks are separated.
+- Benchmark selection is controlled by a user-editable TSV file instead of
+  hard-coded benchmark lists.
+- Runtime shared libraries are now local build artifacts rather than tracked
+  source files.
 
-- Moved loose benchmark helper scripts under `gpu_benchmark/scripts`.
-- Organized the default user-facing benchmark list under
-  `gpu_benchmark/benchmarks/main/manifest.tsv`.
-- Added benchmark manifest documentation so new local benchmarks can be placed
-  under `gpu_benchmark/benchmarks/main/local`.
-- Removed `rodinia_particlefilter_float` from the main validated set because it
-  repeatedly crashed under the current AccelSim path.
+## Recent Updates Since 2026-05-21
 
-### Runner and Metrics
+### Benchmark Selection and Characterization
 
-- Extended `scripts/run_fixed_backend_matrix.py` with AccelSim config variants:
-  `a100_1stack`, `a100_5stack`, `h100_1stack`, and `h100_full`.
-- Added Ramulator2 YAML selection through `--ramulator-config`.
-- Added automatic Ramulator tick derivation from AccelSim DRAM clock and
-  Ramulator2 `tCK` through `--ramulator-ticks-per-dram-cycle auto`.
-- Added automatic inflight read limit sizing based on Ramulator2 channel count.
-- Added Ramulator2 stats extraction into `summary.csv`, including request
-  counts, row stats, queue stats, and average read latency.
-- Added GPGPU-Sim host timing metric collection so slow simulator regions can be
-  identified from the summary output.
+- Added `gpu_benchmark/benchmarks/main/benchmark_selection.tsv`.
+  - Users can set `run=1` or `run=0` per benchmark.
+  - Rows include suite, access pattern, memory/compute class, status, and
+    H100 1/5 characterization notes.
+- Added runner support for `--benchmark-selection-file`.
+  - The default main preset reads the selection file when supplied.
+  - Optional rows from `manifest.optional.tsv` can be enabled without moving
+    them back into the active manifest.
+- Split benchmark purposes:
+  - `gpu_benchmark/benchmarks/main/manifest.tsv`: active application rows.
+  - `gpu_benchmark/benchmarks/main/manifest.optional.tsv`: retained optional
+    rows that are small, cache-fit, long-tail, or operationally incomplete.
+  - `gpu_benchmark/benchmarks/system/manifest.tsv`: microbenchmarks for
+    bandwidth, latency, queue, cache-path, and atomics checks.
+- Fixed the H100 SXM Samsung HBM3SID 1/5-stack q64 characterization in
+  `gpu_benchmark/benchmarks/main/REPRESENTATIVENESS.md`.
+  - Active rows: 42.
+  - Optional rows: 32.
+  - Active memory-intensive rows: 25.
+  - Active compute-intensive rows: 17.
+  - Access-pattern split: 7 streaming, 18 mixed-locality, 17 irregular.
+- The top-level README now lists all selectable application benchmarks by
+  workload field and lists the system-check microbenchmarks separately.
+
+### Benchmark Inputs, Traces, and Official-Derived Rows
+
+- Promoted official-derived proxy rows for DLRM, GNN, and CORAL2-style memory
+  motifs after H100 1/5 validation.
+- Scaled selected GNN rows to avoid overly cache-fit behavior:
+  - `mlperf_rgat_relation_agg`
+  - `gsuite_sage_mp_pubmed`
+- Kept `nvcomp_*`, `cudf_*`, and `tango_*` as trace-driven rows because their
+  native wrappers do not reliably enter the AccelSim/Ramulator2 backend path.
+- Documented trace preparation, source provenance, and local artifact packaging
+  in the root README and benchmark README files.
+- Added trace-packaging support so ignored prepared traces can be moved between
+  clones as tar payloads rather than committed to Git.
+- Removed or demoted problematic rows from default active use:
+  - `rodinia_particlefilter_float` was removed after repeated crashes.
+  - Long-tail PolyBench rows such as `polybench_fdtd2d`,
+    `polybench_gramschmidt`, `polybench_covariance`, and `polybench_2mm` stay
+    out of the active main set until smaller rebuilt inputs are available.
+  - `micro_*` rows are system checks, not application benchmarks.
+
+### Canonical Configuration Cleanup
+
+- Added clean canonical AccelSim configs under
+  `simulator/accelsim_ramulator/configs/accelsim/canonical/`.
+- Added `simulator/accelsim_ramulator/scripts/generate_canonical_accelsim_configs.py`
+  to regenerate the clean configs from the maintained spec table.
+- Added `simulator/accelsim_ramulator/configs/CONFIG_MATRIX.md`.
+  - The matrix records intended AccelSim/Ramulator2 pairings.
+  - It documents validation rules for bounded smoke runs and unbounded final
+    baselines.
+  - New runs that should avoid append-style overrides can use
+    `--config-variant canonical` with an explicit `--gpgpusim-config`.
+- The historical runner append/override path still works, but canonical configs
+  are the preferred human-readable form for final experiments.
+
+### Backend Metrics and Summary Output
+
+- Extended `scripts/run_fixed_backend_matrix.py` to collect and summarize:
+  - AccelSim backend accepted/completed read/write counters.
+  - Ramulator request counts and average latency.
+  - Ramulator command counts, including read/write/activate/precharge-style
+    command stats when present.
+  - Queue pressure and rejected request counters.
+  - Partition/channel distribution checks.
+  - Host-side GPGPU-Sim timing buckets.
+  - Core-granularity and request-size ratios.
+- Added separate read/write completion-gap reporting so write-finalization
+  caveats are visible instead of hidden behind a single combined counter.
+- Current default interpretation:
+  - Reads complete through Ramulator callback timing.
+  - Writes are accepted into Ramulator and returned to AccelSim early; remaining
+    write drain/finalization state should be interpreted as a modeling caveat.
+  - Bounded `--max-cycle` runs may leave outstanding reads at forced stop time;
+    use unbounded runs for final completion-gap checks.
+- Added `scripts/check_summary.py` as a post-run quality gate for `summary.csv`
+  files. It reports P0/P1/P2 findings for status, Ramulator stats, command
+  stats, partitions, completion gaps, zero-request rows, bounded run state,
+  partition/channel CV, and queue rejection pressure.
+
+### Runtime Build Artifact Cleanup
+
+- Runtime shared libraries are now treated as local build artifacts:
+  - `simulator/gpgpu-sim_distribution/build/sgram_fixed/libcudart.so`
+  - `simulator/gpgpu-sim_distribution/build/sgram_fixed/libcudart.so.12`
+  - `simulator/ramulator2/libramulator.so`
+  - `simulator/accelsim_ramulator/build/ramulator2_bridge/libsgram_ramulator2_bridge.so`
+- Added ignore rules so these files are not re-added accidentally.
+- Added `simulator/accelsim_ramulator/scripts/build_runtime_artifacts.sh` to
+  regenerate AccelSim/GPGPU-Sim, Ramulator2, and the bridge from source.
+- The root README and integration README now describe the fresh-clone rebuild
+  flow.
+
+## Implementation Work Completed
 
 ### AccelSim/GPGPU-Sim Integration
 
-- Added or updated the external memory backend path in GPGPU-Sim.
-- Kept the fixed-latency backend as a scaffolding backend for integration
-  sanity checks.
-- Added Ramulator2 backend plumbing for read completion and write acceptance.
-- Updated IPoly/hash address partitioning so non-power-of-two memory partition
-  counts can fold from the next power-of-two domain instead of breaking.
-- Verified that 40-channel and 80-channel style configs can route requests
-  through all active partitions with the current binary.
+- Added the external memory backend hook in GPGPU-Sim.
+- Added fixed-latency and Ramulator2 backend modes.
+- Routed accepted reads through Ramulator2 completion callbacks.
+- Routed writes into Ramulator2 while returning them to AccelSim after backend
+  acceptance.
+- Added support for external backend queue limits and inflight read limits.
+- Updated non-power-of-two partition handling so 40-channel and 80-channel
+  configurations can use folded IPoly/hash partitioning.
+- Fixed the kernel-end L2 flush loop so full H100-style configurations do not
+  stop at only `m_n_mem` subpartitions when more subpartitions exist.
+- Added simulator host timing instrumentation to expose where GPGPU-Sim time is
+  being spent.
 
 ### Ramulator2 Models and Configs
 
-- Added an HBM3 SID model implementation:
+- Added the HBM3SID model implementation:
   `simulator/ramulator2/src/dram/impl/HBM3SID.cpp`.
-- Added H100-oriented HBM3 SID configs:
-  - `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml`
-  - `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml`
-- Added H100 AccelSim config fragments:
-  - `configs/accelsim/h100_sxm_hbm3_1stack_16ch.config`
-  - `configs/accelsim/h100_sxm_hbm3_80ch.config`
-- Added A100 HBM2e 5-stack config support:
-  - `configs/accelsim/a100_5stack_hbm2e.config`
-  - `configs/ramulator/a100_hbm2e_5stack.yaml`
-- Added external-channel HBM3/HBM4 YAML variants for address-mapping checks.
+- Added Samsung-style HBM3SID organization/timing presets for current H100 SXM
+  study configs.
+- Current H100 HBM3SID modeling intent:
+  - 5 HBM stacks for full H100.
+  - 16 x 64-bit external channels per stack.
+  - 80 x 64-bit external channels for full H100.
+  - 2 pseudo-channels/SID-aware internal structure in the Ramulator model.
+  - H100 SXM bandwidth-derived frequency while using Samsung-style HBM3 timing
+    and organization assumptions.
+- Added A100 HBM2e and HBM3/HBM4 comparison YAMLs for smoke and address-mapping
+  checks.
 
-## Current Validated Configurations
+### Runner and Configuration Support
 
-### H100 1/5 HBM3
+- Added AccelSim config variants:
+  - `a100_1stack`
+  - `a100_5stack`
+  - `h100_1stack`
+  - `h100_full`
+  - `canonical`
+- Added Ramulator2 YAML selection through `--ramulator-config`.
+- Added automatic Ramulator tick derivation from AccelSim DRAM clock and
+  Ramulator2 `tCK` with `--ramulator-ticks-per-dram-cycle auto`.
+- Added automatic bridge inflight read sizing from Ramulator2 channel count and
+  selected queue size.
+- Standardized current queue-size default around AccelSim/Ramulator agreement;
+  q64 is the current H100 Samsung baseline used by the characterization table.
 
-- AccelSim variant: `h100_1stack`
-- AccelSim fragment:
-  `configs/accelsim/h100_sxm_hbm3_1stack_16ch.config`
+## Current Validated Configuration Set
+
+### A100 HBM2e 1/5
+
+- Canonical AccelSim config:
+  `configs/accelsim/canonical/a100_hbm2e_1stack_8ch.gpgpusim.config`
 - Ramulator2 config:
-  `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml`
-- Shape: 26 SMs, 16 x 64-bit HBM3 channels, 32 L2 subpartitions, 10 MiB L2.
+  `configs/ramulator/a100_hbm2e_1stack.yaml`
+- Shape: 22 SMs, 8 memory partitions, 4 subpartitions/channel, 8 MiB L2.
 
-### H100 Full HBM3
+### A100 HBM2e Full
 
-- AccelSim variant: `h100_full`
-- AccelSim fragment:
-  `configs/accelsim/h100_sxm_hbm3_80ch.config`
-- Ramulator2 config:
-  `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml`
-- Shape: 132 SMs, 80 x 64-bit HBM3 channels, 160 L2 subpartitions, 50 MiB L2.
-
-### A100 5-Stack HBM2e
-
-- AccelSim variant: `a100_5stack`
-- AccelSim fragment:
-  `configs/accelsim/a100_5stack_hbm2e.config`
+- Canonical AccelSim config:
+  `configs/accelsim/canonical/a100_hbm2e_full_40ch.gpgpusim.config`
 - Ramulator2 config:
   `configs/ramulator/a100_hbm2e_5stack.yaml`
-- Shape: 108 SMs, 40 memory partitions, 4 subpartitions per memory channel.
+- Shape: 108 SMs, 40 memory partitions, 4 subpartitions/channel, 40 MiB L2.
+
+### H100 SXM HBM3SID 1/5
+
+- Canonical AccelSim config:
+  `configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config`
+- Ramulator2 config:
+  `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml`
+- Shape: 26 SMs, 16 memory partitions, 2 subpartitions/channel, 10 MiB L2.
+- This is the main benchmark characterization baseline.
+
+### H100 SXM HBM3SID Full
+
+- Canonical AccelSim config:
+  `configs/accelsim/canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config`
+- Ramulator2 config:
+  `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml`
+- Shape: 132 SMs, 80 memory partitions, 2 subpartitions/channel, 50 MiB L2.
+
+### HBM3/HBM4 Comparison Paths
+
+- A100-side HBM3SID comparison YAMLs exist for 8-channel and 40-channel smoke
+  checks.
+- HBM4 YAMLs exist for 8-channel and 40-channel comparison paths.
+- Treat HBM4 rows as comparison/smoke paths unless a specific run has been
+  promoted by the validation rules in `configs/CONFIG_MATRIX.md`.
 
 ## Recent Validation Notes
 
-- H100 1/5 and full H100 microbenchmark runs completed with `OK:4` each.
-- Microbenchmark result summaries:
-  - `results/h100_1stack_micro_perf_natural_auto_20260521_v1/summary.csv`
-  - `results/h100_full_micro_perf_natural_auto_20260521_v1/summary.csv`
-- `micro_mem_bw` exercised the DRAM path with all expected partitions active:
-  16/16 for H100 1/5 and 80/80 for full H100.
-- `backend_total_rejected_inflight` was zero in the H100 microbenchmark runs, so
-  the configured inflight guard was not the limiting factor there.
-- H100 full delivered higher memory throughput than H100 1/5, while
-  `micro_mem_lat` average read latency stayed close because both configs use the
-  same HBM3 timing preset.
+- H100 1/5 Samsung HBM3SID q64 is the current baseline for benchmark
+  representativeness.
+- The active benchmark table uses recovered or generated metrics from:
+  - non-trace unbounded H100 1/5 logs,
+  - graph main unbounded H100 1/5 runs,
+  - memory trace bounded smoke runs,
+  - trace unbounded runs,
+  - official-derived DLRM/GNN/CORAL2 unbounded runs.
+- Latest canonical smoke recorded in `configs/CONFIG_MATRIX.md`:
+  - H100 SXM HBM3SID 1/5 canonical config.
+  - `micro_mem_bw`, q64, 1k cycles.
+  - 16/16 backend partitions active.
+  - Ramulator stats and command stats present.
+- `micro_l2_*` rows may be served mostly by cache; use `micro_mem_bw` and
+  `micro_mem_lat` for DRAM-path backend checks.
+- Trace-driven rows should be checked for `backend_enabled_partitions`,
+  `ramulator_stats_present`, and nonzero request counts before including them
+  in performance comparisons.
 
 ## Known Caveats
 
-- Some long natural full-suite runs take many hours. Use bounded smoke tests
-  first before launching unbounded runs.
-- The old `stackganged_*` preset names still exist for compatibility. Prefer
-  `accelsim_ramulator_main` for new runs.
-- `micro_l2_*` benchmarks may not generate Ramulator2 DRAM traffic when the
-  accesses are served by cache. Use `micro_mem_bw` for DRAM-path bandwidth
-  pressure.
 - Current H100 configs keep the SM80 functional/PTX compatibility path. They
   model H100-like performance geometry rather than changing compute capability.
-- Large binary build products are currently tracked. GitHub warns about files
-  over 50 MiB; moving those to Git LFS or rebuilding from source is a future
-  cleanup item.
+- Ramulator-backed writes are accepted into Ramulator but returned to AccelSim
+  early. This is the main remaining timing-semantics caveat.
+- Bounded validation runs can leave outstanding reads or writes at forced stop
+  time. Final performance comparisons should use unbounded natural completion
+  when practical.
+- Some optional benchmarks are retained for coverage but are too small,
+  cache-fit, or long-tail for routine comparative studies.
+- The old `stackganged_*` preset names remain for compatibility. New runs
+  should use `accelsim_ramulator_main`, `accelsim_ramulator_system_check`, and
+  explicit config names.
+- Prepared traces, large graph inputs, local paper/spec PDFs, result CSVs, and
+  runtime shared libraries are intentionally ignored.
 
 ## Open Work
 
-1. Finish or retire any old unbounded validation runners that are still active.
-2. Re-run long full-suite H100 1/5 and H100 full jobs only when final
-   end-to-end benchmark data is actually needed.
-3. Add a small automated post-run checker for:
-   - status counts,
-   - enabled/active partition counts,
-   - Ramulator stats presence,
-   - inflight rejection,
-   - accepted/completed read matching,
-   - suspicious zero-request cases.
-4. Add a concise config matrix table to the main README once the config list is
-   stable.
-5. Decide whether tracked shared libraries should remain in git or move to a
-   build artifact/LFS workflow.
-6. Keep root-level paper/spec archives and raw benchmark result reports out of
-   normal commits unless explicitly requested.
+1. Run native AccelSim DRAM vs Ramulator2 cross-checks on a small fixed set and
+   compare read/write totals, row locality, queue pressure, IPC, and runtime
+   trends.
+2. Wire `scripts/check_summary.py` into long-run workflows so each completed
+   result directory gets an automatic quality report next to `summary.csv`.
+3. Decide how strongly write timing should be modeled:
+   - keep current fire-and-forget completion semantics,
+   - add delayed write completion,
+   - or expose both modes as explicit experiments.
+4. Promote additional canonical pairings to "validated" only after running the
+   validation rules in `configs/CONFIG_MATRIX.md`.
+5. Keep benchmark selection and representativeness tables synchronized whenever
+   active/optional rows or default inputs change.
+6. Keep ignored local payload packaging up to date when prepared trace groups or
+   large graph inputs are added.
 
 ## Common Commands
 
-List the current main benchmark set:
+Build ignored runtime artifacts after a fresh clone:
 
 ```bash
+./simulator/accelsim_ramulator/scripts/build_runtime_artifacts.sh \
+  --cuda /usr/local/cuda-12.3
+```
+
+List the selected main benchmark set:
+
+```bash
+cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --preset accelsim_ramulator_main \
+  --benchmark-selection-file ../../gpu_benchmark/benchmarks/main/benchmark_selection.tsv \
   --list-benchmarks
 ```
 
-Run an H100 1/5 Ramulator2 smoke test:
+Run a canonical H100 1/5 Ramulator2 smoke test:
 
 ```bash
+cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
-  --preset accelsim_ramulator_main \
-  --benchmarks micro_mem_bw,micro_mem_lat \
-  --config-variant h100_1stack \
+  --preset accelsim_ramulator_system_check \
+  --benchmarks micro_mem_bw \
+  --gpgpusim-config configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config \
+  --config-variant canonical \
   --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
-  --latencies 0 \
-  --queue-limits 128 \
-  --max-cycle 50000 \
-  --jobs 2 \
+  --latencies 1 \
+  --queue-limits 64 \
   --ramulator-inflight-read-limit auto \
-  --ramulator-ticks-per-dram-cycle auto
+  --ramulator-ticks-per-dram-cycle auto \
+  --max-cycle 1000 \
+  --jobs 1
 ```
 
-Run a full H100 Ramulator2 smoke test:
+Check a run summary after completion:
 
 ```bash
+cd simulator/accelsim_ramulator
+./scripts/check_summary.py \
+  results/h100_1stack_selected_main/summary.csv \
+  --expected-partitions 16 \
+  --mode unbounded
+```
+
+Run the active H100 1/5 main set with the selection file:
+
+```bash
+cd simulator/accelsim_ramulator
 ./scripts/run_fixed_backend_matrix.py \
   --backend ramulator2 \
   --preset accelsim_ramulator_main \
-  --benchmarks micro_mem_bw,micro_mem_lat \
-  --config-variant h100_full \
-  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml \
+  --benchmark-selection-file ../../gpu_benchmark/benchmarks/main/benchmark_selection.tsv \
+  --config-variant canonical \
+  --gpgpusim-config configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config \
+  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
   --latencies 0 \
-  --queue-limits 128 \
-  --max-cycle 50000 \
-  --jobs 2 \
+  --queue-limits 64 \
+  --max-cycle 0 \
+  --timeout 0 \
+  --jobs 24 \
   --ramulator-inflight-read-limit auto \
-  --ramulator-ticks-per-dram-cycle auto
+  --ramulator-ticks-per-dram-cycle auto \
+  --out-dir results/h100_1stack_selected_main
 ```

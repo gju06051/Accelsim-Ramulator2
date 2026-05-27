@@ -77,6 +77,15 @@ system-check benchmark and inspect:
   `analysis_backend_accepted_read_partition_cv` are reasonable for the selected
   benchmark.
 
+The same checks can be automated with:
+
+```bash
+simulator/accelsim_ramulator/scripts/check_summary.py \
+  <result-dir-or-summary.csv> \
+  --expected-partitions <channels> \
+  --mode bounded
+```
+
 For unbounded final baselines, also require:
 
 - `status=OK`.

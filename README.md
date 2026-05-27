@@ -33,9 +33,10 @@ Ramulator2 bridge, runtime config files, benchmark runner, and project notes.
 
 ## What Is Included
 
-- AccelSim/GPGPU-Sim source plus the packaged `build/sgram_fixed/libcudart.so`
-  runtime used by the benchmark runner.
-- Ramulator2 source plus the packaged `libramulator.so` runtime library.
+- AccelSim/GPGPU-Sim source. The `build/sgram_fixed/libcudart.so` runtime is
+  generated locally by the rebuild script rather than tracked in Git.
+- Ramulator2 source. The `libramulator.so` runtime library is generated locally
+  by the rebuild script rather than tracked in Git.
 - The external memory backend path that connects AccelSim memory partitions to
   Ramulator2.
 - HBM2e, HBM3 SID, and HBM4-oriented Ramulator2 YAML configs.
@@ -44,8 +45,9 @@ Ramulator2 bridge, runtime config files, benchmark runner, and project notes.
 - A curated main benchmark set, a separate microbenchmark system-check set, and
   a larger operational benchmark pool.
 
-Generated result directories, trace dumps, replay outputs, and large paper/spec
-archives are not part of normal commits.
+Generated result directories, trace dumps, replay outputs, runtime shared
+libraries, build trees, and large paper/spec archives are not part of normal
+commits.
 
 If this repository is cloned on another machine, the git-tracked sources are
 not enough for the prepared main trace/graph benchmark set.  Use
@@ -57,6 +59,19 @@ the default main manifest can still run those rows natively from committed
 source without that optional trace bundle.
 
 ## Quick Start
+
+Build the local runtime shared libraries after a fresh clone or clean checkout:
+
+```bash
+./simulator/accelsim_ramulator/scripts/build_runtime_artifacts.sh \
+  --cuda /usr/local/cuda-12.3
+```
+
+The script regenerates:
+
+- `simulator/gpgpu-sim_distribution/build/sgram_fixed/libcudart.so`
+- `simulator/ramulator2/libramulator.so`
+- `simulator/accelsim_ramulator/build/ramulator2_bridge/libsgram_ramulator2_bridge.so`
 
 Check the all-in-one layout:
 
@@ -247,6 +262,21 @@ Useful `summary.csv` columns include:
 - `ramulator_tck_ns`, `ramulator_mhz`
 - `gpgpusim_host_timing_*`
 
+Run the post-run checker before using a result directory for reports:
+
+```bash
+cd simulator/accelsim_ramulator
+./scripts/check_summary.py \
+  results/h100_1stack_selected_main/summary.csv \
+  --expected-partitions 16 \
+  --mode unbounded
+```
+
+The checker reports P0/P1/P2 findings for failed statuses, missing Ramulator or
+command stats, inactive partitions, read/write completion gaps, zero-request
+rows, bounded stop conditions, high partition/channel CV, and high queue
+rejection pressure. By default it exits nonzero when any P0 issue is found.
+
 ## Benchmark Sets
 
 The default benchmark manifest is:
@@ -290,20 +320,25 @@ Suite sources:
 | `prepare-gnn` | Official-derived native CUDA proxy rows prepared from locally staged MLCommons R-GAT and gSuite/PubMed sources. |
 | `prepare-coral2` | Official-derived native CUDA proxy rows prepared from locally staged CORAL2/RAJAPerf source archives. |
 
-Main benchmark coverage by workload field:
+Available application benchmarks by workload field:
 
-| Field | Benchmarks |
-| --- | --- |
-| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax` |
-| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `parboil_lbm` |
-| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` |
-| Search, lookup, and data mining | `ispass_lps`, `ispass_lib`, `proxy_xsbench` |
-| Compression and entropy coding | `nvcomp_ans` |
-| Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
-| Neural-network inference and layers | `rodinia_backprop`, `tango_alexnet` |
-| Recommendation embedding and sequence gathers | `dlrm_v2_embeddingbag_fixed`, `dlrm_v2_embeddingbag_quantile`, `dlrm_v3_sequence_gather` |
-| Graph neural network proxy kernels | `mlperf_rgat_feature_fetch`, `mlperf_rgat_relation_agg`, `gsuite_gcn_mp_pubmed`, `gsuite_sage_mp_pubmed`, `gsuite_gin_wl_pubmed` |
-| CORAL2 scientific proxy kernels | `coral2_rajaperf_stream_triad`, `coral2_rajaperf_ltimes`, `coral2_rajaperf_energy`, `coral2_rajaperf_planckian`, `coral2_rajaperf_reduce3` |
+The table below covers every application row that can be selected through
+`benchmark_selection.tsv`: active rows default to `run=1`, while optional rows
+default to `run=0` but can be enabled by flipping that column.
+
+| Field | Active rows | Optional rows |
+| --- | --- | --- |
+| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax` | `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
+| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `parboil_lbm` | `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_lavamd`, `rodinia_myocyte`, `rodinia_nw`, `rodinia_pathfinder`, `proxy_lulesh`, `parboil_cutcp`, `parboil_stencil`, `dragon_amr` |
+| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` | `graphbig_kcore`, `pannotia_fw_block` |
+| Search, lookup, and data mining | `ispass_lps`, `ispass_lib`, `proxy_xsbench` | `ispass_nn`, `ispass_nqu`, `ispass_ray`, `dragon_join` |
+| Particle, clustering, and filtering | - | `rodinia_streamcluster`, `rodinia_particlefilter_naive` |
+| Compression and entropy coding | `nvcomp_ans` | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp` |
+| Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | `cudf_join` |
+| Neural-network inference and layers | `rodinia_backprop`, `tango_alexnet` | `tango_cifarnet`, `tango_gru`, `tango_lstm` |
+| Recommendation embedding and sequence gathers | `dlrm_v2_embeddingbag_fixed`, `dlrm_v2_embeddingbag_quantile`, `dlrm_v3_sequence_gather` | - |
+| Graph neural network proxy kernels | `mlperf_rgat_feature_fetch`, `mlperf_rgat_relation_agg`, `gsuite_gcn_mp_pubmed`, `gsuite_sage_mp_pubmed`, `gsuite_gin_wl_pubmed` | - |
+| CORAL2 scientific proxy kernels | `coral2_rajaperf_stream_triad`, `coral2_rajaperf_ltimes`, `coral2_rajaperf_energy`, `coral2_rajaperf_planckian`, `coral2_rajaperf_reduce3` | - |
 
 Synthetic memory-system microbenchmarks now live in:
 
@@ -313,6 +348,15 @@ gpu_benchmark/benchmarks/system/manifest.tsv
 
 Run them with `--preset accelsim_ramulator_system_check` when validating bridge
 counters, queue pressure, latency, bandwidth, cache-path behavior, or atomics.
+
+System-check microbenchmarks:
+
+| Field | Benchmarks |
+| --- | --- |
+| DRAM bandwidth and request granularity | `micro_mem_bw`, `micro_mem_atom_size` |
+| DRAM latency | `micro_mem_lat` |
+| L1/L2 cache path | `micro_l1_bw_128`, `micro_l2_bw_32f`, `micro_l2_lat`, `micro_l2_access_grain` |
+| Atomics and serialization | `micro_atomic_add_bw_conflict` |
 
 Long-running native PolyBench rows `polybench_fdtd2d`,
 `polybench_gramschmidt`, `polybench_covariance`, and `polybench_2mm` are kept
@@ -452,7 +496,8 @@ variables manually before invoking
 
 - Full natural benchmark runs can take many hours. Start with bounded smoke
   runs before launching `--max-cycle 0 --timeout 0` jobs.
-- Large shared-library build products are currently tracked. GitHub may warn
-  about files larger than 50 MiB.
+- Runtime shared-library build products are intentionally ignored. Rebuild them
+  with `simulator/accelsim_ramulator/scripts/build_runtime_artifacts.sh` after
+  cloning onto a new machine.
 - Raw result reports, generated CSVs, and paper/spec archives are intentionally
   kept out of normal commits unless explicitly requested.
