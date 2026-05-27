@@ -255,13 +255,27 @@ The default benchmark manifest is:
 gpu_benchmark/benchmarks/main/manifest.tsv
 ```
 
-It currently contains 74 representative application/trace benchmarks:
+For manual subset selection, edit:
 
-| Class | Count |
-| --- | ---: |
-| Streaming | 15 |
-| Mixed-locality | 38 |
-| Irregular | 21 |
+```text
+gpu_benchmark/benchmarks/main/benchmark_selection.tsv
+```
+
+Set `run` to `1` for rows to run and `0` for rows to skip. The file includes
+the access pattern, memory/compute class, suite, status, and key H100 1/5
+metrics for each active and optional benchmark.
+
+It currently contains 42 application/trace benchmarks characterized with the
+H100 SXM Samsung HBM3SID 1/5-stack q64 screen. The default set is intentionally
+mixed: memory-intensive rows stress the Ramulator2 backend, while
+compute-intensive rows keep cache-local, arithmetic-heavy, framework, and
+control-flow behavior in the comparison set.
+
+| Access pattern | Memory-intensive | Compute-intensive | Total |
+| --- | ---: | ---: | ---: |
+| Streaming | 4 | 3 | 7 |
+| Mixed-locality | 9 | 9 | 18 |
+| Irregular | 12 | 5 | 17 |
 
 Suite sources:
 
@@ -269,9 +283,9 @@ Suite sources:
 | --- | --- |
 | `polybench`, `rodinia`, `parboil`, `ispass-2009`, `lonestar`, `pannotia`, `proxy-apps`, `dragon-li` | Built through the packaged gpu-app-collection harness and launched as native CUDA binaries through AccelSim's CUDA runtime path. Lonestar main rows use generated medium RMAT `.gr` inputs. |
 | `graphBIG` | Standalone GraphBIG GPU checkout using the staged LDBC medium graph dataset. |
-| `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. Main rows replay prepared Accel-Sim traces. |
-| `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Main rows replay prepared Accel-Sim traces. |
-| `prepare-tango` | Sparse checkout of selected Tango DNN models from upstream, with promoted rows validated by trace replay. |
+| `prepare-nvcomp` | nvCOMP codec candidates staged outside the default build because nvCOMP is an external dependency. The active row replays the larger ANS Accel-Sim trace; smaller codec traces are optional. |
+| `prepare-cudf`, `prepare-cudf-query` | RAPIDS cuDF microbenchmarks and compact TPC-H-style query workloads. Active rows replay larger 64 MiB / 128 MiB Accel-Sim traces. |
+| `prepare-tango` | Sparse checkout of selected Tango DNN models from upstream. The active main row is the larger AlexNet trace; smaller Tango traces are optional. |
 | `prepare-dlrm` | Official-derived native CUDA proxy rows prepared from locally staged MLCommons DLRM-v2/v3 sources. |
 | `prepare-gnn` | Official-derived native CUDA proxy rows prepared from locally staged MLCommons R-GAT and gSuite/PubMed sources. |
 | `prepare-coral2` | Official-derived native CUDA proxy rows prepared from locally staged CORAL2/RAJAPerf source archives. |
@@ -280,15 +294,13 @@ Main benchmark coverage by workload field:
 
 | Field | Benchmarks |
 | --- | --- |
-| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax`, `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
-| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `ispass_ray`, `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_myocyte`, `proxy_lulesh`, `parboil_stencil`, `parboil_lbm`, `dragon_amr` |
-| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `graphbig_kcore`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` |
-| Search, lookup, joins, and data mining | `ispass_lps`, `ispass_lib`, `ispass_nn`, `ispass_nqu`, `rodinia_streamcluster`, `proxy_xsbench`, `dragon_join` |
-| Particle, molecular, and probabilistic tracking | `rodinia_lavamd`, `rodinia_particlefilter_naive`, `parboil_cutcp` |
-| Dynamic programming and path-style kernels | `rodinia_nw`, `rodinia_pathfinder`, `pannotia_fw_block` |
-| Compression and entropy coding | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp`, `nvcomp_ans` |
-| Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
-| Neural-network inference and layers | `rodinia_backprop`, `tango_cifarnet`, `tango_gru`, `tango_lstm`, `tango_alexnet` |
+| Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax` |
+| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `parboil_lbm` |
+| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` |
+| Search, lookup, and data mining | `ispass_lps`, `ispass_lib`, `proxy_xsbench` |
+| Compression and entropy coding | `nvcomp_ans` |
+| Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` |
+| Neural-network inference and layers | `rodinia_backprop`, `tango_alexnet` |
 | Recommendation embedding and sequence gathers | `dlrm_v2_embeddingbag_fixed`, `dlrm_v2_embeddingbag_quantile`, `dlrm_v3_sequence_gather` |
 | Graph neural network proxy kernels | `mlperf_rgat_feature_fetch`, `mlperf_rgat_relation_agg`, `gsuite_gcn_mp_pubmed`, `gsuite_sage_mp_pubmed`, `gsuite_gin_wl_pubmed` |
 | CORAL2 scientific proxy kernels | `coral2_rajaperf_stream_triad`, `coral2_rajaperf_ltimes`, `coral2_rajaperf_energy`, `coral2_rajaperf_planckian`, `coral2_rajaperf_reduce3` |
@@ -305,13 +317,18 @@ counters, queue pressure, latency, bandwidth, cache-path behavior, or atomics.
 Long-running native PolyBench rows `polybench_fdtd2d`,
 `polybench_gramschmidt`, `polybench_covariance`, and `polybench_2mm` are kept
 out of the main set until smaller rebuilt PolyBench inputs are available.
+Additional functional rows that are too small, cache-fit, or operationally
+long-tail are preserved in
+`gpu_benchmark/benchmarks/main/manifest.optional.tsv`; the H100 1/5
+memory-intensive/compute-intensive characterization and row-level metrics are in
+`gpu_benchmark/benchmarks/main/REPRESENTATIVENESS.md`.
 
 Graph input sizing:
 
 | Benchmark rows | Main input | Arguments |
 | --- | --- | --- |
 | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp` | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset .../LDBC_100k --root 90628` |
-| `graphbig_triangle_count`, `graphbig_kcore` | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset .../LDBC_100k` |
+| `graphbig_triangle_count` | `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k` | `--dataset .../LDBC_100k` |
 | `lonestar_bfs_wlw`, `lonestar_sssp_wln` | `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/cuda/lonestargpu-2.0/inputs/rmat16.sym.gr` | executable path plus the `.gr` input path |
 
 Additional medium/large graph validation rows live in
@@ -354,10 +371,10 @@ Trace Preparation Summary:
 
 | Group | Trace creation path | Trace ISA | Main sizing / scope |
 | --- | --- | ---: | --- |
-| `nvcomp_*` | Built `nvcomp_codec_bench` from the optional nvCOMP candidate tree, then captured simulator-ready traces with the Accel-Sim NVBit tracer for each codec. | SM86 | Compression-phase codec traces, with trace paths recorded under `/tmp/nvcomp_accelsim_ramulator_traces_comp/...`. |
-| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | Ran RAPIDS cuDF microbenchmarks from `prepare/cudf` with `cudaProfilerStart/Stop` around only the selected operation, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 1 MiB synthetic-column traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/...`. |
-| `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | Ran compact native-cuDF TPC-H-shaped query scripts over synthetic tables with profiler scoping, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 64 MiB query traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/...`. |
-| `tango_*` | Sparse-fetched Tango upstream models, built the selected CUDA models with `CUDA_ARCH=86`, and captured SM86 NVBit traces for H100 1/5 validation. | SM86 | `CifarNet`, `GRU`, `LSTM`, and `AlexNet`; validation trace directories live under `/tmp/tango_*_h100_1stack_validation_sm86_20260522/...`. |
+| `nvcomp_ans` | Built `nvcomp_codec_bench` from the optional nvCOMP candidate tree, then captured simulator-ready traces with the Accel-Sim NVBit tracer. | SM86 | Active main uses the 4 MiB ANS trace in `gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB/...`; smaller codec rows are optional. |
+| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort` | Ran RAPIDS cuDF microbenchmarks from `prepare/cudf` with `cudaProfilerStart/Stop` around only the selected operation, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Active main uses profiler-scoped 64 MiB traces in ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_64MiB/...`. |
+| `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | Ran compact native-cuDF TPC-H-shaped query scripts over synthetic tables with profiler scoping, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Active main uses profiler-scoped 128 MiB query traces in ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_128MiB/...`. |
+| `tango_alexnet` | Sparse-fetched Tango upstream models, built the selected CUDA model with `CUDA_ARCH=86`, and captured an SM86 NVBit trace for H100 1/5 validation. | SM86 | Active main uses the larger AlexNet trace; smaller Tango traces are optional. |
 | `dlrm_*` | Staged MLCommons Inference DLRM-v2/v3 source under ignored local `gpu_benchmark/benchmarks/prepare/dlrm/`, then implemented the committed `official_memory_proxy` embedding-bag, quantile-gather, and sequence-gather modes from those memory motifs. Optional traces are generated with `run_official_memory_accelsim_trace.py`. | SM80 | Native main rows use deterministic synthetic embedding tables/indices. Optional replay paths are recorded in `gpu_benchmark/benchmarks/main/trace_manifest.official_memory.tsv` and packaged with `--group trace-official-memory`. |
 | `mlperf_rgat_*`, `gsuite_*` | Staged MLCommons R-GAT source from `prepare/dlrm/inference/graph/R-GAT` plus gSuite/PubMed source under ignored local `gpu_benchmark/benchmarks/prepare/gnn/`, then mapped feature-fetch, relation aggregation, and PubMed message-passing motifs into `official_memory_proxy`. | SM80 | Main rows run native proxy kernels. `mlperf_rgat_relation_agg` and `gsuite_sage_mp_pubmed` defaults are scaled to larger node/edge counts after H100 1/5 L2-fit ablation; optional replay traces use the official-memory trace manifest. |
 | `coral2_*` | Staged CORAL2/RAJAPerf source archives under ignored local `gpu_benchmark/benchmarks/prepare/coral2/`, then mapped STREAM, LTimes/Kripke-like tensor contraction, ENERGY, PLANCKIAN, and REDUCE3 motifs into `official_memory_proxy`. | SM80 | Main rows run native proxy kernels with deterministic arrays. Optional replay traces are generated and packaged with the same `trace-official-memory` flow as DLRM/GNN. |

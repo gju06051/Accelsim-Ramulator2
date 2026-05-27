@@ -41,19 +41,22 @@ TRACE_RUNTIME = (
     ),
 )
 
-TRACE_DEFAULT = TRACE_RUNTIME + (
+TRACE_LEGACY_DEFAULT = TRACE_RUNTIME + (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_ramulator_traces_comp",
-        "Default nvCOMP Accel-Sim traces",
+        "Legacy small/default nvCOMP Accel-Sim traces",
     ),
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521",
-        "Default cuDF micro traces",
+        "Legacy small/default cuDF micro traces",
     ),
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521",
-        "Default cuDF TPC-H-shaped traces",
+        "Legacy default cuDF TPC-H-shaped traces",
     ),
+)
+
+TRACE_TANGO = (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/tango_h100_1stack_validation_sm86_20260522",
         "Default Tango SM86 validation traces",
@@ -61,6 +64,21 @@ TRACE_DEFAULT = TRACE_RUNTIME + (
     Artifact(
         "gpu_benchmark/benchmarks/prepare/results/tango_large_h100_1stack_validation_sm86_20260522",
         "Default Tango AlexNet SM86 validation trace",
+    ),
+)
+
+TRACE_DEFAULT = TRACE_RUNTIME + TRACE_TANGO + (
+    Artifact(
+        "gpu_benchmark/benchmarks/prepare/results/nvcomp_accelsim_traces_4MiB",
+        "Active nvCOMP larger traces",
+    ),
+    Artifact(
+        "gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_64MiB",
+        "Active cuDF micro larger traces",
+    ),
+    Artifact(
+        "gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_128MiB",
+        "Active cuDF TPC-H-shaped larger traces",
     ),
 )
 
@@ -100,6 +118,7 @@ GROUPS: dict[str, tuple[Artifact, ...]] = {
     "graphs-main": GRAPH_MAIN,
     "trace-runtime": TRACE_RUNTIME,
     "trace-default": TRACE_DEFAULT,
+    "trace-legacy-default": TRACE_LEGACY_DEFAULT + TRACE_TANGO,
     "trace-memory": TRACE_MEMORY,
     "trace-official-memory": TRACE_OFFICIAL_MEMORY,
     "large-graphs": LARGE_GRAPHS,

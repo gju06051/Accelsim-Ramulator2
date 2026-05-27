@@ -3,9 +3,18 @@
 `manifest.tsv` is the active AccelSim + Ramulator2 benchmark list. The
 simulator runner preset `accelsim_ramulator_main` loads this file directly.
 
-The current main set has 74 application/trace rows after moving synthetic
-microbenchmarks to the system-check set and removing long-tail PolyBench rows
-that cannot be shortened without rebuilding their sources.
+The current active set has 42 application/trace rows after applying the H100
+SXM Samsung HBM3SID 1/5-stack q64 characterization screen. It intentionally
+keeps both memory-intensive and compute-intensive rows:
+
+| Access pattern | Memory-intensive | Compute-intensive | Total |
+| --- | ---: | ---: | ---: |
+| Streaming | 4 | 3 | 7 |
+| Mixed-locality | 9 | 9 | 18 |
+| Irregular | 12 | 5 | 17 |
+
+Rows that are too small, cache-fit, or long-tail remain available in
+`manifest.optional.tsv`.
 
 ## How To Run
 
@@ -17,6 +26,20 @@ cd ../../../simulator/accelsim_ramulator
   --preset accelsim_ramulator_main \
   --list-benchmarks
 ```
+
+Choose rows with the editable selection file:
+
+```bash
+cd ../../../simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --preset accelsim_ramulator_main \
+  --benchmark-selection-file gpu_benchmark/benchmarks/main/benchmark_selection.tsv \
+  --list-benchmarks
+```
+
+In `benchmark_selection.tsv`, set `run` to `1` for rows to run and `0` for
+rows to skip. The file includes both active and optional rows, grouped by
+`access_pattern` and `intensity_class`; optional rows default to `0`.
 
 Run one benchmark through the H100 SXM Samsung HBM3 1/5-stack config:
 
@@ -53,22 +76,27 @@ For full row-by-row benchmark arguments, inputs, and trace provenance, see
 | File | Role |
 | --- | --- |
 | `manifest.tsv` | Active main run list. |
+| `manifest.optional.tsv` | Optional functional-coverage rows moved out of the active set by the H100 1/5 size, cache-fit, or long-tail screen. |
+| `benchmark_selection.tsv` | User-editable 1/0 benchmark selection list with access-pattern and memory/compute characterization columns. |
 | `manifest.official_memory_trace.tsv` | Optional trace-replay run list for DLRM/GNN/CORAL2 proxy rows. |
 | `../system/manifest.tsv` | Synthetic microbenchmarks for simulator and memory-system sanity checks. |
-| `trace_manifest.tsv` | Default trace replay paths for `nvcomp_*`, `tango_*`, and `cudf_*` rows. |
-| `trace_manifest.memory_intensive.tsv` | Larger generated trace paths for H100 memory-pressure validation. |
+| `trace_manifest.tsv` | Default trace replay paths; aligned to the larger nvCOMP/cuDF traces plus Tango AlexNet. |
+| `trace_manifest.memory_intensive.tsv` | Explicit generated source for the larger nvCOMP/cuDF trace paths. |
 | `trace_manifest.official_memory.tsv` | Optional DLRM/GNN/CORAL2 proxy trace paths. |
 | `manifest.graph_medium_large.tsv` | Extra GraphBIG/Lonestar medium and large validation rows. |
 | `GRAPH_INPUTS.md` | GraphBIG/Lonestar input sizes, arguments, and generation notes. |
-| `REPRESENTATIVENESS.md` | Current memory-intensity and representative-set classification. |
+| `REPRESENTATIVENESS.md` | Current memory-intensive/compute-intensive workload characterization. |
+| `representativeness_h100_1stack.tsv` | Machine-readable H100 1/5 metric table used to characterize active and optional rows. |
 | `../prepare/OFFICIAL_MEMORY_BENCHMARKS.md` | Source provenance and validation notes for the promoted DLRM/GNN/CORAL2 proxy rows. |
 
 ## Native And Trace Rows
 
 Native rows launch CUDA binaries through the AccelSim runtime interception path.
-These include PolyBench, GraphBIG, ISPASS, Rodinia, Parboil, Lonestar,
-Pannotia, Dragon-Li, proxy apps, and the promoted DLRM/GNN/CORAL2
-`official_memory_proxy` rows.
+The active set includes selected PolyBench, GraphBIG, ISPASS,
+Rodinia, Parboil, Lonestar, Pannotia, proxy-app, and promoted
+DLRM/GNN/CORAL2 `official_memory_proxy` rows. Additional functional rows from
+Rodinia, Parboil, Dragon-Li, ISPASS, nvCOMP, cuDF, and Tango are retained in
+`manifest.optional.tsv`.
 
 The official-derived proxy binary is not checked in. Build it before running
 the DLRM/GNN/CORAL2 rows:
@@ -150,21 +178,15 @@ The runner still creates the per-run `gpgpusim.config`, Ramulator2 YAML, and
 SGRAM/Ramulator environment. The helper then replays the selected
 `kernelslist.g` with `accel-sim.out -trace`.
 
-By default trace replay reads `trace_manifest.tsv`. To validate the larger
-memory-intensive trace set, pass:
-
-```bash
-SGRAM_TRACE_MANIFEST=gpu_benchmark/benchmarks/main/trace_manifest.memory_intensive.tsv
-```
-
-The memory-intensive trace manifest currently points to:
+By default trace replay reads `trace_manifest.tsv`, which now points to the
+larger trace paths used by the active set:
 
 | Trace group | Trace input size |
 | --- | --- |
-| `nvcomp_*` | 4 MiB compression traces, generated from `nvcomp_codec_bench` with 64 KiB chunks. |
-| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces. |
+| `nvcomp_ans` | 4 MiB compression trace, generated from `nvcomp_codec_bench` with 64 KiB chunks. |
+| `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort` | 64 MiB profiler-scoped cuDF micro traces. |
 | `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | 128 MiB profiler-scoped synthetic TPC-H-shaped traces. |
-| `tango_*` | Existing SM86 Tango traces; not yet regenerated into a larger memory-intensive set. |
+| `tango_alexnet` | Existing SM86 larger Tango AlexNet trace. |
 
 DLRM/GNN/CORAL2 proxy rows are native in `manifest.tsv`. If those rows should
 be moved as trace files, generate the optional trace bundle with:
@@ -183,7 +205,7 @@ Regenerate the larger trace manifest with:
 gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py
 ```
 
-Activate it as the default trace manifest only after replay validation passes:
+Refresh the default trace manifest only after replay validation passes:
 
 ```bash
 gpu_benchmark/scripts/prepare_memory_intensive_accelsim_traces.py \
@@ -199,18 +221,18 @@ H100 1/5-stack config still produces meaningful DRAM pressure.
 | --- | --- |
 | GraphBIG | Main rows use `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k`; BFS/SSSP use root `90628`. |
 | Lonestar | Main rows use generated `rmat16.sym.gr`; large validation rows use `rmat20.sym.gr`. |
-| Rodinia | Several rows use explicit larger CLI sizes, for example SRAD v2 `512x512`, Gaussian `-s 256`, LavaMD `-boxes1d 10`, NW `512 10`, and Pathfinder `1000 1000 20`. |
-| Dragon-Li | `dragon_join` uses `-l 65536 -r 65536 -m 65536`; `dragon_amr` keeps `-s 4096 -r 2`. |
-| cuDF/nvCOMP | Larger inputs are handled by regenerating trace files rather than changing the replay manifest row itself. |
+| Rodinia | The active set keeps `rodinia_backprop`; other scaled Rodinia rows are in `manifest.optional.tsv` after falling below the 100k-request cutoff or becoming long-tail. |
+| Dragon-Li | Dragon-Li rows are preserved in `manifest.optional.tsv`; they were functional but too small/cache-fit on H100 1/5. |
+| cuDF/nvCOMP | Active trace rows use the larger trace paths in `trace_manifest.tsv`; smaller codec/query rows remain in `manifest.optional.tsv`. |
 | DLRM/GNN/CORAL2 proxy | Promoted rows use deterministic synthetic inputs with official-source-derived fanout, graph dimensions, and CORAL2/RAJAPerf access motifs. |
 
 Rows with fixed local graph/input files or prepared traces should be scaled by
 staging a larger dataset or regenerating traces first. Do not only change a
 manifest row unless the binary actually accepts that runtime parameter.
 
-## Excluded Long-Tail Rows
+## Excluded And Optional Rows
 
-The active main set excludes:
+The active set excludes:
 
 ```text
 polybench_fdtd2d
@@ -226,9 +248,13 @@ them in inventory manifests for bounded smoke tests or source-rebuild
 experiments, then promote them back only after smaller rebuilt inputs are
 validated with AccelSim + Ramulator2.
 
-`rodinia_particlefilter_float` is also excluded from the main set because it
-crashed during previous validation. `rodinia_particlefilter_naive` remains as
-the particle-filter representative.
+`rodinia_particlefilter_float` is also excluded from the active set because it
+crashed during previous validation.
+
+`manifest.optional.tsv` also keeps application rows that were functional but
+fell below 100k DRAM requests on H100 1/5, plus `proxy_lulesh` and
+`rodinia_streamcluster`, which remained long-tail/incomplete under the current
+binary/input mix. See `REPRESENTATIVENESS.md` for the row-by-row reason.
 
 The `micro_*` rows are not failure exclusions. They live in
 `../system/manifest.tsv` and are loaded with the

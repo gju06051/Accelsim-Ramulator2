@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Classify AccelSim + Ramulator2 benchmark rows by memory traffic.
+"""Classify AccelSim + Ramulator2 benchmark rows by workload character.
 
 This helper reads one or more `summary.csv` files produced by
 `run_fixed_backend_matrix.py` and emits a compact TSV.  It is intentionally a
 heuristic pass: the goal is to flag benchmark rows that are too small to be
-useful as memory-system representatives, and to separately label rows that are
-actually memory-intensive after normalizing DRAM requests by simulated
-instructions.
+useful as stable representatives, and to separately label rows as
+memory-intensive or compute-intensive after normalizing DRAM requests by
+simulated instructions and checking backend queue pressure.
 """
 
 from __future__ import annotations
@@ -99,44 +99,60 @@ def classify(row: dict[str, str], args: argparse.Namespace) -> tuple[str, str]:
 
 
 def classify_intensity(
-    dram_reqs: int, instructions: int, args: argparse.Namespace
+    dram_reqs: int,
+    instructions: int,
+    l2_miss_rate: float,
+    queue_avg_sum: float,
+    args: argparse.Namespace,
 ) -> tuple[str, str, float, float]:
     if instructions <= 0:
-        return "unknown-intensity", "no instruction count", 0.0, 0.0
+        return "compute-intensive", "no instruction count; not memory-bound", 0.0, 0.0
 
     dram_req_per_kinst = dram_reqs * 1000.0 / instructions
     dram_bytes_per_inst = dram_reqs * args.dram_request_bytes / instructions
-    if dram_reqs < args.min_intensity_dram_requests:
-        if dram_req_per_kinst >= args.high_dram_req_per_kinst:
-            return (
-                "small-high-intensity",
-                f"req_per_kinst={dram_req_per_kinst:.3f} but dram_reqs={dram_reqs}",
-                dram_req_per_kinst,
-                dram_bytes_per_inst,
-            )
-        return (
-            "small-low-intensity",
-            f"req_per_kinst={dram_req_per_kinst:.3f} dram_reqs={dram_reqs}",
-            dram_req_per_kinst,
-            dram_bytes_per_inst,
-        )
+
     if dram_req_per_kinst >= args.high_dram_req_per_kinst:
         return (
-            "high-intensity",
+            "memory-intensive",
             f"req_per_kinst={dram_req_per_kinst:.3f}",
             dram_req_per_kinst,
             dram_bytes_per_inst,
         )
-    if dram_req_per_kinst >= args.moderate_dram_req_per_kinst:
+    if (
+        queue_avg_sum >= args.memory_queue_pressure_threshold
+        and l2_miss_rate >= args.memory_l2_miss_rate_threshold
+    ):
         return (
-            "moderate-intensity",
-            f"req_per_kinst={dram_req_per_kinst:.3f}",
+            "memory-intensive",
+            (
+                f"queue_avg_sum={queue_avg_sum:.3f} "
+                f"l2_miss_rate={l2_miss_rate:.3f}"
+            ),
+            dram_req_per_kinst,
+            dram_bytes_per_inst,
+        )
+    if (
+        dram_req_per_kinst >= args.queue_assisted_dram_req_per_kinst
+        and queue_avg_sum >= args.queue_assisted_queue_pressure
+        and l2_miss_rate >= args.queue_assisted_l2_miss_rate
+    ):
+        return (
+            "memory-intensive",
+            (
+                f"req_per_kinst={dram_req_per_kinst:.3f} "
+                f"queue_avg_sum={queue_avg_sum:.3f} "
+                f"l2_miss_rate={l2_miss_rate:.3f}"
+            ),
             dram_req_per_kinst,
             dram_bytes_per_inst,
         )
     return (
-        "low-intensity",
-        f"req_per_kinst={dram_req_per_kinst:.3f}",
+        "compute-intensive",
+        (
+            f"req_per_kinst={dram_req_per_kinst:.3f} "
+            f"queue_avg_sum={queue_avg_sum:.3f} "
+            f"l2_miss_rate={l2_miss_rate:.3f}"
+        ),
         dram_req_per_kinst,
         dram_bytes_per_inst,
     )
@@ -156,9 +172,12 @@ def main() -> int:
     parser.add_argument("--small-l2-misses", type=int, default=50_000)
     parser.add_argument("--large-dram-requests", type=int, default=100_000)
     parser.add_argument("--min-active-partition-ratio", type=float, default=0.5)
-    parser.add_argument("--min-intensity-dram-requests", type=int, default=10_000)
-    parser.add_argument("--moderate-dram-req-per-kinst", type=float, default=1.0)
     parser.add_argument("--high-dram-req-per-kinst", type=float, default=5.0)
+    parser.add_argument("--memory-queue-pressure-threshold", type=float, default=256.0)
+    parser.add_argument("--memory-l2-miss-rate-threshold", type=float, default=0.50)
+    parser.add_argument("--queue-assisted-dram-req-per-kinst", type=float, default=3.0)
+    parser.add_argument("--queue-assisted-queue-pressure", type=float, default=128.0)
+    parser.add_argument("--queue-assisted-l2-miss-rate", type=float, default=0.70)
     parser.add_argument("--dram-request-bytes", type=int, default=32)
     parser.add_argument("--only-flagged", action="store_true")
     args = parser.parse_args()
@@ -183,6 +202,8 @@ def main() -> int:
             "dram_bytes_per_inst",
             "l2miss_per_kinst",
             "l2_misses",
+            "l2_miss_rate",
+            "queue_avg_sum",
             "active_partitions",
             "partitions",
             "max_cycle_hit",
@@ -213,12 +234,19 @@ def main() -> int:
                     parse_int(row.get("sim_insn")),
                 )
                 l2_misses = parse_int(row.get("l2_misses"))
+                l2_miss_rate = parse_float(row.get("l2_miss_rate"))
+                if l2_miss_rate <= 0.0:
+                    l2_accesses = parse_int(row.get("l2_accesses"))
+                    l2_miss_rate = l2_misses / l2_accesses if l2_accesses else 0.0
+                queue_avg_sum = parse_float(row.get("ramulator_queue_len_avg_sum"))
                 (
                     intensity_class,
                     intensity_reason,
                     dram_req_per_kinst,
                     dram_bytes_per_inst,
-                ) = classify_intensity(dram_reqs, instructions, args)
+                ) = classify_intensity(
+                    dram_reqs, instructions, l2_miss_rate, queue_avg_sum, args
+                )
                 l2miss_per_kinst = (
                     l2_misses * 1000.0 / instructions if instructions else 0.0
                 )
@@ -240,6 +268,8 @@ def main() -> int:
                         f"{dram_bytes_per_inst:.6f}",
                         f"{l2miss_per_kinst:.6f}",
                         l2_misses,
+                        f"{l2_miss_rate:.6f}",
+                        f"{queue_avg_sum:.6f}",
                         parse_int(row.get("backend_active_partitions")),
                         parse_int(row.get("backend_runtime_print_partitions")),
                         parse_int(row.get("max_cycle_hit")),

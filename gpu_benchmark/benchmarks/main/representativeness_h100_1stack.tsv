@@ -1,0 +1,75 @@
+benchmark	suite	expected_class	intensity_class	decision	selection_status	status	dram_requests	req_per_kinst	bytes_per_inst	l2_misses	l2_miss_rate	row_hit_rate	queue_avg_sum	reject_per_accept	seconds	source
+polybench_2dconv	polybench	Mixed-locality	memory-intensive	active	memory-intensive	OK	2580224	3.419707	0.109431	4193280	0.706446	0.903999	384.194054	0.000000	0.000000	recovered non-trace unbounded stdout
+polybench_3dconv	polybench	Mixed-locality	compute-intensive	active	compute-intensive	OK	2574528	2.440334	0.078091	4161664	0.351752	0.931195	205.417451	0.000000	0.000000	recovered non-trace unbounded stdout
+polybench_bicg	polybench	Streaming	memory-intensive	active	memory-intensive	OK	4166716	27.759227	0.888295	4167612	0.495789	0.488538	133.153158	0.000000	0.000000	recovered non-trace unbounded stdout
+polybench_atax	polybench	Streaming	memory-intensive	active	memory-intensive	OK	4160588	27.719915	0.887037	4160460	0.494938	0.473279	132.624850	0.000000	0.000000	recovered non-trace unbounded stdout
+graphbig_bfs_data_warp	graphBIG	Irregular	memory-intensive	active	memory-intensive	OK	843514	9.828591	0.314515	902868	0.263646	0.710358	171.091489	0.012236	327.502000	graph unbounded
+graphbig_bfs_topo_atomic	graphBIG	Irregular	memory-intensive	active	memory-intensive	OK	4546572	17.394720	0.556631	4559072	0.220821	0.185848	245.953993	0.112445	2064.185000	graph unbounded
+graphbig_sssp_data_warp	graphBIG	Irregular	memory-intensive	active	memory-intensive	OK	2122279	12.268768	0.392601	2214063	0.314865	0.665326	274.662279	0.034744	711.960000	graph unbounded
+graphbig_triangle_count	graphBIG	Irregular	memory-intensive	active	memory-intensive	OK	22900823	6.633852	0.212283	22593998	0.377420	0.106226	307.032387	0.026446	19324.557000	graph unbounded
+graphbig_kcore	graphBIG	Irregular	compute-intensive	optional	optional-small-or-cache-fit	OK	43743	2.557738	0.081848	62494	0.323013	0.669913	117.409143	1.171982	42.475000	graph unbounded
+ispass_lps	ispass-2009	Irregular	compute-intensive	active	compute-intensive	OK	125000	2.223682	0.071158	250000	0.618812	0.968696	52.416909	0.000000	0.000000	recovered non-trace unbounded stdout
+ispass_lib	ispass-2009	Mixed-locality	compute-intensive	active	compute-intensive	OK	1539266	2.339601	0.074867	2514784	0.369713	0.850465	38.044677	0.000000	0.000000	recovered non-trace unbounded stdout
+ispass_nn	ispass-2009	Irregular	compute-intensive	optional	optional-small-or-cache-fit	OK	19704	0.275730	0.008823	28013	0.051536	0.966758	1.061064	0.000000	0.000000	recovered non-trace unbounded stdout
+ispass_nqu	ispass-2009	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	9	0.007334	0.000235	41	0.154717	0.666667	0.013350	0.000000	0.000000	recovered non-trace unbounded stdout
+ispass_ray	ispass-2009	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	0	0.000000	0.000000	32339	0.354657	0.000000	0.000000	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_streamcluster	rodinia	Irregular	compute-intensive	optional	optional-longtail-or-incomplete	BACKEND_STARTED_ERROR	0	0.000000	0.000000	1899217295	0.980362	0.000000	0.000000	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_backprop	rodinia	Mixed-locality	compute-intensive	active	compute-intensive	OK	286730	2.113595	0.067635	294922	0.301580	0.968277	193.914344	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_srad_v1	rodinia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	28989	0.041042	0.001313	230169	0.037652	0.968298	2.215689	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_srad_v2	rodinia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	2080	0.238777	0.007641	12304	0.204521	0.967308	5.805662	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_gaussian	rodinia	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	800	0.118798	0.003802	1080	0.014052	0.958750	0.247646	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_lavamd	rodinia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	226	0.358789	0.011481	226	0.361022	0.929204	0.230165	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_myocyte	rodinia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	104	0.002224	0.000071	1140	0.000577	0.576923	0.000006	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_nw	rodinia	Mixed-locality	memory-intensive	optional	optional-small-or-cache-fit	OK	761	7.367463	0.235759	1218	0.685811	0.952694	0.351986	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_particlefilter_naive	rodinia	Irregular	compute-intensive	optional	optional-small-or-cache-fit	OK	580	0.012603	0.000403	1080	0.059817	0.944828	0.029907	0.000000	0.000000	recovered non-trace unbounded stdout
+rodinia_pathfinder	rodinia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	1252	1.902921	0.060893	1265	0.914678	0.961661	0.992774	0.000000	0.000000	recovered non-trace unbounded stdout
+proxy_xsbench	proxy-apps	Irregular	compute-intensive	active	compute-intensive	OK	180857	3.624730	0.115991	192929	0.055331	0.609410	36.781766	0.000000	0.000000	recovered non-trace unbounded stdout
+proxy_lulesh	proxy-apps	Mixed-locality	compute-intensive	optional	optional-longtail-or-incomplete	BACKEND_STARTED_ERROR	0	0.000000	0.000000	388923263	0.675741	0.000000	0.000000	0.000000	0.000000	recovered non-trace unbounded stdout
+parboil_cutcp	parboil	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	19620	0.002790	0.000089	104804	0.070865	0.968196	0.098815	0.000000	0.000000	recovered non-trace unbounded stdout
+parboil_stencil	parboil	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	78152	0.044071	0.001410	138632	0.008488	0.947589	1.146490	0.000000	0.000000	recovered non-trace unbounded stdout
+parboil_lbm	parboil	Mixed-locality	memory-intensive	active	memory-intensive	OK	676754968	14.039519	0.449265	1071000000	0.952000	0.772859	1201.625290	0.000000	0.000000	recovered non-trace unbounded stdout
+parboil_mri_q	parboil	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	21248	0.013161	0.000421	21632	0.248164	0.967620	4.710488	0.000000	0.000000	recovered non-trace unbounded stdout
+parboil_sgemm	parboil	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	6016	1.235866	0.039548	6016	0.268571	0.968085	2.911868	0.000000	0.000000	recovered non-trace unbounded stdout
+lonestar_bfs_wlw	lonestar	Irregular	compute-intensive	active	compute-intensive	OK	153676	2.156563	0.069010	166338	0.220331	0.679898	0.198891	0.129832	2624.848000	graph unbounded
+lonestar_sssp_wln	lonestar	Irregular	compute-intensive	active	compute-intensive	OK	284733	2.409883	0.077116	297386	0.233978	0.549227	0.207811	0.075302	4587.341000	graph unbounded
+pannotia_mis	pannotia	Irregular	memory-intensive	active	memory-intensive	OK	5757061	10.360600	0.331539	6727058	0.705612	0.894440	1116.797401	0.000000	0.000000	recovered non-trace unbounded stdout
+pannotia_color_maxmin	pannotia	Irregular	memory-intensive	active	memory-intensive	OK	4689771	8.439874	0.270076	5317886	0.610308	0.908095	587.636875	0.000000	0.000000	recovered non-trace unbounded stdout
+pannotia_sssp_ell	pannotia	Irregular	memory-intensive	active	memory-intensive	OK	689449657	14.180322	0.453770	693376248	0.667746	0.771774	1011.073780	0.000000	0.000000	recovered non-trace unbounded stdout
+pannotia_pagerank_spmv	pannotia	Mixed-locality	memory-intensive	active	memory-intensive	OK	11919709	15.909292	0.509097	11973669	0.354130	0.678991	383.182169	0.000000	0.000000	recovered non-trace unbounded stdout
+pannotia_fw_block	pannotia	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	8192	0.013660	0.000437	8192	0.007470	0.968750	1.582785	0.000000	0.000000	recovered non-trace unbounded stdout
+dragon_join	dragon-li	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	744	0.120627	0.003860	1651	0.383686	0.461022	1.874802	0.000000	0.000000	recovered non-trace unbounded stdout
+dragon_amr	dragon-li	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	3	0.000479	0.000015	648	0.393443	0.333333	0.001223	0.000000	0.000000	recovered non-trace unbounded stdout
+nvcomp_lz4	prepare-nvcomp	Streaming	compute-intensive	optional	optional-small-or-cache-fit	MAX_CYCLE_OK	2929	0.130093	0.004163	69193	0.553199	0.866507	2.081833	0.000000	58.110000	memory trace bounded
+nvcomp_snappy	prepare-nvcomp	Streaming	compute-intensive	optional	optional-small-or-cache-fit	MAX_CYCLE_OK	3627	0.191618	0.006132	4544	0.247427	0.850289	2.681477	0.000000	51.767000	memory trace bounded
+nvcomp_gdeflate	prepare-nvcomp	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	0	0.000000	0.000000	48	1.000000		0.000000	0	1.520000	memory trace bounded
+nvcomp_deflate	prepare-nvcomp	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	16	4.807692	0.153846	33	0.970588	0.812500	1.429894	0.000000	1.650000	memory trace bounded
+nvcomp_zstd	prepare-nvcomp	Streaming	compute-intensive	optional	optional-small-or-cache-fit	OK	0	0.000000	0.000000	2	0.400000		0.000000	0	1.523000	memory trace bounded
+nvcomp_cascaded	prepare-nvcomp	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	MAX_CYCLE_OK	32723	0.668515	0.021392	40098	0.758972	0.874675	63.048114	0.000000	49.693000	memory trace bounded
+nvcomp_bitcomp	prepare-nvcomp	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	MAX_CYCLE_OK	93439	1.524898	0.048797	132152	0.941924	0.903741	225.064825	0.537324	40.882000	memory trace bounded
+nvcomp_ans	prepare-nvcomp	Mixed-locality	memory-intensive	active	memory-intensive	OK	133170	5.620649	0.179861	133291	0.987985	0.872238	663.434395	0.324998	21.277000	memory trace bounded
+tango_cifarnet	prepare-tango	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	OK	36712	0.232483	0.007439	50811	0.263047	0.967586	0.085581	0.000000	1355.897000	trace unbounded
+tango_gru	prepare-tango	Mixed-locality	memory-intensive	optional	optional-small-or-cache-fit	OK	3842	18.123496	0.579952	3842	0.494721	0.966684	5.896018	0.000000	7.380000	trace unbounded
+tango_lstm	prepare-tango	Mixed-locality	memory-intensive	optional	optional-small-or-cache-fit	OK	10226	89.699394	2.870381	10227	0.978286	0.967534	13.698929	0.000000	7.854000	trace unbounded
+tango_alexnet	prepare-tango	Mixed-locality	compute-intensive	active	compute-intensive	OK	7687736	1.039253	0.033256	7805776	0.739596	0.575262	26.998437	0.000000	24035.378000	trace unbounded
+cudf_filter	prepare-cudf	Streaming	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	136282	1.360537	0.043537	174293	0.726648	0.968488	160.544402	0.013934	37.917000	memory trace bounded
+cudf_project	prepare-cudf	Streaming	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	118025	0.999148	0.031973	235165	0.999894	0.968569	146.625106	0.001983	35.980000	memory trace bounded
+cudf_groupby	prepare-cudf	Mixed-locality	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	117769	2.030243	0.064968	798185	1.000000	0.874740	60.588140	0.000000	47.374000	memory trace bounded
+cudf_join	prepare-cudf	Mixed-locality	compute-intensive	optional	optional-small-or-cache-fit	MAX_CYCLE_OK	22340	0.497391	0.015917	66687	0.145153	0.967681	29.524284	0.130349	44.473000	memory trace bounded
+cudf_sort	prepare-cudf	Mixed-locality	memory-intensive	active	memory-intensive	MAX_CYCLE_OK	133779	6.774570	0.216786	594174	1.000000	0.759960	401.214114	0.929892	54.518000	memory trace bounded
+cudf_tpch_q1	prepare-cudf-query	Mixed-locality	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	136211	1.361476	0.043567	174212	0.727056	0.968525	159.753747	0.014492	48.336000	memory trace bounded
+cudf_tpch_q3	prepare-cudf-query	Mixed-locality	memory-intensive	active	memory-intensive	MAX_CYCLE_OK	114009	2.490361	0.079692	153013	0.748219	0.964857	264.033799	0.761729	48.286000	memory trace bounded
+cudf_tpch_q6	prepare-cudf-query	Streaming	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	136504	1.361363	0.043564	174558	0.726880	0.968496	162.869279	0.014344	38.653000	memory trace bounded
+cudf_tpch_q10	prepare-cudf-query	Mixed-locality	compute-intensive	active	compute-intensive	MAX_CYCLE_OK	136400	1.361086	0.043555	174423	0.727020	0.968528	161.288012	0.014010	40.611000	memory trace bounded
+dlrm_v2_embeddingbag_fixed	prepare-dlrm	Irregular	memory-intensive	active	memory-intensive	OK	7370370	13.064930	0.418078	7570400	0.865078	0.845162	1205.653442	0.666229	1385.518000	official proxy unbounded
+dlrm_v2_embeddingbag_quantile	prepare-dlrm	Irregular	memory-intensive	active	memory-intensive	OK	11410618	14.280857	0.456987	11510506	0.858837	0.839615	950.342926	0.704973	2077.118000	official proxy unbounded
+dlrm_v3_sequence_gather	prepare-dlrm	Irregular	memory-intensive	active	memory-intensive	OK	7476056	9.405966	0.300991	7576344	0.865724	0.707928	1084.906868	0.586823	1586.150000	official proxy unbounded
+mlperf_rgat_feature_fetch	prepare-gnn	Irregular	memory-intensive	active	memory-intensive	OK	2042717	4.198463	0.134351	3659980	0.862554	0.795850	881.472664	0.125736	892.051000	official proxy unbounded
+mlperf_rgat_relation_agg	prepare-gnn	Irregular	memory-intensive	active	memory-intensive	OK	493824	7.015974	0.224511	904135	0.115584	0.249437	114.442221	0.269161	570.678000	official proxy unbounded
+gsuite_gcn_mp_pubmed	prepare-gnn	Mixed-locality	memory-intensive	active	memory-intensive	OK	3102053	4.825078	0.154402	5222316	0.922404	0.750102	995.498398	0.265849	1183.179000	official proxy unbounded
+gsuite_sage_mp_pubmed	prepare-gnn	Irregular	compute-intensive	active	compute-intensive	OK	442579	4.988394	0.159629	1030452	0.091507	0.177177	70.544174	0.139306	686.960000	official proxy unbounded
+gsuite_gin_wl_pubmed	prepare-gnn	Mixed-locality	memory-intensive	active	memory-intensive	OK	1411816	4.289079	0.137251	2520139	0.879330	0.796930	893.002510	0.160777	646.532000	official proxy unbounded
+coral2_rajaperf_stream_triad	prepare-coral2	Streaming	memory-intensive	active	memory-intensive	OK	3511168	12.683753	0.405880	4718592	1.000000	0.933472	1354.249420	0.834386	701.925000	official proxy unbounded
+coral2_rajaperf_ltimes	prepare-coral2	Mixed-locality	compute-intensive	active	compute-intensive	OK	507937	0.688077	0.022018	1310752	0.138880	0.903573	58.771868	0.394313	1289.403000	official proxy unbounded
+coral2_rajaperf_energy	prepare-coral2	Mixed-locality	memory-intensive	active	memory-intensive	OK	3636869	12.043016	0.385377	5242880	1.000000	0.938497	1289.607811	0.606973	730.991000	official proxy unbounded
+coral2_rajaperf_planckian	prepare-coral2	Mixed-locality	compute-intensive	active	compute-intensive	OK	578200	0.717988	0.022976	2228224	1.000000	0.891479	64.451284	0.000000	1073.402000	official proxy unbounded
+coral2_rajaperf_reduce3	prepare-coral2	Streaming	memory-intensive	active	memory-intensive	OK	3148479	3.608651	0.115477	3158016	0.973485	0.965143	497.957651	0.021602	1159.956000	official proxy unbounded

@@ -71,6 +71,7 @@ GPU_BENCHMARK_MAIN_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "main"
 GPU_BENCHMARK_SYSTEM_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "system"
 GPU_BENCHMARK_INVENTORY_DIR = GPU_BENCHMARK_ROOT / "benchmarks" / "inventory"
 MANIFEST_MAIN = GPU_BENCHMARK_MAIN_DIR / "manifest.tsv"
+MANIFEST_MAIN_OPTIONAL = GPU_BENCHMARK_MAIN_DIR / "manifest.optional.tsv"
 MANIFEST_SYSTEM_CHECK = GPU_BENCHMARK_SYSTEM_DIR / "manifest.tsv"
 MANIFEST_OPERATIONAL = LOCAL_BENCHMARK_DIR / "operational_manifest.tsv"
 MANIFEST_FINAL = LOCAL_BENCHMARK_DIR / "final_manifest.tsv"
@@ -310,7 +311,51 @@ def load_manifest_benchmarks(path: Path) -> tuple[Benchmark, ...]:
         )
 
 
+def load_benchmark_selection(path: Path) -> tuple[str, ...]:
+    truthy = {"1", "true", "yes", "y", "on", "run"}
+    falsey = {"0", "false", "no", "n", "off", "skip", ""}
+    selected: list[str] = []
+    seen: set[str] = set()
+    with path.open("r", encoding="utf-8", newline="") as f:
+        rows = csv.DictReader(f, delimiter="\t")
+        if not rows.fieldnames:
+            return ()
+        if "run" not in rows.fieldnames:
+            raise ValueError(f"{path} is missing required 'run' column")
+        name_column = "name" if "name" in rows.fieldnames else "benchmark"
+        if name_column not in rows.fieldnames:
+            raise ValueError(f"{path} is missing required 'name' column")
+        for lineno, row in enumerate(rows, start=2):
+            name = (row.get(name_column) or "").strip()
+            if not name or name.startswith("#"):
+                continue
+            flag = (row.get("run") or "").strip().lower()
+            if flag in falsey:
+                continue
+            if flag not in truthy:
+                raise ValueError(
+                    f"{path}:{lineno}: run must be 1/0, true/false, yes/no, or on/off"
+                )
+            if name not in seen:
+                selected.append(name)
+                seen.add(name)
+    return tuple(selected)
+
+
+def select_benchmarks_by_name(
+    benches: tuple[Benchmark, ...],
+    selected_names: tuple[str, ...],
+    extra_benches: tuple[Benchmark, ...] = (),
+) -> tuple[Benchmark, ...]:
+    by_name = {bench.name: bench for bench in (*benches, *extra_benches)}
+    missing = [name for name in selected_names if name not in by_name]
+    if missing:
+        raise KeyError(",".join(missing))
+    return tuple(by_name[name] for name in selected_names)
+
+
 MANIFEST_MAIN_BENCHMARKS = load_manifest_benchmarks(MANIFEST_MAIN)
+MANIFEST_MAIN_OPTIONAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_MAIN_OPTIONAL)
 MANIFEST_SYSTEM_CHECK_BENCHMARKS = load_manifest_benchmarks(MANIFEST_SYSTEM_CHECK)
 MANIFEST_OPERATIONAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_OPERATIONAL)
 MANIFEST_FINAL_BENCHMARKS = load_manifest_benchmarks(MANIFEST_FINAL)
@@ -1919,6 +1964,15 @@ def main() -> int:
         help="Comma-separated benchmark names to run. Defaults to the built-in matrix.",
     )
     parser.add_argument(
+        "--benchmark-selection-file",
+        type=Path,
+        default=None,
+        help=(
+            "TSV with run and name columns. Rows with run=1 are selected. "
+            "When used with the default main preset, optional main rows are also available."
+        ),
+    )
+    parser.add_argument(
         "--list-benchmarks",
         action="store_true",
         help="List selected benchmarks and exit without running Accel-Sim.",
@@ -1951,6 +2005,25 @@ def main() -> int:
         )
 
     benches = load_manifest_benchmarks(args.manifest) if args.manifest else BENCHMARK_PRESETS[args.preset]
+    selection_file = resolve_input_path(args.benchmark_selection_file) if args.benchmark_selection_file else None
+    if selection_file:
+        if not selection_file.exists():
+            print(f"missing benchmark selection file: {selection_file}", file=sys.stderr)
+            return 2
+        try:
+            selected_names = load_benchmark_selection(selection_file)
+            extra_benches = (
+                MANIFEST_MAIN_OPTIONAL_BENCHMARKS
+                if not args.manifest and args.preset == "accelsim_ramulator_main"
+                else ()
+            )
+            benches = select_benchmarks_by_name(benches, selected_names, extra_benches)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        except KeyError as exc:
+            print(f"unknown benchmark(s) in {selection_file}: {exc}", file=sys.stderr)
+            return 2
     if args.benchmarks:
         requested = {item.strip() for item in args.benchmarks.split(",") if item.strip()}
         benches = tuple(bench for bench in benches if bench.name in requested)
