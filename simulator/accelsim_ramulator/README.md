@@ -103,9 +103,11 @@ not invoked by Ramulator.
 
 Reference and validation notes:
 
+- `configs/CONFIG_MATRIX.md`
 - `docs/gpgpusim_ramulator_reference.md`
 - `docs/accelsim_hms_reference.md`
 - `docs/ramulator2_backend_validation.md`
+- `docs/new_memory_integration_guide.md`
 
 Benchmark operation files:
 

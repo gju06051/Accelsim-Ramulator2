@@ -3,7 +3,7 @@
 Place AccelSim/GPGPU-Sim config fragments here for experiments using the
 Ramulator2 backend.
 
-The runner always creates a per-run effective `gpgpusim.config` by merging a
+The runner normally creates a per-run effective `gpgpusim.config` by merging a
 base config with the selected overrides. Select the base config with:
 
 ```bash
@@ -15,6 +15,22 @@ Apply one or more fragments with:
 ```bash
 --accelsim-config-override-file configs/accelsim/a100_1stack_8mb_l2.config
 ```
+
+For final or shared experiments, prefer the clean generated configs in
+`canonical/`:
+
+```bash
+simulator/accelsim_ramulator/scripts/generate_canonical_accelsim_configs.py
+
+python3 simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py \
+  --gpgpusim-config simulator/accelsim_ramulator/configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config \
+  --config-variant canonical
+```
+
+`--config-variant canonical` does not append architecture overrides. It is for
+canonical configs that already contain the intended A100/H100 geometry, L2,
+clock, queue, and address mapping lines. See `../CONFIG_MATRIX.md` for the
+recommended AccelSim/Ramulator2 pairings and validation criteria.
 
 The normal A100-style 5-stack baseline is:
 

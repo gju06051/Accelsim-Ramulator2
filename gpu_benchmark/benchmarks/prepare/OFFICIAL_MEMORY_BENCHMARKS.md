@@ -18,6 +18,12 @@ The full official DLRM/R-GAT datasets and models are too large for routine
 AccelSim runs.  These rows therefore use deterministic synthetic indices and
 features with official-derived shapes.
 
+Two relation-style GNN rows are scaled beyond their smallest official-derived
+debug dimensions because H100 1/5-stack q64 ablation showed that the original
+feature working sets fit too well in the 10 MiB L2 cache. The promoted defaults
+are `mlperf_rgat_relation_agg --nodes 262144 --edges 1048576` and
+`gsuite_sage_mp_pubmed --nodes 262144 --edges 524288`.
+
 The proxy initializes arrays on the host and transfers them with `cudaMemcpy`.
 This keeps bounded AccelSim validation focused on the benchmark kernel instead
 of spending the first 50k cycles in synthetic input-fill kernels.  The GNN

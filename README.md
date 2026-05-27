@@ -172,6 +172,51 @@ cd simulator/accelsim_ramulator
 Use `micro_mem_bw` for DRAM-path pressure. The `micro_l2_*` benchmarks can be
 served mostly by cache and may produce little or no Ramulator2 DRAM traffic.
 
+## Native vs Ramulator2 Cross-Check
+
+For bridge sanity checks, run the same canonical AccelSim config and benchmark
+set once with native AccelSim DRAM and once with the Ramulator2 backend:
+
+```bash
+cd simulator/accelsim_ramulator
+./scripts/run_fixed_backend_matrix.py \
+  --backend native \
+  --preset accelsim_ramulator_system_check \
+  --benchmarks micro_mem_bw,micro_mem_lat \
+  --gpgpusim-config configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config \
+  --config-variant canonical \
+  --latencies 1 \
+  --queue-limits 64 \
+  --max-cycle 10000 \
+  --timeout 0 \
+  --jobs 2 \
+  --out-dir results/crosscheck_native_h100_1stack_10k
+
+./scripts/run_fixed_backend_matrix.py \
+  --backend ramulator2 \
+  --preset accelsim_ramulator_system_check \
+  --benchmarks micro_mem_bw,micro_mem_lat \
+  --gpgpusim-config configs/accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config \
+  --config-variant canonical \
+  --ramulator-config configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml \
+  --latencies 1 \
+  --queue-limits 64 \
+  --ramulator-inflight-read-limit auto \
+  --ramulator-ticks-per-dram-cycle auto \
+  --max-cycle 10000 \
+  --timeout 0 \
+  --jobs 2 \
+  --out-dir results/crosscheck_ramulator_h100_1stack_10k
+```
+
+Compare total read/write requests, row-hit rate, queue pressure, IPC, and host
+runtime. Bounded runs can leave Ramulator2 reads outstanding at `max-cycle`, so
+completion gaps in this mode are a stop-condition artifact rather than a bridge
+failure. A recent 10k-cycle H100 1/5 q64 check showed the same direction for
+`micro_mem_bw` and `dlrm_v2_embeddingbag_fixed`: Ramulator2 produced slightly
+lower IPC/request progress, but similar high row locality and high queue
+pressure.
+
 ## Timing and Stats
 
 The runner defaults are chosen to keep AccelSim and Ramulator2 aligned:
@@ -305,7 +350,7 @@ helper looks up the benchmark in
 `accel-sim.out -trace` from the per-run directory created by the normal
 AccelSim + Ramulator2 runner.
 
-Trace preparation summary:
+Trace Preparation Summary:
 
 | Group | Trace creation path | Trace ISA | Main sizing / scope |
 | --- | --- | ---: | --- |
@@ -313,7 +358,9 @@ Trace preparation summary:
 | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_join`, `cudf_sort` | Ran RAPIDS cuDF microbenchmarks from `prepare/cudf` with `cudaProfilerStart/Stop` around only the selected operation, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 1 MiB synthetic-column traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_accelsim_traces_1MiB_20260521/...`. |
 | `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | Ran compact native-cuDF TPC-H-shaped query scripts over synthetic tables with profiler scoping, then captured Accel-Sim traces with `run_cudf_accelsim_trace.py`. | SM80 | Profiler-scoped 64 MiB query traces stored under ignored local `gpu_benchmark/benchmarks/prepare/results/cudf_tpch_accelsim_traces_64MiB_20260521/...`. |
 | `tango_*` | Sparse-fetched Tango upstream models, built the selected CUDA models with `CUDA_ARCH=86`, and captured SM86 NVBit traces for H100 1/5 validation. | SM86 | `CifarNet`, `GRU`, `LSTM`, and `AlexNet`; validation trace directories live under `/tmp/tango_*_h100_1stack_validation_sm86_20260522/...`. |
-| `dlrm_*`, `mlperf_rgat_*`, `gsuite_*`, `coral2_*` | Optional trace set generated from the committed `official_memory_proxy` binary with `run_official_memory_accelsim_trace.py`. | SM80 | Paths are recorded in `gpu_benchmark/benchmarks/main/trace_manifest.official_memory.tsv` and packaged with `--group trace-official-memory`. |
+| `dlrm_*` | Staged MLCommons Inference DLRM-v2/v3 source under ignored local `gpu_benchmark/benchmarks/prepare/dlrm/`, then implemented the committed `official_memory_proxy` embedding-bag, quantile-gather, and sequence-gather modes from those memory motifs. Optional traces are generated with `run_official_memory_accelsim_trace.py`. | SM80 | Native main rows use deterministic synthetic embedding tables/indices. Optional replay paths are recorded in `gpu_benchmark/benchmarks/main/trace_manifest.official_memory.tsv` and packaged with `--group trace-official-memory`. |
+| `mlperf_rgat_*`, `gsuite_*` | Staged MLCommons R-GAT source from `prepare/dlrm/inference/graph/R-GAT` plus gSuite/PubMed source under ignored local `gpu_benchmark/benchmarks/prepare/gnn/`, then mapped feature-fetch, relation aggregation, and PubMed message-passing motifs into `official_memory_proxy`. | SM80 | Main rows run native proxy kernels. `mlperf_rgat_relation_agg` and `gsuite_sage_mp_pubmed` defaults are scaled to larger node/edge counts after H100 1/5 L2-fit ablation; optional replay traces use the official-memory trace manifest. |
+| `coral2_*` | Staged CORAL2/RAJAPerf source archives under ignored local `gpu_benchmark/benchmarks/prepare/coral2/`, then mapped STREAM, LTimes/Kripke-like tensor contraction, ENERGY, PLANCKIAN, and REDUCE3 motifs into `official_memory_proxy`. | SM80 | Main rows run native proxy kernels with deterministic arrays. Optional replay traces are generated and packaged with the same `trace-official-memory` flow as DLRM/GNN. |
 
 The trace payloads are intentionally not committed. `trace_manifest.tsv` records
 the expected local paths, and `.gitignore` keeps the large prepared trace

@@ -162,6 +162,7 @@ CONFIG_VARIANTS: dict[str, tuple[str, ...]] = {
     "a100_full": ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES,
     "a100_1stack": A100_1STACK_OVERRIDES,
     "a100_5stack": A100_5STACK_OVERRIDES,
+    "canonical": (),
     "h100_1stack": H100_1STACK_OVERRIDES,
     "h100_full": H100_FULL_OVERRIDES,
 }

@@ -3,6 +3,13 @@
 These YAML files are passed to the Ramulator2 bridge when the runner uses
 `--backend ramulator2`.
 
+For the end-to-end process of adding a new memory YAML, adding a new Ramulator2
+DRAM model, pairing it with AccelSim address mapping, rebuilding, and validating
+the result, see `../../docs/new_memory_integration_guide.md`.
+
+For the clean AccelSim config files that should be paired with these YAMLs, see
+`../CONFIG_MATRIX.md`.
+
 ## Files
 
 | File | Purpose |
@@ -69,18 +76,18 @@ the result back to 40.
 Use these pairings when you want a config whose external-channel address mapping
 has been checked against the current bridge build:
 
-| Ramulator2 config | AccelSim variant | Channels |
-| --- | --- | ---: |
-| `a100_hbm2e_1stack.yaml` | `a100_1stack` | 8 |
-| `a100_hbm2e_5stack.yaml` | `a100_5stack` | 40 |
-| `a100_hbm2e_80gb.yaml` | `a100_full` | 40 |
-| `hbm3_sid_external_8ch.yaml` | `a100_1stack` | 8 |
-| `hbm3_sid_external_40ch.yaml` | `a100_5stack` | 40 |
-| `h100_sxm_hbm3_sid_16ch.yaml` | `h100_1stack` | 16 |
-| `h100_sxm_hbm3_sid_80ch.yaml` | `h100_full` | 80 |
-| `hbm4.yaml` | `a100_1stack` | 8 |
-| `hbm4_external.yaml` | `a100_1stack` | 8 |
-| `hbm4_external_40ch.yaml` | `a100_5stack` | 40 |
+| Ramulator2 config | Legacy runner variant | Preferred canonical AccelSim config | Channels |
+| --- | --- | --- | ---: |
+| `a100_hbm2e_1stack.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
+| `a100_hbm2e_5stack.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
+| `a100_hbm2e_80gb.yaml` | `a100_full` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
+| `hbm3_sid_external_8ch.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
+| `hbm3_sid_external_40ch.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
+| `h100_sxm_hbm3_sid_16ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 16 |
+| `h100_sxm_hbm3_sid_80ch.yaml` | `h100_full` | `canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | 80 |
+| `hbm4.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
+| `hbm4_external.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
+| `hbm4_external_40ch.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
 
 ## HBM3 SID Notes
 

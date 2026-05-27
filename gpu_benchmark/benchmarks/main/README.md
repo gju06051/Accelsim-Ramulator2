@@ -103,7 +103,7 @@ Preparation choices:
 | Group | Preparation source | Main-row behavior |
 | --- | --- | --- |
 | DLRM | MLCommons DLRM-v2 and DLRM-v3 local sources | Deterministic embedding-table gathers preserving fixed fanout, high-fanout quantile gather, and long sequence gather patterns. |
-| GNN | MLCommons R-GAT plus gSuite/PubMed local sources | Deterministic graph feature/relation gathers preserving irregular neighbor access and PubMed-scale node/edge/feature dimensions. |
+| GNN | MLCommons R-GAT plus gSuite/PubMed local sources | Deterministic graph feature/relation gathers preserving irregular neighbor access and PubMed-derived/scaled node, edge, and feature dimensions. |
 | CORAL2 | CORAL2/RAJAPerf local source archives | Deterministic CUDA kernels preserving STREAM, LTimes/Kripke-like contraction, ENERGY, PLANCKIAN, and REDUCE3 memory motifs. |
 
 DLRM rows:
@@ -119,9 +119,9 @@ GNN rows:
 | Benchmark | Arguments | Prepared behavior |
 | --- | --- | --- |
 | `mlperf_rgat_feature_fetch` | `--mode gnn_feature_fetch --edges 262144 --nodes 65536 --dim 64 --iters 1` | MLCommons R-GAT/IGBH-style irregular neighbor feature fetch. |
-| `mlperf_rgat_relation_agg` | `--mode gnn_relation_agg --edges 131072 --nodes 32768 --dim 32 --relations 4 --iters 1` | R-GAT-style relation-aware gather with destination-indexed edge outputs. |
+| `mlperf_rgat_relation_agg` | `--mode gnn_relation_agg --edges 1048576 --nodes 262144 --dim 32 --relations 4 --iters 1` | R-GAT-style relation-aware gather with destination-indexed edge outputs; scaled to a roughly 32 MiB feature working set after H100 1/5 cache-sensitivity ablation. |
 | `gsuite_gcn_mp_pubmed` | `--mode gsuite_gcn_mp_pubmed --edges 44338 --nodes 19717 --dim 500 --iters 1` | gSuite PubMed GCN message-passing feature fetch. |
-| `gsuite_sage_mp_pubmed` | `--mode gsuite_sage_mp_pubmed --edges 44338 --nodes 19717 --dim 128 --relations 4 --iters 1` | gSuite PubMed SAGE-style relation gather with destination-indexed edge outputs. |
+| `gsuite_sage_mp_pubmed` | `--mode gsuite_sage_mp_pubmed --edges 524288 --nodes 262144 --dim 128 --relations 4 --iters 1` | gSuite SAGE-style relation gather with destination-indexed edge outputs; scaled to a roughly 128 MiB feature working set after H100 1/5 cache-sensitivity ablation. |
 | `gsuite_gin_wl_pubmed` | `--mode gsuite_gin_wl_pubmed --edges 44338 --nodes 19717 --dim 256 --iters 1` | gSuite PubMed GIN/WL-style gathered feature transform. |
 
 CORAL2 rows:

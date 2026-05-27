@@ -20,6 +20,9 @@ __pycache__/
 # Local reference papers and generated/prepared trace artifacts
 *.pdf
 gpu_benchmark/benchmarks/prepare/results/
+gpu_benchmark/benchmarks/prepare/coral2/
+gpu_benchmark/benchmarks/prepare/dlrm/
+gpu_benchmark/benchmarks/prepare/gnn/
 tools/nvbit_release_x86_64/tools/instr_count/instr_count.so
 tools/nvbit_release_x86_64/tools/opcode_hist/opcode_hist.so
 

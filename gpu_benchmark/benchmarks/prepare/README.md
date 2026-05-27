@@ -36,7 +36,9 @@ Official-derived DLRM, GNN, and CORAL2 rows are listed in
 `official_memory_manifest.tsv` and promoted into `main/manifest.tsv`. They use
 the standalone `official_memory_proxy` CUDA binary, deterministic synthetic
 inputs, and official-source-derived dimensions/access motifs. They are intended
-for memory system studies, not MLPerf or CORAL2 compliance reporting.
+for memory system studies, not MLPerf or CORAL2 compliance reporting. The
+relation-style GNN defaults are scaled after H100 1/5-stack ablation so their
+feature working sets no longer sit mostly inside L2.
 
 ## Build
 
