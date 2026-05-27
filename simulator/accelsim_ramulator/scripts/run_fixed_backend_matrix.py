@@ -87,6 +87,8 @@ ACCELSIM_DRAM_PARTITION_QUEUES = "64:64:64:64"
 ACCELSIM_DRAM_SCHED_QUEUE_SIZE = 64
 ACCELSIM_DRAM_RETURN_QUEUE_SIZE = 192
 RAMULATOR_GENERIC_BUFFER_ENTRIES_PER_CHANNEL = ACCELSIM_DRAM_SCHED_QUEUE_SIZE
+RAMULATOR_COMMANDS = ("ACT", "RD", "WR", "PRE")
+RAMULATOR_COMMAND_COUNTER_PATH = "./ramulator_cmd_counts/channel_{channel}.cmdcount"
 ACCELSIM_DEFAULT_DRAM_QUEUE_OVERRIDES: tuple[str, ...] = (
     f"-gpgpu_dram_partition_queues {ACCELSIM_DRAM_PARTITION_QUEUES}",
     f"-gpgpu_frfcfs_dram_sched_queue_size {ACCELSIM_DRAM_SCHED_QUEUE_SIZE}",
@@ -556,6 +558,35 @@ def ramulator_controller_buffer_sizes(config_path: Path) -> tuple[int, int]:
     return read_buffer, write_buffer
 
 
+def ensure_ramulator_command_counter(controller: dict) -> None:
+    plugins = controller.get("plugins")
+    if plugins is None:
+        plugins = []
+    if not isinstance(plugins, list):
+        plugins = []
+
+    counter_plugin = {
+        "ControllerPlugin": {
+            "impl": "CommandCounter",
+            "path": RAMULATOR_COMMAND_COUNTER_PATH,
+            "commands_to_count": list(RAMULATOR_COMMANDS),
+        }
+    }
+    for plugin in plugins:
+        plugin_config = plugin.get("ControllerPlugin") if isinstance(plugin, dict) else None
+        if not isinstance(plugin_config, dict):
+            continue
+        if (
+            plugin_config.get("impl") == "CommandCounter"
+            and plugin_config.get("path") == RAMULATOR_COMMAND_COUNTER_PATH
+        ):
+            controller["plugins"] = plugins
+            return
+
+    plugins.append(counter_plugin)
+    controller["plugins"] = plugins
+
+
 def prepare_ramulator_config(
     run_dir: Path, source_config: Path, queue_limit: int
 ) -> Path:
@@ -570,6 +601,14 @@ def prepare_ramulator_config(
             ) from exc
         controller["read_buffer_size"] = queue_limit
         controller["write_buffer_size"] = queue_limit
+    else:
+        try:
+            controller = config["MemorySystem"]["Controller"]
+        except KeyError as exc:
+            raise ValueError(
+                f"{source_config} is missing MemorySystem.Controller"
+            ) from exc
+    ensure_ramulator_command_counter(controller)
     copied_config.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     return copied_config.resolve()
 
@@ -756,6 +795,307 @@ def compute_ratio(numer: str, denom: str) -> str:
     return f"{n / d:.6f}"
 
 
+def value_float(row: dict[str, str | int | float], key: str) -> float | None:
+    value = row.get(key, "")
+    if value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def value_int(row: dict[str, str | int | float], key: str) -> int | None:
+    value = value_float(row, key)
+    if value is None:
+        return None
+    return int(value)
+
+
+def ratio_float(numer: float | int | None, denom: float | int | None) -> str:
+    if numer is None or denom is None or float(denom) == 0.0:
+        return ""
+    return format_float(float(numer) / float(denom))
+
+
+def per_kinst(count: float | int | None, insn: float | int | None) -> str:
+    if count is None or insn is None or float(insn) == 0.0:
+        return ""
+    return format_float(float(count) * 1000.0 / float(insn))
+
+
+def parse_int_list_text(text: object) -> list[int]:
+    if not isinstance(text, str) or not text:
+        return []
+    values: list[int] = []
+    for item in text.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            values.append(int(item, 0))
+        except ValueError:
+            return []
+    return values
+
+
+def derive_analysis_stats(row: dict[str, str | int | float]) -> dict[str, str | int]:
+    stats: dict[str, str | int] = {}
+
+    sim_insn = value_float(row, "tot_sim_insn") or value_float(row, "sim_insn")
+    l2_misses = value_float(row, "l2_misses")
+    mem_read_global = value_float(row, "mem_read_global")
+    mem_write_global = value_float(row, "mem_write_global")
+    load_insn = value_float(row, "load_insn")
+    store_insn = value_float(row, "store_insn")
+
+    ram_reads = value_float(row, "ramulator_total_num_read_requests")
+    ram_writes = value_float(row, "ramulator_total_num_write_requests")
+    ram_total = (ram_reads or 0.0) + (ram_writes or 0.0)
+    cmd_rd = value_float(row, "ramulator_cmd_RD")
+    cmd_wr = value_float(row, "ramulator_cmd_WR")
+    cmd_act = value_float(row, "ramulator_cmd_ACT")
+    cmd_pre = value_float(row, "ramulator_cmd_PRE")
+    cmd_rw = (cmd_rd or 0.0) + (cmd_wr or 0.0)
+    cmd_total = (cmd_act or 0.0) + cmd_rw + (cmd_pre or 0.0)
+
+    accepted_reads = value_float(row, "backend_total_accepted_reads")
+    accepted_writes = value_float(row, "backend_total_accepted_writes")
+    completed_reads = value_float(row, "backend_total_completed_reads")
+    completed_writes = value_float(row, "backend_global_completed_writes")
+    accepted_total = (accepted_reads or 0.0) + (accepted_writes or 0.0)
+    rejected = value_float(row, "backend_total_rejected")
+    rejected_inflight = value_float(row, "backend_total_rejected_inflight")
+    rejected_ramulator = value_float(row, "backend_total_rejected_ramulator")
+    full_stalls = value_float(row, "backend_total_full_stalls")
+
+    row_hits = value_float(row, "ramulator_row_hits")
+    row_misses = value_float(row, "ramulator_row_misses")
+    row_conflicts = value_float(row, "ramulator_row_conflicts")
+    read_row_hits = value_float(row, "ramulator_read_row_hits")
+    read_row_misses = value_float(row, "ramulator_read_row_misses")
+    read_row_conflicts = value_float(row, "ramulator_read_row_conflicts")
+    write_row_hits = value_float(row, "ramulator_write_row_hits")
+    write_row_misses = value_float(row, "ramulator_write_row_misses")
+    write_row_conflicts = value_float(row, "ramulator_write_row_conflicts")
+
+    cycles = value_float(row, "ramulator_memory_system_cycles")
+    tck_ns = value_float(row, "ramulator_tck_ns")
+    time_ns = cycles * tck_ns if cycles is not None and tck_ns is not None else None
+
+    stats.update(
+        {
+            "analysis_mem_requests_per_kinst": per_kinst(ram_total, sim_insn),
+            "analysis_ramulator_cmd_rw_per_kinst": per_kinst(cmd_rw, sim_insn),
+            "analysis_l2_misses_per_kinst": per_kinst(l2_misses, sim_insn),
+            "analysis_global_mem_per_kinst": per_kinst(
+                (mem_read_global or 0.0) + (mem_write_global or 0.0), sim_insn
+            ),
+            "analysis_load_store_insn_per_kinst": per_kinst(
+                (load_insn or 0.0) + (store_insn or 0.0), sim_insn
+            ),
+            "analysis_backend_reject_per_accept": ratio_float(rejected, accepted_total),
+            "analysis_backend_inflight_reject_per_accept": ratio_float(
+                rejected_inflight, accepted_total
+            ),
+            "analysis_backend_ramulator_reject_per_accept": ratio_float(
+                rejected_ramulator, accepted_total
+            ),
+            "analysis_backend_full_stall_per_accept": ratio_float(
+                full_stalls, accepted_total
+            ),
+            "analysis_backend_read_completion_gap": format_numeric(
+                (accepted_reads - completed_reads)
+                if accepted_reads is not None and completed_reads is not None
+                else None
+            ),
+            "analysis_backend_write_completion_gap": format_numeric(
+                (accepted_writes - completed_writes)
+                if accepted_writes is not None and completed_writes is not None
+                else None
+            ),
+            "analysis_ramulator_row_hit_rate": ratio_float(
+                row_hits, (row_hits or 0.0) + (row_misses or 0.0) + (row_conflicts or 0.0)
+            ),
+            "analysis_ramulator_read_row_hit_rate": ratio_float(
+                read_row_hits,
+                (read_row_hits or 0.0)
+                + (read_row_misses or 0.0)
+                + (read_row_conflicts or 0.0),
+            ),
+            "analysis_ramulator_write_row_hit_rate": ratio_float(
+                write_row_hits,
+                (write_row_hits or 0.0)
+                + (write_row_misses or 0.0)
+                + (write_row_conflicts or 0.0),
+            ),
+            "analysis_ramulator_cmd_total": format_numeric(cmd_total),
+            "analysis_ramulator_rd_per_read_request": ratio_float(cmd_rd, ram_reads),
+            "analysis_ramulator_wr_per_write_request": ratio_float(cmd_wr, ram_writes),
+            "analysis_ramulator_act_per_rdwr": ratio_float(cmd_act, cmd_rw),
+            "analysis_ramulator_pre_per_act": ratio_float(cmd_pre, cmd_act),
+            "analysis_ramulator_request_read_fraction": ratio_float(ram_reads, ram_total),
+            "analysis_ramulator_cmd_read_fraction": ratio_float(cmd_rd, cmd_rw),
+        }
+    )
+
+    read_req_by_channel = parse_int_list_text(row.get("ramulator_num_read_reqs_by_channel"))
+    cmd_rd_by_channel = parse_int_list_text(row.get("ramulator_cmd_RD_by_channel"))
+    backend_reads_by_partition = parse_int_list_text(row.get("backend_accepted_reads_by_partition"))
+    stats["analysis_ramulator_read_req_channel_cv"] = compute_cv(read_req_by_channel)
+    stats["analysis_ramulator_cmd_rd_channel_cv"] = compute_cv(cmd_rd_by_channel)
+    stats["analysis_backend_accepted_read_partition_cv"] = compute_cv(
+        backend_reads_by_partition
+    )
+
+    if time_ns and time_ns > 0.0:
+        # Assumes a 32B DQ atom per column command/request, which matches the
+        # current H100 Samsung HBM3SID configs. The column name keeps that
+        # assumption explicit for other memories.
+        stats["analysis_est_atom32B_request_bw_gbs"] = format_float(
+            ram_total * 32.0 / time_ns
+        )
+        stats["analysis_est_atom32B_cmd_bw_gbs"] = format_float(cmd_rw * 32.0 / time_ns)
+    else:
+        stats["analysis_est_atom32B_request_bw_gbs"] = ""
+        stats["analysis_est_atom32B_cmd_bw_gbs"] = ""
+
+    return stats
+
+
+def write_analysis_logs(run_dir: Path, row: dict[str, str | int | float]) -> None:
+    gpgpu_keys = (
+        "benchmark",
+        "status",
+        "config_variant",
+        "backend",
+        "kernel_launches",
+        "max_cycle_hit",
+        "accelsim_core_freq_mhz",
+        "accelsim_l2_freq_mhz",
+        "accelsim_dram_freq_mhz",
+        "sim_cycles",
+        "tot_sim_cycles",
+        "sim_insn",
+        "tot_sim_insn",
+        "ipc",
+        "tot_ipc",
+        "l2_accesses",
+        "l2_misses",
+        "l2_miss_rate",
+        "l2_pending_hits",
+        "l2_reservation_fails",
+        "l2_bw_gbs",
+        "l2_bw_total_gbs",
+        "stall_dramfull",
+        "stall_icnt2sh",
+        "stall_shd_mem",
+        "l1cache_bkconflict",
+        "mem_read_global",
+        "mem_write_global",
+        "load_insn",
+        "store_insn",
+        "core_granularity_profile_present",
+        "core_granularity_transactions",
+        "core_granularity_sector_efficiency",
+        "core_granularity_avg_useful_bytes",
+        "core_granularity_useful_8b_ratio",
+        "core_granularity_useful_16b_ratio",
+        "core_granularity_useful_32b_ratio",
+        "analysis_mem_requests_per_kinst",
+        "analysis_ramulator_cmd_rw_per_kinst",
+        "analysis_l2_misses_per_kinst",
+        "analysis_global_mem_per_kinst",
+        "analysis_load_store_insn_per_kinst",
+        "analysis_backend_accepted_read_partition_cv",
+        "gpgpusim_host_timing_total_us",
+        "gpgpusim_host_timing_total_calls",
+        "gpgpusim_host_timing_dram_us",
+        "gpgpusim_host_timing_dram_pct",
+        "gpgpusim_host_timing_l2_us",
+        "gpgpusim_host_timing_l2_pct",
+    )
+    ramulator_keys = (
+        "benchmark",
+        "status",
+        "backend",
+        "ramulator_config_run",
+        "ramulator_read_buffer_size",
+        "ramulator_write_buffer_size",
+        "ramulator_inflight_read_limit",
+        "ramulator_tck_ns",
+        "ramulator_mhz",
+        "ramulator_effective_ticks_per_dram_cycle",
+        "ramulator_stats_present",
+        "ramulator_stats_source",
+        "ramulator_cmd_stats_present",
+        "ramulator_cmd_count_files",
+        "ramulator_memory_system_cycles",
+        "ramulator_total_num_read_requests",
+        "ramulator_total_num_write_requests",
+        "ramulator_num_read_reqs",
+        "ramulator_num_write_reqs",
+        "ramulator_cmd_ACT",
+        "ramulator_cmd_RD",
+        "ramulator_cmd_WR",
+        "ramulator_cmd_PRE",
+        "ramulator_row_hits",
+        "ramulator_row_misses",
+        "ramulator_row_conflicts",
+        "ramulator_read_row_hits",
+        "ramulator_read_row_misses",
+        "ramulator_read_row_conflicts",
+        "ramulator_write_row_hits",
+        "ramulator_write_row_misses",
+        "ramulator_write_row_conflicts",
+        "ramulator_avg_read_latency",
+        "ramulator_queue_len_avg_sum",
+        "ramulator_read_queue_len_avg_sum",
+        "ramulator_write_queue_len_avg_sum",
+        "backend_active_partitions",
+        "backend_partition_cv",
+        "backend_total_accepted_reads",
+        "backend_total_completed_reads",
+        "backend_total_accepted_writes",
+        "backend_total_rejected",
+        "backend_total_rejected_inflight",
+        "backend_total_rejected_ramulator",
+        "backend_total_full_stalls",
+        "backend_global_outstanding_reads",
+        "backend_global_callback_untracked_writes",
+        "backend_global_completed_writes",
+        "analysis_backend_reject_per_accept",
+        "analysis_backend_inflight_reject_per_accept",
+        "analysis_backend_ramulator_reject_per_accept",
+        "analysis_backend_full_stall_per_accept",
+        "analysis_backend_read_completion_gap",
+        "analysis_backend_write_completion_gap",
+        "analysis_ramulator_row_hit_rate",
+        "analysis_ramulator_read_row_hit_rate",
+        "analysis_ramulator_write_row_hit_rate",
+        "analysis_ramulator_cmd_total",
+        "analysis_ramulator_rd_per_read_request",
+        "analysis_ramulator_wr_per_write_request",
+        "analysis_ramulator_act_per_rdwr",
+        "analysis_ramulator_pre_per_act",
+        "analysis_ramulator_request_read_fraction",
+        "analysis_ramulator_cmd_read_fraction",
+        "analysis_ramulator_read_req_channel_cv",
+        "analysis_ramulator_cmd_rd_channel_cv",
+        "analysis_est_atom32B_request_bw_gbs",
+        "analysis_est_atom32B_cmd_bw_gbs",
+    )
+
+    for path, title, keys in (
+        (run_dir / "gpgpusim.result", "AccelSim/GPGPU-Sim result summary", gpgpu_keys),
+        (run_dir / "ramulator_result.log", "Ramulator2 result summary", ramulator_keys),
+    ):
+        lines = [f"# {title}"]
+        for key in keys:
+            lines.append(f"{key}={row.get(key, '')}")
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def extract_core_granularity_profile_stats(
     profile_path: Path, enabled: str
 ) -> dict[str, str | int]:
@@ -887,7 +1227,7 @@ def format_numeric(value: float | int | None) -> str:
 
 
 def empty_ramulator_stats() -> dict[str, str | int]:
-    return {
+    stats = {
         "ramulator_stats_present": 0,
         "ramulator_stats_source": "",
         "ramulator_memory_system_cycles": "",
@@ -918,6 +1258,56 @@ def empty_ramulator_stats() -> dict[str, str | int]:
         "ramulator_queue_len_avg_by_channel": "",
         "ramulator_read_queue_len_avg_by_channel": "",
     }
+    stats.update(empty_ramulator_command_stats())
+    return stats
+
+
+def empty_ramulator_command_stats() -> dict[str, str | int]:
+    stats: dict[str, str | int] = {
+        "ramulator_cmd_stats_present": 0,
+        "ramulator_cmd_count_files": "",
+    }
+    for command in RAMULATOR_COMMANDS:
+        stats[f"ramulator_cmd_{command}"] = ""
+        stats[f"ramulator_cmd_{command}_by_channel"] = ""
+    return stats
+
+
+def extract_ramulator_command_stats(run_dir: Path) -> dict[str, str | int]:
+    stats = empty_ramulator_command_stats()
+    count_dir = run_dir / "ramulator_cmd_counts"
+    if not count_dir.exists():
+        return stats
+
+    channel_counts: dict[int, dict[str, int]] = {}
+    for path in sorted(count_dir.glob("*.cmdcount")):
+        match = re.search(r"channel_(\d+)\.cmdcount$", path.name)
+        if not match:
+            continue
+        channel = int(match.group(1))
+        counts = {command: 0 for command in RAMULATOR_COMMANDS}
+        with path.open("r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                parts = [part.strip() for part in line.split(",", 1)]
+                if len(parts) != 2 or parts[0] not in counts:
+                    continue
+                try:
+                    counts[parts[0]] = int(parts[1], 0)
+                except ValueError:
+                    continue
+        channel_counts[channel] = counts
+
+    if not channel_counts:
+        return stats
+
+    channels = sorted(channel_counts)
+    stats["ramulator_cmd_stats_present"] = 1
+    stats["ramulator_cmd_count_files"] = str(count_dir)
+    for command in RAMULATOR_COMMANDS:
+        values = [channel_counts[channel].get(command, 0) for channel in channels]
+        stats[f"ramulator_cmd_{command}"] = str(sum(values))
+        stats[f"ramulator_cmd_{command}_by_channel"] = format_int_list(values)
+    return stats
 
 
 def extract_bridge_ramulator_stats(stdout: str) -> dict[str, str | int]:
@@ -1312,6 +1702,7 @@ exec {run_cmd}
         stdout, enabled_partitions | printed_partitions
     )
     ramulator_stats = extract_ramulator_stats(stdout)
+    ramulator_stats.update(extract_ramulator_command_stats(run_dir))
     ramulator_clock_stats = extract_ramulator_clock_stats(stdout)
     host_timing_stats = extract_host_timing_stats(stdout)
     core_granularity_stats = extract_core_granularity_profile_stats(
@@ -1321,7 +1712,10 @@ exec {run_cmd}
     l2_accesses = extract_last_numeric(stdout, "L2_total_cache_accesses")
     l2_misses = extract_last_numeric(stdout, "L2_total_cache_misses")
 
-    return {
+    gpgpusim_result_path = run_dir / "gpgpusim.result"
+    ramulator_result_log_path = run_dir / "ramulator_result.log"
+
+    row: dict[str, str | int | float] = {
         "benchmark": bench.name,
         "suite": bench.suite,
         "expected_class": bench.expected_class,
@@ -1383,8 +1777,13 @@ exec {run_cmd}
         "l1cache_bkconflict": extract_last_numeric(stdout, "gpgpu_n_l1cache_bkconflict"),
         "stdout": str(stdout_path),
         "stderr": str(stderr_path),
+        "gpgpusim_result": str(gpgpusim_result_path),
+        "ramulator_result_log": str(ramulator_result_log_path),
         "command": shell_join(cmd),
     }
+    row.update(derive_analysis_stats(row))
+    write_analysis_logs(run_dir, row)
+    return row
 
 
 def main() -> int:
@@ -1746,6 +2145,16 @@ def main() -> int:
         "backend_full_by_partition",
         "ramulator_stats_present",
         "ramulator_stats_source",
+        "ramulator_cmd_stats_present",
+        "ramulator_cmd_count_files",
+        "ramulator_cmd_ACT",
+        "ramulator_cmd_RD",
+        "ramulator_cmd_WR",
+        "ramulator_cmd_PRE",
+        "ramulator_cmd_ACT_by_channel",
+        "ramulator_cmd_RD_by_channel",
+        "ramulator_cmd_WR_by_channel",
+        "ramulator_cmd_PRE_by_channel",
         "ramulator_memory_system_cycles",
         "ramulator_total_num_read_requests",
         "ramulator_total_num_write_requests",
@@ -1773,6 +2182,32 @@ def main() -> int:
         "ramulator_avg_read_latency_by_channel",
         "ramulator_queue_len_avg_by_channel",
         "ramulator_read_queue_len_avg_by_channel",
+        "analysis_mem_requests_per_kinst",
+        "analysis_ramulator_cmd_rw_per_kinst",
+        "analysis_l2_misses_per_kinst",
+        "analysis_global_mem_per_kinst",
+        "analysis_load_store_insn_per_kinst",
+        "analysis_backend_reject_per_accept",
+        "analysis_backend_inflight_reject_per_accept",
+        "analysis_backend_ramulator_reject_per_accept",
+        "analysis_backend_full_stall_per_accept",
+        "analysis_backend_read_completion_gap",
+        "analysis_backend_write_completion_gap",
+        "analysis_ramulator_row_hit_rate",
+        "analysis_ramulator_read_row_hit_rate",
+        "analysis_ramulator_write_row_hit_rate",
+        "analysis_ramulator_cmd_total",
+        "analysis_ramulator_rd_per_read_request",
+        "analysis_ramulator_wr_per_write_request",
+        "analysis_ramulator_act_per_rdwr",
+        "analysis_ramulator_pre_per_act",
+        "analysis_ramulator_request_read_fraction",
+        "analysis_ramulator_cmd_read_fraction",
+        "analysis_ramulator_read_req_channel_cv",
+        "analysis_ramulator_cmd_rd_channel_cv",
+        "analysis_backend_accepted_read_partition_cv",
+        "analysis_est_atom32B_request_bw_gbs",
+        "analysis_est_atom32B_cmd_bw_gbs",
         "kernel_launches",
         "max_cycle_hit",
         "l2_accesses",
@@ -1804,6 +2239,8 @@ def main() -> int:
         ),
         "stdout",
         "stderr",
+        "gpgpusim_result",
+        "ramulator_result_log",
         "command",
     ]
     with summary.open("w", newline="", encoding="utf-8") as f:
