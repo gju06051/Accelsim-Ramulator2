@@ -28,8 +28,8 @@ python3 simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py \
 ```
 
 `--config-variant canonical` does not append architecture overrides. It is for
-canonical configs that already contain the intended A100/H100 geometry, L2,
-clock, queue, and address mapping lines. See `../CONFIG_MATRIX.md` for the
+canonical configs that already contain the intended A100/H100/RTX5090 geometry,
+L2, clock, queue, and address mapping lines. See `../CONFIG_MATRIX.md` for the
 recommended AccelSim/Ramulator2 pairings and validation criteria.
 
 The normal A100-style 5-stack baseline is:
@@ -62,6 +62,25 @@ and:
 `h100_1stack` models one HBM3 stack as 16 x 64-bit channels, 26 SMs
 (`132 / 5` rounded to the nearest integer), and 10 MiB L2. The equivalent
 fragment is `configs/accelsim/h100_sxm_hbm3_1stack_16ch.config`.
+
+The RTX 5090-style GDDR7 configs are currently canonical-only:
+
+```bash
+--gpgpusim-config configs/accelsim/canonical/rtx5090_gddr7_full_64ch.gpgpusim.config
+--config-variant canonical
+--ramulator-config configs/ramulator/rtx5090_gddr7_full_64ch.yaml
+```
+
+and the 1/8 reduced spec:
+
+```bash
+--gpgpusim-config configs/accelsim/canonical/rtx5090_gddr7_1of8_8ch.gpgpusim.config
+--config-variant canonical
+--ramulator-config configs/ramulator/rtx5090_gddr7_1of8_8ch.yaml
+```
+
+The full config models 170 SMs, 64 byte-wide GDDR7 channels, and 96 MiB L2.
+The 1/8 config models 21 SMs, 8 byte-wide GDDR7 channels, and 12 MiB L2.
 
 For 5-stack/40-channel runs, use `-gpgpu_memory_partition_indexing 2` for the
 balanced IPoly path. The local address decoder supports 40 channels by hashing

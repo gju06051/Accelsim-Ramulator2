@@ -1,0 +1,41 @@
+# GDDR7 32Gbps/pin 16-channel Ramulator2 config for AccelSim bridge smoke.
+#
+# JEDEC GDDR7 defines four independent byte-wide channels per x32 device.
+# Ramulator2's top-level channel count is the aggregate set of externally
+# addressable channels, so this config models 16 channels, equivalent to four
+# 32Gb 4-channel devices. Density is therefore overridden to the aggregate
+# 128Gb total represented by the 16 channels.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: GDDR7
+    org:
+      preset: GDDR7_32Gb_4ch
+      density: 131072
+      channel_width: 8
+      channel: 16
+    timing:
+      preset: GDDR7_32Gbps
+
+  Controller:
+    impl: Generic
+    read_buffer_size: 64
+    write_buffer_size: 64
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh
+    channel_start_bit: 8

@@ -1,0 +1,40 @@
+# RTX 5090-style GDDR7 28Gbps/pin 64-channel Ramulator2 config.
+#
+# JEDEC GDDR7 defines four independent byte-wide channels per x32 device.
+# RTX 5090's 512-bit bus is modeled as 64 x 8-bit channels, equivalent to
+# sixteen 16Gb x32 GDDR7 packages. The aggregate capacity is 32GiB and the
+# peak pin bandwidth is 64 * 8b * 28Gbps / 8 = 1792 GB/s.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: GDDR7
+    org:
+      preset: GDDR7_16Gb_4ch
+      density: 262144
+      channel_width: 8
+      channel: 64
+    timing:
+      preset: GDDR7_28Gbps
+
+  Controller:
+    impl: Generic
+    read_buffer_size: 64
+    write_buffer_size: 64
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh
+    channel_start_bit: 8

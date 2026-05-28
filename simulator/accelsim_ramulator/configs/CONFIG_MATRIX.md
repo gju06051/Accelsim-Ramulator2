@@ -35,6 +35,8 @@ python3 simulator/accelsim_ramulator/scripts/run_fixed_backend_matrix.py \
 | `accelsim/canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 108 SMs, 40 memory partitions, 4 subpartitions/channel, 40 MiB L2 | A100 full 5-stack experiments |
 | `accelsim/canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 26 SMs, 16 memory partitions, 2 subpartitions/channel, 10 MiB L2 | H100 SXM 1/5-stack experiments |
 | `accelsim/canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | 132 SMs, 80 memory partitions, 2 subpartitions/channel, 50 MiB L2 | H100 SXM full 5-stack experiments |
+| `accelsim/canonical/rtx5090_gddr7_1of8_8ch.gpgpusim.config` | 21 SMs, 8 memory partitions, 2 subpartitions/channel, 12 MiB L2 | RTX 5090 1/8 GDDR7 experiments |
+| `accelsim/canonical/rtx5090_gddr7_full_64ch.gpgpusim.config` | 170 SMs, 64 memory partitions, 2 subpartitions/channel, 96 MiB L2 | RTX 5090 full GDDR7 experiments |
 
 Each generated file keeps only one effective line for the important topology
 and queue options:
@@ -59,6 +61,8 @@ and queue options:
 | A100 full HBM2e alias | `a100_hbm2e_full_40ch.gpgpusim.config` | `a100_hbm2e_80gb.yaml` | 40 | Equivalent 40-channel A100 80GB naming |
 | H100 SXM 1/5 HBM3SID | `h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | `h100_sxm_hbm3_sid_16ch.yaml` | 16 | Direct external-channel mapping with HBM3 SID lower bits |
 | H100 SXM full HBM3SID | `h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | `h100_sxm_hbm3_sid_80ch.yaml` | 80 | Balanced IPoly path with 80-channel folding |
+| RTX 5090 1/8 GDDR7 | `rtx5090_gddr7_1of8_8ch.gpgpusim.config` | `rtx5090_gddr7_1of8_8ch.yaml` | 8 | Direct 8-channel GDDR7 external-channel mapping |
+| RTX 5090 full GDDR7 | `rtx5090_gddr7_full_64ch.gpgpusim.config` | `rtx5090_gddr7_full_64ch.yaml` | 64 | Balanced IPoly path with 64-channel power-of-2 mapping |
 | A100 1/5 HBM3SID experiment | `a100_hbm2e_1stack_8ch.gpgpusim.config` | `hbm3_sid_external_8ch.yaml` | 8 | A100-side 8-channel SID comparison |
 | A100 full HBM3SID experiment | `a100_hbm2e_full_40ch.gpgpusim.config` | `hbm3_sid_external_40ch.yaml` | 40 | A100-side 40-channel SID comparison |
 | A100 1/5 HBM4 experiment | `a100_hbm2e_1stack_8ch.gpgpusim.config` | `hbm4.yaml` or `hbm4_external.yaml` | 8 | HBM4 smoke comparison path |
@@ -100,9 +104,13 @@ For unbounded final baselines, also require:
 | Date | Pairing | Benchmark | Result |
 | --- | --- | --- | --- |
 | 2026-05-27 | `h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` + `h100_sxm_hbm3_sid_16ch.yaml` | `micro_mem_bw`, q64, 1k cycles | `MAX_CYCLE_OK`, 16/16 backend partitions, `ramulator_stats_present=1`, `ramulator_cmd_stats_present=1` |
+| 2026-05-27 | `rtx5090_gddr7_1of8_8ch.gpgpusim.config` + `rtx5090_gddr7_1of8_8ch.yaml` | `micro_mem_bw`, q64, 1k cycles | `MAX_CYCLE_OK`, 8/8 backend partitions, `ramulator_stats_present=1`, `ramulator_cmd_stats_present=1` |
+| 2026-05-27 | `rtx5090_gddr7_full_64ch.gpgpusim.config` + `rtx5090_gddr7_full_64ch.yaml` | `micro_mem_bw`, q64, 1k cycles | `MAX_CYCLE_OK`, 64/64 backend partitions, `ramulator_stats_present=1`, `ramulator_cmd_stats_present=1` |
 
 Summary CSV:
 
 ```text
 simulator/accelsim_ramulator/results/canonical_h100_1stack_smoke_20260527_v1/summary.csv
+simulator/accelsim_ramulator/results/rtx5090_gddr7_1of8_smoke_20260527_v1/summary.csv
+simulator/accelsim_ramulator/results/rtx5090_gddr7_full_smoke_20260527_v1/summary.csv
 ```

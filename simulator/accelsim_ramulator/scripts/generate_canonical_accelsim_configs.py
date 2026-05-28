@@ -64,6 +64,16 @@ CONFIGS = (
         title="H100 SXM full 5-stack style, 80 HBM3SID channels, 132 SMs, 50 MiB L2",
         fragments=(FRAGMENT_DIR / "h100_sxm_hbm3_80ch.config",),
     ),
+    CanonicalConfig(
+        output="rtx5090_gddr7_1of8_8ch.gpgpusim.config",
+        title="RTX 5090 1/8 style, 8 GDDR7 channels, 21 SMs, 12 MiB L2",
+        fragments=(FRAGMENT_DIR / "rtx5090_gddr7_1of8_8ch.config",),
+    ),
+    CanonicalConfig(
+        output="rtx5090_gddr7_full_64ch.gpgpusim.config",
+        title="RTX 5090 full style, 64 GDDR7 channels, 170 SMs, 96 MiB L2",
+        fragments=(FRAGMENT_DIR / "rtx5090_gddr7_full_64ch.config",),
+    ),
 )
 
 

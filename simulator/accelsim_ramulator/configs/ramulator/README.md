@@ -20,10 +20,45 @@ For the clean AccelSim config files that should be paired with these YAMLs, see
 | `hbm3_sid_external_8ch.yaml` | HBM3 + SID 8-channel config for 1-stack comparisons |
 | `h100_sxm_hbm3_sid_16ch.yaml` | H100 SXM-style 1-stack HBM3 config with 16 x 64-bit channels |
 | `h100_sxm_hbm3_sid_80ch.yaml` | H100 SXM-style full HBM3 config with 80 x 64-bit channels |
+| `gddr7_32gbps_16ch.yaml` | GDDR7 32Gbps/pin 16-channel config for bridge smoke and model bring-up |
+| `rtx5090_gddr7_1of8_8ch.yaml` | 1/8 RTX 5090-style GDDR7 config with 8 x 8-bit channels, 4GiB, and 224 GB/s peak pin bandwidth |
+| `rtx5090_gddr7_full_64ch.yaml` | RTX 5090-style GDDR7 config with 64 x 8-bit channels, 32GiB, and 1.792 TB/s peak pin bandwidth |
 | `hbm4_external_40ch.yaml` | HBM4 40-channel config for full-stack comparisons |
 | `a100_hbm2e_5stack.yaml` | A100 80GB HBM2e-style 5-stack / 40-channel config |
 | `a100_hbm2e_80gb.yaml` | A100 80GB HBM2e-style full 40-channel config |
 | `a100_hbm2e_1stack.yaml` | 8-channel A100 HBM2e-style smoke config for `a100_1stack` |
+
+## GDDR7 Timing Presets
+
+The `GDDR7` Ramulator2 model currently accepts these `timing.preset` names:
+
+```text
+GDDR7_28Gbps
+GDDR7_30p3Gbps
+GDDR7_32Gbps
+GDDR7_35p4Gbps
+GDDR7_37Gbps
+GDDR7_38p8Gbps
+GDDR7_40Gbps
+GDDR7_42p5Gbps
+GDDR7_48Gbps
+```
+
+The non-round bins are included as candidate silicon points from public ISSCC
+GDDR7 papers. They keep the same JEDEC-derived row and refresh timing anchors
+as the round bins; vendor-specific AC timings remain conservative defaults.
+
+## RTX 5090 GDDR7 Notes
+
+Use `rtx5090_gddr7_full_64ch.yaml` with
+`canonical/rtx5090_gddr7_full_64ch.gpgpusim.config` for the full RTX 5090-style
+memory system. It models the 512-bit bus as 64 independent 8-bit GDDR7
+channels and uses the 28Gbps speed bin for 1.792 TB/s peak pin bandwidth.
+
+Use `rtx5090_gddr7_1of8_8ch.yaml` with
+`canonical/rtx5090_gddr7_1of8_8ch.gpgpusim.config` for quick 1/8-scale runs.
+It keeps the same channel granularity and timing but reduces the memory system
+to 8 channels, 4GiB, and 224 GB/s peak pin bandwidth.
 
 ## Selection
 
@@ -85,6 +120,9 @@ has been checked against the current bridge build:
 | `hbm3_sid_external_40ch.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
 | `h100_sxm_hbm3_sid_16ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 16 |
 | `h100_sxm_hbm3_sid_80ch.yaml` | `h100_full` | `canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | 80 |
+| `gddr7_32gbps_16ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 16 |
+| `rtx5090_gddr7_1of8_8ch.yaml` | `canonical` | `canonical/rtx5090_gddr7_1of8_8ch.gpgpusim.config` | 8 |
+| `rtx5090_gddr7_full_64ch.yaml` | `canonical` | `canonical/rtx5090_gddr7_full_64ch.gpgpusim.config` | 64 |
 | `hbm4.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
 | `hbm4_external.yaml` | `a100_1stack` | `canonical/a100_hbm2e_1stack_8ch.gpgpusim.config` | 8 |
 | `hbm4_external_40ch.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |

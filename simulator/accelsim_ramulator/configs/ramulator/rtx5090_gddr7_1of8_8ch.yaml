@@ -1,0 +1,39 @@
+# 1/8 RTX 5090-style GDDR7 28Gbps/pin 8-channel Ramulator2 config.
+#
+# This reduced geometry keeps the same byte-wide GDDR7 channel model as the
+# full RTX 5090 config while scaling the memory system by 1/8: 8 channels,
+# 4GiB aggregate capacity, and 224 GB/s peak pin bandwidth.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: GDDR7
+    org:
+      preset: GDDR7_16Gb_4ch
+      density: 32768
+      channel_width: 8
+      channel: 8
+    timing:
+      preset: GDDR7_28Gbps
+
+  Controller:
+    impl: Generic
+    read_buffer_size: 64
+    write_buffer_size: 64
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelRoBaRaCoCh
+    channel_start_bit: 8

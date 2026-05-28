@@ -19,6 +19,7 @@ target_sources(
   impl/HBM3.cpp
   impl/HBM3SID.cpp
   impl/HBM4.cpp
+  impl/GDDR7.cpp
   impl/SGHBM.cpp
 )
 
