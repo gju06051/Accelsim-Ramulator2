@@ -3,7 +3,7 @@ graphbig_kcore	graphBIG	Irregular	.	gpu_benchmark/suites/graphBIG/gpu_bench/gpu_
 ispass_nn	ispass-2009	Irregular	gpu_benchmark/generated_inputs/ispass_nn	../../common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-NN 28	Nearest-neighbor style lookup
 ispass_nqu	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-NQU	Structured combinatorial search benchmark
 ispass_ray	ispass-2009	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/ispass-2009-RAY 256 256	Ray-style structured traversal
-rodinia_streamcluster	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/streamcluster-rodinia-3.1 10 20 256 65536 65536 1000 none output.txt 1	Cluster assignment with scattered accesses
+rodinia_streamcluster	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/streamcluster-rodinia-3.1 5 10 64 4096 4096 512 none output.txt 1	Reduced streamcluster candidate validated on H100 1/5 q64; optional because req/KI is modest after reduction
 rodinia_srad_v1	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v1-rodinia-3.1 10 0.5 502 458	Structured image diffusion stencil
 rodinia_srad_v2	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/srad_v2-rodinia-3.1 512 512 0 511 0 511 0.5 2	Structured image/stencil access
 rodinia_gaussian	rodinia	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/gaussian-rodinia-3.1 -s 256 -q	Dense matrix elimination
@@ -12,7 +12,6 @@ rodinia_myocyte	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection
 rodinia_nw	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/nw-rodinia-3.1 512 10	Dynamic-programming sequence alignment access
 rodinia_particlefilter_naive	rodinia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/particlefilter_naive-rodinia-3.1 -x 128 -y 128 -z 10 -np 1000	Particle filter gather/scatter access
 rodinia_pathfinder	rodinia	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/pathfinder-rodinia-3.1 1000 1000 20	Grid dynamic-programming access
-proxy_lulesh	proxy-apps	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lulesh	Structured hydrodynamics mesh access
 parboil_cutcp	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-cutcp -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/cutcp/small/input/watbox.sl40.pqr -o parboil_cutcp_lattice.dat	Cutoff Coulomb potential with spatially structured neighbor access
 parboil_stencil	parboil	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-stencil -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/stencil/small/input/128x128x32.bin -o parboil_stencil.out 128 128 32 100	Structured stencil reuse
 parboil_mri_q	parboil	Streaming	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/parboil-mri-q -i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/mri-q/small/input/32_32_32_dataset.bin -o parboil_mri_q.out	Regular numerical kernel over dense arrays

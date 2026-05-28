@@ -1,6 +1,6 @@
 # Benchmark Characterization
 
-This file fixes the H100 SXM Samsung HBM3SID 1/5-stack q64 benchmark characterization used by `main/manifest.tsv`. The active set is intentionally not only memory-intensive: it keeps both memory-intensive and compute-intensive rows, then uses `Streaming`, `Mixed-locality`, and `Irregular` as the access-pattern axis. Rows moved to `manifest.optional.tsv` are preserved for functional coverage, but are too small, cache-fit, long-tail, or incomplete for routine comparative studies.
+This file fixes the H100 SXM Samsung HBM3SID 1/5-stack q64 benchmark characterization used by `main/manifest.tsv`. The active set is intentionally not only memory-intensive: it keeps both memory-intensive and compute-intensive rows, then uses `Streaming`, `Mixed-locality`, and `Irregular` as the access-pattern axis. Rows moved to `manifest.optional.tsv` are preserved for functional coverage, but are too small or cache-fit for routine comparative studies. Known multi-hour long-tail rows are separated into `manifest.not_use.tsv`.
 
 ## Classification Policy
 
@@ -8,24 +8,25 @@ This file fixes the H100 SXM Samsung HBM3SID 1/5-stack q64 benchmark characteriz
 | --- | --- | --- |
 | Memory-intensive | DRAM req/KI >= 5, or high queue pressure with high L2 miss rate | Off-chip traffic or Ramulator queue pressure is a first-order performance signal. |
 | Compute-intensive | Below the memory-intensive thresholds while still large enough to keep in the active set | Arithmetic, control flow, cache locality, or framework overhead dominates more than DRAM traffic. |
-| Optional | Failed/incomplete, known long-tail, or below 100k DRAM requests on H100 1/5 | Kept for coverage and smoke tests, not used as a default representative row. |
+| Optional | Below 100k DRAM requests on H100 1/5 or cache-fit under the current input/trace | Kept for coverage and smoke tests, not used as a default representative row. |
+| Not-use | Known multi-hour long-tail under the current native binary/input mix | Kept in inventory only; not included in active or optional selection. |
 
 The memory-intensive rule uses `req_per_kinst`, `l2_miss_rate`, and `queue_avg_sum`: rows are memory-intensive if `req_per_kinst >= 5`, or if Ramulator queue pressure is high enough to show sustained backend pressure (`queue_avg_sum >= 256` and `l2_miss_rate >= 0.50`, or `req_per_kinst >= 3`, `queue_avg_sum >= 128`, and `l2_miss_rate >= 0.70`). Metrics use 32 B per Ramulator request for B/inst. Bounded trace rows are marked in the source column; they are acceptable for trace-size screening but should be rerun unbounded for final paper-quality numbers.
 
 ## Active Set Summary
 
-Active rows: **42**. Optional rows: **32**.
+Active rows: **41**. Optional rows: **31**. Not-use rows: **2**.
 
-| Intensity class | Active rows | Optional rows |
-| --- | ---: | ---: |
-| memory-intensive | 25 | 3 |
-| compute-intensive | 17 | 29 |
+| Intensity class | Active rows | Optional rows | Not-use rows |
+| --- | ---: | ---: | ---: |
+| memory-intensive | 24 | 3 | 1 |
+| compute-intensive | 17 | 28 | 1 |
 
 | Access pattern | Memory-intensive | Compute-intensive | Total active |
 | --- | ---: | ---: | ---: |
 | Streaming | 4 | 3 | 7 |
 | Mixed-locality | 9 | 9 | 18 |
-| Irregular | 12 | 5 | 17 |
+| Irregular | 11 | 5 | 16 |
 
 ### Streaming
 
@@ -53,7 +54,7 @@ Active rows: **42**. Optional rows: **32**.
 | Benchmark | DRAM req/KI | B/inst | DRAM req | Row-hit | L2 miss rate | Queue avg sum | Source |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `pannotia_pagerank_spmv` | 15.91 | 0.509 | 11,919,709 | 0.679 | 0.354 | 383.2 | non-trace unbounded |
-| `parboil_lbm` | 14.04 | 0.449 | 676,754,968 | 0.773 | 0.952 | 1201.6 | non-trace unbounded |
+| `parboil_lbm` | 14.04 | 0.449 | 47,344,045 | 0.773 | 0.952 | 1204.7 | estimated from completed `t10` plus `t7` first-kernel probe |
 | `coral2_rajaperf_energy` | 12.04 | 0.385 | 3,636,869 | 0.938 | 1.000 | 1289.6 | official unbounded |
 | `cudf_sort` | 6.77 | 0.217 | 133,779 | 0.760 | 1.000 | 401.2 | memory trace bounded |
 | `nvcomp_ans` | 5.62 | 0.180 | 133,170 | 0.872 | 0.988 | 663.4 | memory trace bounded |
@@ -84,7 +85,6 @@ Active rows: **42**. Optional rows: **32**.
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `graphbig_bfs_topo_atomic` | 17.39 | 0.557 | 4,546,572 | 0.186 | 0.221 | 246.0 | graph unbounded |
 | `dlrm_v2_embeddingbag_quantile` | 14.28 | 0.457 | 11,410,618 | 0.840 | 0.859 | 950.3 | official unbounded |
-| `pannotia_sssp_ell` | 14.18 | 0.454 | 689,449,657 | 0.772 | 0.668 | 1011.1 | non-trace unbounded |
 | `dlrm_v2_embeddingbag_fixed` | 13.06 | 0.418 | 7,370,370 | 0.845 | 0.865 | 1205.7 | official unbounded |
 | `graphbig_sssp_data_warp` | 12.27 | 0.393 | 2,122,279 | 0.665 | 0.315 | 274.7 | graph unbounded |
 | `pannotia_mis` | 10.36 | 0.332 | 5,757,061 | 0.894 | 0.706 | 1116.8 | non-trace unbounded |
@@ -107,7 +107,7 @@ Active rows: **42**. Optional rows: **32**.
 
 ## Optional Rows
 
-These rows remain in `manifest.optional.tsv`. Some are memory-intensive by req/KI, but their absolute DRAM-request count is too small to make stable H100 1/5 comparisons; others are compute/cache-fit rows or operational long-tail rows.
+These rows remain in `manifest.optional.tsv`. Some are memory-intensive by req/KI, but their absolute DRAM-request count is too small to make stable H100 1/5 comparisons; others are compute/cache-fit rows.
 
 | Benchmark | Pattern | Intensity | Reason | DRAM req/KI | DRAM req | Source |
 | --- | --- | --- | --- | ---: | ---: | --- |
@@ -115,7 +115,6 @@ These rows remain in `manifest.optional.tsv`. Some are memory-intensive by req/K
 | `ispass_nn` | Irregular | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.28 | 19,704 | non-trace unbounded |
 | `ispass_nqu` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.01 | 9 | non-trace unbounded |
 | `ispass_ray` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.00 | 0 | non-trace unbounded |
-| `rodinia_streamcluster` | Irregular | compute-intensive | long-tail or incomplete under current binary/input mix | 0.00 | 0 | non-trace unbounded |
 | `rodinia_srad_v1` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.04 | 28,989 | non-trace unbounded |
 | `rodinia_srad_v2` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.24 | 2,080 | non-trace unbounded |
 | `rodinia_gaussian` | Streaming | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.12 | 800 | non-trace unbounded |
@@ -124,7 +123,6 @@ These rows remain in `manifest.optional.tsv`. Some are memory-intensive by req/K
 | `rodinia_nw` | Mixed-locality | memory-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 7.37 | 761 | non-trace unbounded |
 | `rodinia_particlefilter_naive` | Irregular | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.01 | 580 | non-trace unbounded |
 | `rodinia_pathfinder` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 1.90 | 1,252 | non-trace unbounded |
-| `proxy_lulesh` | Mixed-locality | compute-intensive | long-tail or incomplete under current binary/input mix | 0.00 | 0 | non-trace unbounded |
 | `parboil_cutcp` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.00 | 19,620 | non-trace unbounded |
 | `parboil_stencil` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.04 | 78,152 | non-trace unbounded |
 | `parboil_mri_q` | Streaming | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.01 | 21,248 | non-trace unbounded |
@@ -143,6 +141,17 @@ These rows remain in `manifest.optional.tsv`. Some are memory-intensive by req/K
 | `tango_gru` | Mixed-locality | memory-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 18.12 | 3,842 | trace unbounded |
 | `tango_lstm` | Mixed-locality | memory-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 89.70 | 10,226 | trace unbounded |
 | `cudf_join` | Mixed-locality | compute-intensive | below 100k DRAM requests on H100 1/5; too small/cache-fit for stable comparisons | 0.50 | 22,340 | memory trace bounded |
+
+## Not-Use Long-Tail Rows
+
+These rows remain documented in `manifest.not_use.tsv`, but are excluded from
+the active and optional selection file. They can be restored only after a
+rebuilt binary or reduced input is validated under AccelSim + Ramulator2.
+
+| Benchmark | Pattern | Intensity | Reason | DRAM req/KI | DRAM req | Source |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| `proxy_lulesh` | Mixed-locality | compute-intensive | numeric stop-time candidates down to 0.000001 still made only 4-5 heavy kernel launches in about 10 minutes; smaller settings become no-op-like | 16.56 | 1,069,540 | H100 1/5 q64 ablation, intentionally stopped |
+| `pannotia_sssp_ell` | Irregular | memory-intensive | original NY ELL SSSP is long-tail; 32K/64K induced subgraph reductions complete but collapse req/KI to about 0.07 | 14.18 original / 0.07 reduced | 689,449,657 original / 98,304 reduced reads | H100 1/5 q64 ablation |
 
 ## Source Runs
 

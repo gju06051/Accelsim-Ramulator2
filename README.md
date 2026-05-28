@@ -339,10 +339,10 @@ default to `run=0` but can be enabled by flipping that column.
 | Field | Active rows | Optional rows |
 | --- | --- | --- |
 | Dense matrix and regular arrays | `polybench_bicg`, `polybench_atax` | `rodinia_gaussian`, `parboil_mri_q`, `parboil_sgemm` |
-| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `parboil_lbm` | `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_lavamd`, `rodinia_myocyte`, `rodinia_nw`, `rodinia_pathfinder`, `proxy_lulesh`, `parboil_cutcp`, `parboil_stencil`, `dragon_amr` |
-| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_sssp_ell`, `pannotia_pagerank_spmv` | `graphbig_kcore`, `pannotia_fw_block` |
+| Stencils, grids, meshes, and structured simulation | `polybench_2dconv`, `polybench_3dconv`, `parboil_lbm` | `rodinia_srad_v1`, `rodinia_srad_v2`, `rodinia_lavamd`, `rodinia_myocyte`, `rodinia_nw`, `rodinia_pathfinder`, `parboil_cutcp`, `parboil_stencil`, `dragon_amr` |
+| Graph and sparse traversal analytics | `graphbig_bfs_data_warp`, `graphbig_bfs_topo_atomic`, `graphbig_sssp_data_warp`, `graphbig_triangle_count`, `lonestar_bfs_wlw`, `lonestar_sssp_wln`, `pannotia_mis`, `pannotia_color_maxmin`, `pannotia_pagerank_spmv` | `graphbig_kcore`, `rodinia_streamcluster`, `pannotia_fw_block` |
 | Search, lookup, and data mining | `ispass_lps`, `ispass_lib`, `proxy_xsbench` | `ispass_nn`, `ispass_nqu`, `ispass_ray`, `dragon_join` |
-| Particle, clustering, and filtering | - | `rodinia_streamcluster`, `rodinia_particlefilter_naive` |
+| Particle, clustering, and filtering | - | `rodinia_particlefilter_naive` |
 | Compression and entropy coding | `nvcomp_ans` | `nvcomp_lz4`, `nvcomp_snappy`, `nvcomp_gdeflate`, `nvcomp_deflate`, `nvcomp_zstd`, `nvcomp_cascaded`, `nvcomp_bitcomp` |
 | Columnar dataframe analytics | `cudf_filter`, `cudf_project`, `cudf_groupby`, `cudf_sort`, `cudf_tpch_q1`, `cudf_tpch_q3`, `cudf_tpch_q6`, `cudf_tpch_q10` | `cudf_join` |
 | Neural-network inference and layers | `rodinia_backprop`, `tango_alexnet` | `tango_cifarnet`, `tango_gru`, `tango_lstm` |
@@ -372,10 +372,19 @@ Long-running native PolyBench rows `polybench_fdtd2d`,
 `polybench_gramschmidt`, `polybench_covariance`, and `polybench_2mm` are kept
 out of the main set until smaller rebuilt PolyBench inputs are available.
 Additional functional rows that are too small, cache-fit, or operationally
-long-tail are preserved in
-`gpu_benchmark/benchmarks/main/manifest.optional.tsv`; the H100 1/5
+small/cache-fit are preserved in
+`gpu_benchmark/benchmarks/main/manifest.optional.tsv`. Known multi-hour
+long-tail rows are separated into
+`gpu_benchmark/benchmarks/main/manifest.not_use.tsv`; the H100 1/5
 memory-intensive/compute-intensive characterization and row-level metrics are in
 `gpu_benchmark/benchmarks/main/REPRESENTATIVENESS.md`.
+
+Not-use long-tail rows:
+
+| Field | Rows | Reason |
+| --- | --- | --- |
+| Stencils, grids, meshes, and structured simulation | `proxy_lulesh` | Numeric stop-time candidates down to `0.000001` still made only 4-5 kernel launches in about 10 minutes under H100 1/5 q64; smaller values become no-op-like. |
+| Graph and sparse traversal analytics | `pannotia_sssp_ell` | The original NY ELL SSSP row is a long-tail run; simple induced subgraph reductions finish quickly but collapse req/KI, so keep it out until a better medium graph is staged. |
 
 Graph input sizing:
 

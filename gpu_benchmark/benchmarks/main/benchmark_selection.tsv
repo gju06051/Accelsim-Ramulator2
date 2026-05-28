@@ -15,7 +15,7 @@ run	name	selection_set	access_pattern	intensity_class	suite	status	dram_requests
 0	nvcomp_gdeflate	optional	Streaming	compute-intensive	prepare-nvcomp	OK	0	0.000000	1.000000		0.000000	nvCOMP GDeflate optional 4MiB trace replay below the H100 1/5 100k-request cutoff
 0	nvcomp_zstd	optional	Streaming	compute-intensive	prepare-nvcomp	OK	0	0.000000	0.400000		0.000000	nvCOMP Zstandard optional 4MiB trace replay below the H100 1/5 100k-request cutoff
 1	pannotia_pagerank_spmv	active	Mixed-locality	memory-intensive	pannotia	OK	11919709	15.909292	0.354130	0.678991	383.182169	PageRank expressed through SpMV-like traversal
-1	parboil_lbm	active	Mixed-locality	memory-intensive	parboil	OK	676754968	14.039519	0.952000	0.772859	1201.625290	Lattice Boltzmann structured simulation with short dataset
+1	parboil_lbm	active	Mixed-locality	memory-intensive	parboil	ESTIMATED_FROM_T10	47344045	14.039519	0.952000	0.772859	1204.736443	Lattice Boltzmann short dataset reduced to 7 timesteps; runtime estimated at about 3.4h from completed t10 and first-kernel t7 probe
 1	coral2_rajaperf_energy	active	Mixed-locality	memory-intensive	prepare-coral2	OK	3636869	12.043016	1.000000	0.938497	1289.607811	CORAL2 RAJAPerf ENERGY-style hydro array update proxy
 1	cudf_sort	active	Mixed-locality	memory-intensive	prepare-cudf	MAX_CYCLE_OK	133779	6.774570	1.000000	0.759960	401.214114	cuDF sort profiler-scoped 64MiB trace replay through AccelSim + Ramulator2
 1	nvcomp_ans	active	Mixed-locality	memory-intensive	prepare-nvcomp	OK	133170	5.620649	0.987985	0.872238	663.434395	nvCOMP ANS 4MiB trace replay through AccelSim + Ramulator2
@@ -51,10 +51,9 @@ run	name	selection_set	access_pattern	intensity_class	suite	status	dram_requests
 0	rodinia_myocyte	optional	Mixed-locality	compute-intensive	rodinia	OK	104	0.002224	0.000577	0.576923	0.000006	Structured cardiac cell simulation access
 0	dragon_amr	optional	Mixed-locality	compute-intensive	dragon-li	OK	3	0.000479	0.393443	0.333333	0.001223	Adaptive mesh refinement over hierarchical grid data
 0	ispass_ray	optional	Mixed-locality	compute-intensive	ispass-2009	OK	0	0.000000	0.354657	0.000000	0.000000	Ray-style structured traversal
-0	proxy_lulesh	optional	Mixed-locality	compute-intensive	proxy-apps	BACKEND_STARTED_ERROR	0	0.000000	0.675741	0.000000	0.000000	Structured hydrodynamics mesh access
+0	rodinia_streamcluster	optional	Irregular	compute-intensive	rodinia	OK	1093586	1.083000	0.046630	0.942303	8.868688	Reduced streamcluster args 5 10 64 4096 4096 512 none output.txt 1; H100 1/5 q64 OK in 1915.544s
 1	graphbig_bfs_topo_atomic	active	Irregular	memory-intensive	graphBIG	OK	4546572	17.394720	0.220821	0.185848	245.953993	Topology-driven graph traversal with atomics on the medium LDBC graph
 1	dlrm_v2_embeddingbag_quantile	active	Irregular	memory-intensive	prepare-dlrm	OK	11410618	14.280857	0.858837	0.839615	950.342926	MLCommons DLRM-v2-style high-fanout embedding bag gather/reduce proxy using the local dist_quantile leading value
-1	pannotia_sssp_ell	active	Irregular	memory-intensive	pannotia	OK	689449657	14.180322	0.667746	0.771774	1011.073780	ELL SSSP over DIMACS road graph
 1	dlrm_v2_embeddingbag_fixed	active	Irregular	memory-intensive	prepare-dlrm	OK	7370370	13.064930	0.865078	0.845162	1205.653442	MLCommons DLRM-v2-style fixed multi-hot embedding bag gather/reduce proxy derived from local DLRM-v2 debug multihot settings
 1	graphbig_sssp_data_warp	active	Irregular	memory-intensive	graphBIG	OK	2122279	12.268768	0.314865	0.665326	274.662279	Data-dependent graph traversal on the medium LDBC graph
 1	pannotia_mis	active	Irregular	memory-intensive	pannotia	OK	5757061	10.360600	0.705612	0.894440	1116.797401	Maximal independent set graph traversal
@@ -72,4 +71,3 @@ run	name	selection_set	access_pattern	intensity_class	suite	status	dram_requests
 0	graphbig_kcore	optional	Irregular	compute-intensive	graphBIG	OK	43743	2.557738	0.323013	0.669913	117.409143	Graph k-core traversal on the medium LDBC graph
 0	ispass_nn	optional	Irregular	compute-intensive	ispass-2009	OK	19704	0.275730	0.051536	0.966758	1.061064	Nearest-neighbor style lookup
 0	rodinia_particlefilter_naive	optional	Irregular	compute-intensive	rodinia	OK	580	0.012603	0.059817	0.944828	0.029907	Particle filter gather/scatter access
-0	rodinia_streamcluster	optional	Irregular	compute-intensive	rodinia	BACKEND_STARTED_ERROR	0	0.000000	0.980362	0.000000	0.000000	Cluster assignment with scattered accesses

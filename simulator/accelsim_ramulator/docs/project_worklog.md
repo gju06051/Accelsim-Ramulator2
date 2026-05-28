@@ -50,13 +50,17 @@ main research target.
 - Split benchmark purposes:
   - `gpu_benchmark/benchmarks/main/manifest.tsv`: active application rows.
   - `gpu_benchmark/benchmarks/main/manifest.optional.tsv`: retained optional
-    rows that are small, cache-fit, long-tail, or operationally incomplete.
+    rows that are small or cache-fit under the H100 1/5 characterization.
+  - `gpu_benchmark/benchmarks/main/manifest.not_use.tsv`: retained inventory
+    for known multi-hour long-tail rows (`rodinia_streamcluster`,
+    `proxy_lulesh`) excluded from routine active/optional selection.
   - `gpu_benchmark/benchmarks/system/manifest.tsv`: microbenchmarks for
     bandwidth, latency, queue, cache-path, and atomics checks.
 - Fixed the H100 SXM Samsung HBM3SID 1/5-stack q64 characterization in
   `gpu_benchmark/benchmarks/main/REPRESENTATIVENESS.md`.
   - Active rows: 42.
-  - Optional rows: 32.
+  - Optional rows: 30.
+  - Not-use long-tail rows: 2.
   - Active memory-intensive rows: 25.
   - Active compute-intensive rows: 17.
   - Access-pattern split: 7 streaming, 18 mixed-locality, 17 irregular.
@@ -260,8 +264,9 @@ main research target.
 - Bounded validation runs can leave outstanding reads or writes at forced stop
   time. Final performance comparisons should use unbounded natural completion
   when practical.
-- Some optional benchmarks are retained for coverage but are too small,
-  cache-fit, or long-tail for routine comparative studies.
+- Some optional benchmarks are retained for coverage but are too small or
+  cache-fit for routine comparative studies. Known multi-hour native long-tail
+  rows are separated into `manifest.not_use.tsv`.
 - The old `stackganged_*` preset names remain for compatibility. New runs
   should use `accelsim_ramulator_main`, `accelsim_ramulator_system_check`, and
   explicit config names.

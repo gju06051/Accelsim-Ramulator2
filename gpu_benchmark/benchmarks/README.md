@@ -8,7 +8,8 @@ AccelSim + Ramulator2 project.
 | Path | Role |
 | --- | --- |
 | `main/manifest.tsv` | Active benchmark list loaded by the runner preset `accelsim_ramulator_main`. |
-| `main/manifest.optional.tsv` | Functional-coverage rows moved out of the default list because they are too small, cache-fit, or long-tail on H100 1/5. |
+| `main/manifest.optional.tsv` | Functional-coverage rows moved out of the default list because they are too small or cache-fit on H100 1/5. |
+| `main/manifest.not_use.tsv` | Known multi-hour long-tail rows kept as inventory but excluded from routine active/optional selection. |
 | `main/benchmark_selection.tsv` | User-editable run list. Set `run` to `1` or `0` to choose active/optional rows by access pattern and memory/compute class. |
 | `main/trace_manifest.tsv` | Default Accel-Sim trace paths for trace-driven rows; currently points at the larger nvCOMP/cuDF traces plus Tango traces used by the active set. |
 | `main/trace_manifest.memory_intensive.tsv` | Regenerated larger trace manifest kept as the explicit source for the default trace manifest. |
@@ -51,8 +52,9 @@ AccelSim runtime interception path. Trace rows run
 replays a prepared `kernelslist.g` through trace-driven AccelSim while keeping
 the same Ramulator2 backend environment.
 
-Rows below 100k DRAM requests, cache-fit rows, and known long-tail rows are
-preserved in `main/manifest.optional.tsv`. The fixed workload-characterization
+Rows below 100k DRAM requests and cache-fit rows are preserved in
+`main/manifest.optional.tsv`; known multi-hour long-tail rows are preserved in
+`main/manifest.not_use.tsv`. The fixed workload-characterization
 table and raw metrics are in `main/REPRESENTATIVENESS.md` and
 `main/representativeness_h100_1stack.tsv`.
 
@@ -79,7 +81,8 @@ cd simulator/accelsim_ramulator
 
 With the default main preset, selected optional rows are also available because
 the runner supplements `manifest.tsv` with `manifest.optional.tsv` when a
-selection file is provided.
+selection file is provided. Rows in `manifest.not_use.tsv` are not included in
+that selection flow.
 
 ## Moving Local Artifacts
 
@@ -222,7 +225,9 @@ The table below records how each active or optional benchmark row is run:
 native CUDA binary or trace replay, the arguments passed, and the input files
 or generated trace source. Use `main/manifest.tsv` for the active mixed
 memory-intensive/compute-intensive set and `main/manifest.optional.tsv` for
-rows that were moved out by the H100 1/5 size, cache-fit, or long-tail screen.
+rows that were moved out by the H100 1/5 size or cache-fit screen.
+`main/manifest.not_use.tsv` records long-tail native rows that are documented
+but not meant for routine runs.
 
 ### polybench
 
@@ -266,7 +271,7 @@ degree vertex for BFS/SSSP validation.
 
 | Benchmark | How it runs | Arguments and input | Notes |
 | --- | --- | --- | --- |
-| `rodinia_streamcluster` | Native CUDA binary through AccelSim runtime interception. | Args: `10 20 256 65536 65536 1000 none output.txt 1`. | Streamcluster with generated input points and output file `output.txt`. A smaller `32768`/`16384` candidate is under validation but not yet promoted. |
+| `rodinia_streamcluster` | Native CUDA binary through AccelSim runtime interception. | Args: `5 10 64 4096 4096 512 none output.txt 1`. | Optional reduced row validated on H100 1/5 q64: `OK`, 483 launches, 1915.544 seconds, about 1.09M backend requests. The original 65,536-point row remains a long-tail inventory case. |
 | `rodinia_backprop` | Native CUDA binary through AccelSim runtime interception. | Args: `65536`. | Backprop layer benchmark with 65,536 inputs. |
 | `rodinia_srad_v1` | Native CUDA binary through AccelSim runtime interception. | Args: `10 0.5 502 458`. | SRAD v1 image diffusion stencil. |
 | `rodinia_srad_v2` | Native CUDA binary through AccelSim runtime interception. | Args: `512 512 0 511 0 511 0.5 2`. | SRAD v2 scaled to a 512x512 image region. |
@@ -284,7 +289,7 @@ degree vertex for BFS/SSSP validation.
 | Benchmark | How it runs | Arguments and input | Notes |
 | --- | --- | --- | --- |
 | `proxy_xsbench` | Native CUDA binary through AccelSim runtime interception. | Args: `12 small 0`. | XSBench randomized cross-section lookup using the small profile. |
-| `proxy_lulesh` | Native CUDA binary through AccelSim runtime interception. | Args: `(no arguments)`. | Current binary does not appear to honor `-s`/`-i`; reduced-size candidates behaved like the default. Treat as a long-tail row unless rebuilt. |
+| `proxy_lulesh` | Native CUDA binary through AccelSim runtime interception. | Args: `(no arguments)` in the archived row. | Not-use long-tail row. `-s`/`-i` did not control this packaged binary; numeric stop-time candidates down to `0.000001` still advanced only a few heavy kernels in about 10 minutes under H100 1/5 q64. |
 
 ### parboil
 
@@ -292,7 +297,7 @@ degree vertex for BFS/SSSP validation.
 | --- | --- | --- | --- |
 | `parboil_cutcp` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/cutcp/small/input/watbox.sl40.pqr -o parboil_cutcp_lattice.dat`. | Cutoff Coulomb potential over the Parboil small `watbox.sl40.pqr` input. |
 | `parboil_stencil` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/stencil/small/input/128x128x32.bin -o parboil_stencil.out 128 128 32 100`. | Structured stencil over the Parboil small 128x128x32 input for 100 timesteps. |
-| `parboil_lbm` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/lbm/short/input/120_120_150_ldc.of -o parboil_lbm.out 100`. | LBM short dataset with 100 timesteps. Shorter timestep candidates are under validation but not yet promoted. |
+| `parboil_lbm` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/lbm/short/input/120_120_150_ldc.of -o parboil_lbm.out 7`. | LBM short dataset reduced to 7 timesteps. The completed `t10` run took 17,584 seconds and the `t7` first-kernel probe matched the same per-timestep rate, so `t7` is the 3-4 hour H100 1/5 q64 setting. |
 | `parboil_mri_q` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/mri-q/small/input/32_32_32_dataset.bin -o parboil_mri_q.out`. | Dense numerical kernel over the Parboil small MRI-Q input. |
 | `parboil_sgemm` | Native CUDA binary through AccelSim runtime interception. | Args: `-i gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix1.txt,gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix2.txt,gpu_benchmark/common/gpu-app-collection-harness/data_dirs/parboil/datasets/sgemm/small/input/matrix2t.txt -o parboil_sgemm.out`. | SGEMM over Parboil small matrix files. |
 
@@ -313,7 +318,7 @@ and has 65,536 vertices and 1,048,450 edges.
 | --- | --- | --- | --- |
 | `pannotia_mis` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/mis/data/ecology1.graph 1`. | Maximal independent set over `ecology1.graph`. |
 | `pannotia_color_maxmin` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/color_maxmin/data/ecology1.graph 1`. | Max-min graph coloring over `ecology1.graph`. |
-| `pannotia_sssp_ell` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/sssp_ell/data/USA-road-d.NY.gr 0`. | ELL SSSP over the DIMACS NY road graph from source vertex 0. |
+| `pannotia_sssp_ell` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/sssp_ell/data/USA-road-d.NY.gr 0`. | Not-use long-tail row. First-N-node NY reductions at 32K/64K nodes completed quickly, but backend req/KI fell to about 0.07, so those reductions are not representative enough to promote. |
 | `pannotia_pagerank_spmv` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/pagerank_spmv/data/coAuthorsDBLP.graph 1`. | PageRank expressed through SpMV-like traversal. |
 | `pannotia_fw_block` | Native CUDA binary through AccelSim runtime interception. | Args/input: `gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/fw_block/data/256_16384.gr`. | Blocked Floyd-Warshall graph dynamic programming. |
 

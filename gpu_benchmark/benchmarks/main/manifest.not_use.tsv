@@ -1,0 +1,3 @@
+name	suite	expected_class	workdir	command	main_reason
+proxy_lulesh	proxy-apps	Mixed-locality	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/lulesh	Long-tail native LULESH row; numeric stop-time candidates down to 0.000001 still made only 4-5 kernel launches in about 10 minutes
+pannotia_sssp_ell	pannotia	Irregular	.	gpu_benchmark/common/gpu-app-collection-harness/bin/12.3/release/sssp_ell gpu_benchmark/common/gpu-app-collection-harness/data_dirs/pannotia/sssp_ell/data/USA-road-d.NY.gr 0	Long-tail ELL SSSP row; simple NY subgraph reduction finishes quickly but collapses req/KI, so do not use without a better synthetic medium graph

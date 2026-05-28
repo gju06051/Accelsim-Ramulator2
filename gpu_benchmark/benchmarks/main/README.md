@@ -3,7 +3,7 @@
 `manifest.tsv` is the active AccelSim + Ramulator2 benchmark list. The
 simulator runner preset `accelsim_ramulator_main` loads this file directly.
 
-The current active set has 42 application/trace rows after applying the H100
+The current active set has 41 application/trace rows after applying the H100
 SXM Samsung HBM3SID 1/5-stack q64 characterization screen. It intentionally
 keeps both memory-intensive and compute-intensive rows:
 
@@ -11,10 +11,11 @@ keeps both memory-intensive and compute-intensive rows:
 | --- | ---: | ---: | ---: |
 | Streaming | 4 | 3 | 7 |
 | Mixed-locality | 9 | 9 | 18 |
-| Irregular | 12 | 5 | 17 |
+| Irregular | 11 | 5 | 16 |
 
-Rows that are too small, cache-fit, or long-tail remain available in
-`manifest.optional.tsv`.
+Rows that are too small or cache-fit remain available in
+`manifest.optional.tsv`. Known multi-hour long-tail rows are separated into
+`manifest.not_use.tsv`.
 
 ## How To Run
 
@@ -38,8 +39,9 @@ cd ../../../simulator/accelsim_ramulator
 ```
 
 In `benchmark_selection.tsv`, set `run` to `1` for rows to run and `0` for
-rows to skip. The file includes both active and optional rows, grouped by
-`access_pattern` and `intensity_class`; optional rows default to `0`.
+rows to skip. The file includes active and optional rows, grouped by
+`access_pattern` and `intensity_class`; optional rows default to `0`. Not-use
+long-tail rows are intentionally left out of this selection file.
 
 Run one benchmark through the H100 SXM Samsung HBM3 1/5-stack config:
 
@@ -76,7 +78,8 @@ For full row-by-row benchmark arguments, inputs, and trace provenance, see
 | File | Role |
 | --- | --- |
 | `manifest.tsv` | Active main run list. |
-| `manifest.optional.tsv` | Optional functional-coverage rows moved out of the active set by the H100 1/5 size, cache-fit, or long-tail screen. |
+| `manifest.optional.tsv` | Optional functional-coverage rows moved out of the active set by the H100 1/5 size or cache-fit screen. |
+| `manifest.not_use.tsv` | Known multi-hour long-tail rows kept as inventory but excluded from active/optional selection. |
 | `benchmark_selection.tsv` | User-editable 1/0 benchmark selection list with access-pattern and memory/compute characterization columns. |
 | `manifest.official_memory_trace.tsv` | Optional trace-replay run list for DLRM/GNN/CORAL2 proxy rows. |
 | `../system/manifest.tsv` | Synthetic microbenchmarks for simulator and memory-system sanity checks. |
@@ -86,7 +89,7 @@ For full row-by-row benchmark arguments, inputs, and trace provenance, see
 | `manifest.graph_medium_large.tsv` | Extra GraphBIG/Lonestar medium and large validation rows. |
 | `GRAPH_INPUTS.md` | GraphBIG/Lonestar input sizes, arguments, and generation notes. |
 | `REPRESENTATIVENESS.md` | Current memory-intensive/compute-intensive workload characterization. |
-| `representativeness_h100_1stack.tsv` | Machine-readable H100 1/5 metric table used to characterize active and optional rows. |
+| `representativeness_h100_1stack.tsv` | Machine-readable H100 1/5 metric table used to characterize active, optional, and not-use rows. |
 | `../prepare/OFFICIAL_MEMORY_BENCHMARKS.md` | Source provenance and validation notes for the promoted DLRM/GNN/CORAL2 proxy rows. |
 
 ## Native And Trace Rows
@@ -96,7 +99,8 @@ The active set includes selected PolyBench, GraphBIG, ISPASS,
 Rodinia, Parboil, Lonestar, Pannotia, proxy-app, and promoted
 DLRM/GNN/CORAL2 `official_memory_proxy` rows. Additional functional rows from
 Rodinia, Parboil, Dragon-Li, ISPASS, nvCOMP, cuDF, and Tango are retained in
-`manifest.optional.tsv`.
+`manifest.optional.tsv`; known long-tail native rows are retained separately in
+`manifest.not_use.tsv`.
 
 The official-derived proxy binary is not checked in. Build it before running
 the DLRM/GNN/CORAL2 rows:
@@ -221,7 +225,9 @@ H100 1/5-stack config still produces meaningful DRAM pressure.
 | --- | --- |
 | GraphBIG | Main rows use `gpu_benchmark/suites/graphBIG/dataset/LDBC_100k`; BFS/SSSP use root `90628`. |
 | Lonestar | Main rows use generated `rmat16.sym.gr`; large validation rows use `rmat20.sym.gr`. |
-| Rodinia | The active set keeps `rodinia_backprop`; other scaled Rodinia rows are in `manifest.optional.tsv` after falling below the 100k-request cutoff or becoming long-tail. |
+| Rodinia | The active set keeps `rodinia_backprop`; smaller scaled Rodinia rows are in `manifest.optional.tsv`. `rodinia_streamcluster` uses the validated reduced args `5 10 64 4096 4096 512 none output.txt 1` and remains optional because req/KI is modest after reduction. |
+| Parboil | `parboil_lbm` keeps the short LBM lattice but uses 7 timesteps instead of 100. The completed `t10` run plus the `t7` first-kernel probe put it around 3.4 hours on H100 1/5 q64 while preserving the same per-timestep request intensity. |
+| Pannotia | `pannotia_sssp_ell` is excluded from active/optional selection. The original NY graph is a long-tail row, while simple first-N-node reductions are too cache-fit to represent the original ELL SSSP pressure. |
 | Dragon-Li | Dragon-Li rows are preserved in `manifest.optional.tsv`; they were functional but too small/cache-fit on H100 1/5. |
 | cuDF/nvCOMP | Active trace rows use the larger trace paths in `trace_manifest.tsv`; smaller codec/query rows remain in `manifest.optional.tsv`. |
 | DLRM/GNN/CORAL2 proxy | Promoted rows use deterministic synthetic inputs with official-source-derived fanout, graph dimensions, and CORAL2/RAJAPerf access motifs. |
@@ -252,9 +258,10 @@ validated with AccelSim + Ramulator2.
 crashed during previous validation.
 
 `manifest.optional.tsv` also keeps application rows that were functional but
-fell below 100k DRAM requests on H100 1/5, plus `proxy_lulesh` and
-`rodinia_streamcluster`, which remained long-tail/incomplete under the current
-binary/input mix. See `REPRESENTATIVENESS.md` for the row-by-row reason.
+fell below routine-selection thresholds on H100 1/5. `manifest.not_use.tsv`
+keeps `proxy_lulesh` and `pannotia_sssp_ell`, where the currently packaged
+runtime controls are either still too long or destroy the memory-pressure
+profile. See `REPRESENTATIVENESS.md` for the row-by-row reason.
 
 The `micro_*` rows are not failure exclusions. They live in
 `../system/manifest.tsv` and are loaded with the
