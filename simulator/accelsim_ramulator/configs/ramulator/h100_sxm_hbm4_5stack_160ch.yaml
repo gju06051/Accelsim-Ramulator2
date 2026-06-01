@@ -1,0 +1,66 @@
+# H100 SXM core/L2 geometry with a five-stack HBM4-style memory backend.
+#
+# AccelSim keeps the H100 full geometry with 80 memory partitions. HBM4 can
+# expose 32 channels/stack, so five stacks provide 160 physical channels; each
+# AccelSim source id selects a two-channel group at 32B granularity.
+# This is an HBM4-like architectural preset using 32B pseudochannel accesses,
+# 1KB logical rows, and an 8Gbps/pin exploratory speed point.
+
+Frontend:
+  impl: GEM5
+  clock_ratio: 8
+
+MemorySystem:
+  impl: GenericDRAM
+  clock_ratio: 3
+
+  DRAM:
+    impl: HBM4
+    org:
+      preset: HBM4_8Gb
+      channel_width: 32
+      channel: 160
+    timing:
+      rate: 8000
+      nBL: 4
+      tCL: 14.0
+      tRCDRD: 14.0
+      tRCDWR: 14.0
+      tRP: 13.0
+      tRAS: 32.0
+      tRC: 45.0
+      tWR: 6.0
+      tRTPS: 2.0
+      tRTPL: 2.0
+      tCWL: 6.0
+      nCCDS: 2
+      nCCDR: 3
+      nCCDL: 4
+      tRRDS: 2.0
+      tRRDL: 2.0
+      tWTRS: 4.0
+      tWTRL: 4.0
+      tRTW: 4.0
+      tFAW: 16.0
+      tRFCSB: 320.0
+      tREFI: 7800.0
+      tREFISB: 2438.0
+      tRREFD: 8.0
+
+  Controller:
+    impl: Generic
+    read_buffer_size: 64
+    write_buffer_size: 64
+    Scheduler:
+      impl: FRFCFS
+    RefreshManager:
+      impl: AllBank
+    RowPolicy:
+      impl: OpenRowPolicy
+    plugins:
+
+  AddrMapper:
+    impl: ExternalChannelGroupRoBaRaCoCh
+    channels_per_source: 2
+    split_granularity_bytes: 32
+    channel_start_bit: 8

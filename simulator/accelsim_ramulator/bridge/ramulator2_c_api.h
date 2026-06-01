@@ -24,6 +24,14 @@ unsigned long long sgram_ramulator2_accepted_reads(void *handle);
 unsigned long long sgram_ramulator2_completed_reads(void *handle);
 unsigned long long sgram_ramulator2_accepted_writes(void *handle);
 unsigned long long sgram_ramulator2_completed_writes(void *handle);
+unsigned long long sgram_ramulator2_read_latency_samples(void *handle);
+unsigned long long sgram_ramulator2_read_latency_sum(void *handle);
+unsigned long long sgram_ramulator2_read_latency_max(void *handle);
+double sgram_ramulator2_read_latency_avg(void *handle);
+unsigned long long sgram_ramulator2_read_latency_p50(void *handle);
+unsigned long long sgram_ramulator2_read_latency_p90(void *handle);
+unsigned long long sgram_ramulator2_read_latency_p95(void *handle);
+unsigned long long sgram_ramulator2_read_latency_p99(void *handle);
 
 #ifdef __cplusplus
 }

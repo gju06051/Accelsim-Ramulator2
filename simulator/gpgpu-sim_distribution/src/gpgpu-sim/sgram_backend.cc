@@ -25,6 +25,7 @@ typedef void (*r2_finalize_fn)(void *handle);
 typedef double (*r2_tck_ns_fn)(void *handle);
 typedef unsigned long long (*r2_ticks_fn)(void *handle);
 typedef unsigned long long (*r2_counter_fn)(void *handle);
+typedef double (*r2_double_fn)(void *handle);
 
 struct ramulator2_api_t {
   r2_create_fn create;
@@ -40,6 +41,14 @@ struct ramulator2_api_t {
   r2_counter_fn completed_reads;
   r2_counter_fn accepted_writes;
   r2_counter_fn completed_writes;
+  r2_counter_fn read_latency_samples;
+  r2_counter_fn read_latency_sum;
+  r2_counter_fn read_latency_max;
+  r2_double_fn read_latency_avg;
+  r2_counter_fn read_latency_p50;
+  r2_counter_fn read_latency_p90;
+  r2_counter_fn read_latency_p95;
+  r2_counter_fn read_latency_p99;
 };
 
 void *g_ramulator2_dso = NULL;
@@ -130,6 +139,22 @@ void load_ramulator2_api() {
       load_symbol("sgram_ramulator2_accepted_writes"));
   g_ramulator2_api.completed_writes = reinterpret_cast<r2_counter_fn>(
       load_symbol("sgram_ramulator2_completed_writes"));
+  g_ramulator2_api.read_latency_samples = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_samples"));
+  g_ramulator2_api.read_latency_sum = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_sum"));
+  g_ramulator2_api.read_latency_max = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_max"));
+  g_ramulator2_api.read_latency_avg = reinterpret_cast<r2_double_fn>(
+      load_symbol("sgram_ramulator2_read_latency_avg"));
+  g_ramulator2_api.read_latency_p50 = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_p50"));
+  g_ramulator2_api.read_latency_p90 = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_p90"));
+  g_ramulator2_api.read_latency_p95 = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_p95"));
+  g_ramulator2_api.read_latency_p99 = reinterpret_cast<r2_counter_fn>(
+      load_symbol("sgram_ramulator2_read_latency_p99"));
 }
 
 void create_ramulator2_if_needed() {
@@ -229,6 +254,8 @@ sgram_backend_t::sgram_backend_t(unsigned partition_id,
       m_fixed_latency(env_u32("SGRAM_FIXED_LATENCY", config->dram_latency)),
       m_queue_limit(env_u32("SGRAM_QUEUE_LIMIT",
                             config->gpgpu_frfcfs_dram_sched_queue_size)),
+      m_ramulator2_extra_latency(
+          env_u32("SGRAM_RAMULATOR_EXTRA_LATENCY", 0)),
       m_returnq(new fifo_pipeline<mem_fetch>(
           "sgram_returnq", 0,
           config->gpgpu_dram_return_queue_size == 0
@@ -251,8 +278,9 @@ sgram_backend_t::sgram_backend_t(unsigned partition_id,
   if (backend && strcmp(backend, "ramulator2") == 0) {
     m_backend_kind = BACKEND_RAMULATOR2;
     create_ramulator2_if_needed();
-    printf("SGRAM Ramulator2 backend enabled: partition=%u queue_limit=%u\n",
-           m_partition_id, m_queue_limit);
+    printf("SGRAM Ramulator2 backend enabled: partition=%u queue_limit=%u "
+           "extra_latency=%u\n",
+           m_partition_id, m_queue_limit, m_ramulator2_extra_latency);
   } else {
     printf("SGRAM fixed-latency backend enabled: partition=%u latency=%u "
            "queue_limit=%u\n",
@@ -320,14 +348,15 @@ void sgram_backend_t::ramulator2_complete(void *user, void *payload,
                                           int source_id, long long arrive,
                                           long long depart) {
   (void)addr;
-  (void)type;
   (void)source_id;
   (void)arrive;
   (void)depart;
   sgram_backend_t *backend = static_cast<sgram_backend_t *>(user);
+  if (type != 0) return;
   mem_fetch *data = static_cast<mem_fetch *>(payload);
   if (g_ramulator2_inflight_reads > 0) g_ramulator2_inflight_reads--;
-  backend->m_completed.push_back({data});
+  backend->m_completed.push_back(
+      {backend->now() + backend->m_ramulator2_extra_latency, data});
   backend->m_num_ramulator2_completed_reads++;
 }
 
@@ -370,7 +399,7 @@ bool sgram_backend_t::send_ramulator2(mem_fetch *data) {
   } else {
     m_num_ramulator2_accepted_writes++;
     m_num_ramulator2_immediate_writes++;
-    m_completed.push_back({data});
+    m_completed.push_back({now() + m_ramulator2_extra_latency, data});
   }
   return true;
 }
@@ -390,7 +419,8 @@ void sgram_backend_t::cycle() {
   if (m_backend_kind == BACKEND_RAMULATOR2) {
     tick_ramulator2_once();
 
-    while (!m_completed.empty() && !m_returnq->full()) {
+    while (!m_completed.empty() && !m_returnq->full() &&
+           m_completed.front().ready_cycle <= now()) {
       mem_fetch *data = m_completed.front().req;
       m_completed.pop_front();
       complete(data);
@@ -449,6 +479,38 @@ void sgram_backend_t::print(FILE *fp) const {
         g_ramulator2_handle
             ? g_ramulator2_api.completed_writes(g_ramulator2_handle)
             : 0;
+    unsigned long long global_read_latency_samples =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_samples(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_read_latency_sum =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_sum(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_read_latency_max =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_max(g_ramulator2_handle)
+            : 0;
+    double global_read_latency_avg =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_avg(g_ramulator2_handle)
+            : 0.0;
+    unsigned long long global_read_latency_p50 =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_p50(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_read_latency_p90 =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_p90(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_read_latency_p95 =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_p95(g_ramulator2_handle)
+            : 0;
+    unsigned long long global_read_latency_p99 =
+        g_ramulator2_handle
+            ? g_ramulator2_api.read_latency_p99(g_ramulator2_handle)
+            : 0;
     fprintf(fp,
             "SGRAM Ramulator2 backend partition %u: pending=%zu completed=%zu "
             "returnq_full=%u queue_limit=%u bridge_ticks=%llu "
@@ -459,7 +521,12 @@ void sgram_backend_t::print(FILE *fp) const {
             "global_outstanding_reads=%llu "
             "global_callback_untracked_writes=%llu "
             "global_accepted_reads=%llu global_completed_reads=%llu "
-            "global_accepted_writes=%llu global_completed_writes=%llu\n",
+            "global_accepted_writes=%llu global_completed_writes=%llu "
+            "global_read_latency_samples=%llu "
+            "global_read_latency_sum=%llu global_read_latency_avg=%.6f "
+            "global_read_latency_p50=%llu global_read_latency_p90=%llu "
+            "global_read_latency_p95=%llu global_read_latency_p99=%llu "
+            "global_read_latency_max=%llu\n",
             m_partition_id, m_pending.size(), m_completed.size(),
             m_returnq->full() ? 1 : 0, m_queue_limit, ticks,
             g_ramulator2_ticks_per_dram_cycle,
@@ -471,7 +538,11 @@ void sgram_backend_t::print(FILE *fp) const {
             g_ramulator2_inflight_read_limit, global_outstanding_reads,
             global_callback_untracked_writes, global_accepted_reads,
             global_completed_reads, global_accepted_writes,
-            global_completed_writes);
+            global_completed_writes, global_read_latency_samples,
+            global_read_latency_sum, global_read_latency_avg,
+            global_read_latency_p50, global_read_latency_p90,
+            global_read_latency_p95, global_read_latency_p99,
+            global_read_latency_max);
   } else {
     fprintf(fp,
             "SGRAM fixed backend partition %u: pending=%zu returnq_full=%u "

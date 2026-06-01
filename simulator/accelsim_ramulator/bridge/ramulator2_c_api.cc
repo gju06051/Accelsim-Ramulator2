@@ -3,6 +3,7 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include "base/config.h"
 #include "base/factory.h"
@@ -11,6 +12,8 @@
 #include "memory_system/memory_system.h"
 
 namespace {
+
+constexpr unsigned long long kReadLatencyHistMax = 65535;
 
 struct sgram_ramulator2_system {
   Ramulator::IFrontEnd *frontend = nullptr;
@@ -23,10 +26,45 @@ struct sgram_ramulator2_system {
   unsigned long long completed_writes = 0;
   unsigned long long callback_untracked_writes = 0;
   unsigned long long ticks = 0;
+  unsigned long long read_latency_samples = 0;
+  unsigned long long read_latency_sum = 0;
+  unsigned long long read_latency_max = 0;
+  std::vector<unsigned long long> read_latency_hist =
+      std::vector<unsigned long long>(kReadLatencyHistMax + 1, 0);
 };
 
 void print_exception(const char *where, const std::exception &e) {
   std::cerr << "sgram_ramulator2_" << where << ": " << e.what() << std::endl;
+}
+
+void record_read_latency(sgram_ramulator2_system *system,
+                         const Ramulator::Request &completed) {
+  if (!system || completed.depart < completed.arrive) return;
+  unsigned long long latency =
+      static_cast<unsigned long long>(completed.depart - completed.arrive);
+  system->read_latency_samples++;
+  system->read_latency_sum += latency;
+  if (latency > system->read_latency_max) system->read_latency_max = latency;
+  unsigned long long bin =
+      latency > kReadLatencyHistMax ? kReadLatencyHistMax : latency;
+  system->read_latency_hist[bin]++;
+}
+
+unsigned long long read_latency_percentile(sgram_ramulator2_system *system,
+                                           double percentile) {
+  if (!system || system->read_latency_samples == 0) return 0;
+  if (percentile <= 0.0) percentile = 0.0;
+  if (percentile >= 1.0) percentile = 1.0;
+  unsigned long long target = static_cast<unsigned long long>(
+      percentile * static_cast<double>(system->read_latency_samples - 1));
+  target += 1;
+  unsigned long long cumulative = 0;
+  for (size_t latency = 0; latency < system->read_latency_hist.size();
+       ++latency) {
+    cumulative += system->read_latency_hist[latency];
+    if (cumulative >= target) return static_cast<unsigned long long>(latency);
+  }
+  return system->read_latency_max;
 }
 
 }  // namespace
@@ -84,6 +122,7 @@ extern "C" int sgram_ramulator2_send(
           if (completed.type_id == Ramulator::Request::Type::Read) {
             if (system->outstanding_reads > 0) system->outstanding_reads--;
             system->completed_reads++;
+            record_read_latency(system, completed);
           } else if (completed.type_id == Ramulator::Request::Type::Write) {
             if (system->callback_untracked_writes > 0)
               system->callback_untracked_writes--;
@@ -222,4 +261,47 @@ extern "C" unsigned long long sgram_ramulator2_accepted_writes(void *handle) {
 extern "C" unsigned long long sgram_ramulator2_completed_writes(void *handle) {
   auto *system = static_cast<sgram_ramulator2_system *>(handle);
   return system ? system->completed_writes : 0;
+}
+
+extern "C" unsigned long long
+sgram_ramulator2_read_latency_samples(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->read_latency_samples : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_sum(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->read_latency_sum : 0;
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_max(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return system ? system->read_latency_max : 0;
+}
+
+extern "C" double sgram_ramulator2_read_latency_avg(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  if (!system || system->read_latency_samples == 0) return 0.0;
+  return static_cast<double>(system->read_latency_sum) /
+         static_cast<double>(system->read_latency_samples);
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_p50(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return read_latency_percentile(system, 0.50);
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_p90(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return read_latency_percentile(system, 0.90);
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_p95(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return read_latency_percentile(system, 0.95);
+}
+
+extern "C" unsigned long long sgram_ramulator2_read_latency_p99(void *handle) {
+  auto *system = static_cast<sgram_ramulator2_system *>(handle);
+  return read_latency_percentile(system, 0.99);
 }

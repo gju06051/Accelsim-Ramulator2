@@ -51,6 +51,7 @@ class sgram_backend_t {
   };
 
   struct completed_req_t {
+    unsigned long long ready_cycle;
     mem_fetch *req;
   };
 
@@ -79,6 +80,7 @@ class sgram_backend_t {
   backend_kind_t m_backend_kind;
   unsigned m_fixed_latency;
   unsigned m_queue_limit;
+  unsigned m_ramulator2_extra_latency;
   fifo_pipeline<mem_fetch> *m_returnq;
   std::deque<pending_req_t> m_pending;
   std::deque<completed_req_t> m_completed;

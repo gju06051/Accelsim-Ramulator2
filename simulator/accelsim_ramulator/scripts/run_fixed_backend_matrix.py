@@ -416,6 +416,16 @@ BACKEND_RAMULATOR_STAT_RE = re.compile(
     r"accepted_reads=(?P<reads>\d+) completed_reads=(?P<completed_reads>\d+) "
     r"accepted_writes=(?P<writes>\d+)"
 )
+BACKEND_GLOBAL_READ_LATENCY_RE = re.compile(
+    r"global_read_latency_samples=(?P<samples>\d+) "
+    r"global_read_latency_sum=(?P<sum>\d+) "
+    r"global_read_latency_avg=(?P<avg>[0-9.]+) "
+    r"global_read_latency_p50=(?P<p50>\d+) "
+    r"global_read_latency_p90=(?P<p90>\d+) "
+    r"global_read_latency_p95=(?P<p95>\d+) "
+    r"global_read_latency_p99=(?P<p99>\d+) "
+    r"global_read_latency_max=(?P<max>\d+)"
+)
 RAMULATOR_BRIDGE_CREATED_RE = re.compile(
     r"SGRAM Ramulator2 bridge created: .*?"
     r"tCK=(?P<tck>[0-9.]+) ns .*?"
@@ -854,6 +864,36 @@ def extract_clock_domains(config_path: Path) -> tuple[str, str, str, str]:
     return tuple(parts)  # type: ignore[return-value]
 
 
+def extract_dram_latency(config_path: Path) -> str:
+    latency = ""
+    for line in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("-dram_latency "):
+            latency = stripped.split(None, 1)[1].split("#", 1)[0].strip().split()[0]
+    return latency
+
+
+def resolve_ramulator_extra_latency(value: str, config_path: Path) -> int:
+    normalized = str(value).strip().lower()
+    if normalized in {"dram", "dram_latency", "accelsim", "native"}:
+        latency = extract_dram_latency(config_path)
+        if not latency:
+            raise ValueError(
+                f"could not infer -dram_latency from generated config {config_path}"
+            )
+        normalized = latency
+    try:
+        parsed = int(normalized, 0)
+    except ValueError as exc:
+        raise ValueError(
+            "--ramulator-extra-latency must be an integer or one of "
+            "'dram', 'dram_latency', 'accelsim', 'native'"
+        ) from exc
+    if parsed < 0:
+        raise ValueError("--ramulator-extra-latency must be non-negative")
+    return parsed
+
+
 def extract_ramulator_clock_stats(stdout: str) -> dict[str, str]:
     match = None
     for match in RAMULATOR_BRIDGE_CREATED_RE.finditer(stdout):
@@ -1125,6 +1165,7 @@ def write_analysis_logs(run_dir: Path, row: dict[str, str | int | float]) -> Non
         "ramulator_read_buffer_size",
         "ramulator_write_buffer_size",
         "ramulator_inflight_read_limit",
+        "ramulator_extra_latency",
         "ramulator_tck_ns",
         "ramulator_mhz",
         "ramulator_effective_ticks_per_dram_cycle",
@@ -1539,6 +1580,14 @@ def extract_backend_partition_stats(
     global_completed_reads = ""
     global_accepted_writes = ""
     global_completed_writes = ""
+    global_read_latency_samples = ""
+    global_read_latency_sum = ""
+    global_read_latency_avg = ""
+    global_read_latency_p50 = ""
+    global_read_latency_p90 = ""
+    global_read_latency_p95 = ""
+    global_read_latency_p99 = ""
+    global_read_latency_max = ""
     for match in BACKEND_PARTITION_STAT_RE.finditer(stdout):
         partition = int(match.group(1))
         accepted_reads = int(match.group(2))
@@ -1569,6 +1618,16 @@ def extract_backend_partition_stats(
             backend_full,
         )
 
+    for match in BACKEND_GLOBAL_READ_LATENCY_RE.finditer(stdout):
+        global_read_latency_samples = match.group("samples")
+        global_read_latency_sum = match.group("sum")
+        global_read_latency_avg = match.group("avg")
+        global_read_latency_p50 = match.group("p50")
+        global_read_latency_p90 = match.group("p90")
+        global_read_latency_p95 = match.group("p95")
+        global_read_latency_p99 = match.group("p99")
+        global_read_latency_max = match.group("max")
+
     if not stats and not known_partitions:
         return {
             "backend_active_partitions": "",
@@ -1589,6 +1648,14 @@ def extract_backend_partition_stats(
             "backend_global_completed_reads": "",
             "backend_global_accepted_writes": "",
             "backend_global_completed_writes": "",
+            "backend_global_read_latency_samples": "",
+            "backend_global_read_latency_sum": "",
+            "backend_global_read_latency_avg": "",
+            "backend_global_read_latency_p50": "",
+            "backend_global_read_latency_p90": "",
+            "backend_global_read_latency_p95": "",
+            "backend_global_read_latency_p99": "",
+            "backend_global_read_latency_max": "",
             "backend_accepted_reads_by_partition": "",
             "backend_accepted_writes_by_partition": "",
             "backend_rejected_by_partition": "",
@@ -1657,6 +1724,14 @@ def extract_backend_partition_stats(
         "backend_global_completed_reads": global_completed_reads,
         "backend_global_accepted_writes": global_accepted_writes,
         "backend_global_completed_writes": global_completed_writes,
+        "backend_global_read_latency_samples": global_read_latency_samples,
+        "backend_global_read_latency_sum": global_read_latency_sum,
+        "backend_global_read_latency_avg": global_read_latency_avg,
+        "backend_global_read_latency_p50": global_read_latency_p50,
+        "backend_global_read_latency_p90": global_read_latency_p90,
+        "backend_global_read_latency_p95": global_read_latency_p95,
+        "backend_global_read_latency_p99": global_read_latency_p99,
+        "backend_global_read_latency_max": global_read_latency_max,
         "backend_accepted_reads_by_partition": format_int_list(
             accepted_reads_by_partition
         ),
@@ -1690,6 +1765,7 @@ def run_one(
     gpgpusim_host_timing: str,
     ramulator_config: Path,
     ramulator_inflight_read_limit_arg: str,
+    ramulator_extra_latency_arg: str,
     ramulator_ticks_per_dram_cycle: str,
     ramulator_finalize_stats: str,
     core_granularity_profile: str,
@@ -1720,6 +1796,7 @@ def run_one(
     ramulator_read_buffer_size: int | str = ""
     ramulator_write_buffer_size: int | str = ""
     ramulator_inflight_read_limit: int | str = ""
+    ramulator_extra_latency: int | str = ""
 
     backend_env = ""
     if backend == "fixed":
@@ -1740,6 +1817,9 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
         ramulator_inflight_read_limit = resolve_ramulator_inflight_read_limit(
             ramulator_inflight_read_limit_arg, run_ramulator_config_path
         )
+        ramulator_extra_latency = resolve_ramulator_extra_latency(
+            ramulator_extra_latency_arg, run_dir / "gpgpusim.config"
+        )
         skip_finalize_stats = ramulator_finalize_stats == "off"
         finalize_stats_env = (
             "export SGRAM_RAMULATOR_SKIP_FINALIZE_STATS=1"
@@ -1752,6 +1832,7 @@ export SGRAM_QUEUE_LIMIT={queue_limit}
 export SGRAM_RAMULATOR_LIB={quote(str(bridge_lib))}
 export SGRAM_RAMULATOR_CONFIG={quote(run_ramulator_config)}
 export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT={ramulator_inflight_read_limit}
+export SGRAM_RAMULATOR_EXTRA_LATENCY={ramulator_extra_latency}
 export SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE={quote(str(ramulator_ticks_per_dram_cycle))}
 export SGRAM_ACCELSIM_DRAM_FREQ_MHZ={quote(str(dram_freq_mhz))}
 {finalize_stats_env}
@@ -1839,6 +1920,7 @@ exec {run_cmd}
         "ramulator_read_buffer_size": ramulator_read_buffer_size,
         "ramulator_write_buffer_size": ramulator_write_buffer_size,
         "ramulator_inflight_read_limit": ramulator_inflight_read_limit,
+        "ramulator_extra_latency": ramulator_extra_latency,
         "ramulator_ticks_per_dram_cycle": ramulator_ticks_per_dram_cycle if backend == "ramulator2" else "",
         "ramulator_finalize_stats": ramulator_finalize_stats if backend == "ramulator2" else "",
         **ramulator_clock_stats,
@@ -1966,6 +2048,16 @@ def main() -> int:
             "SGRAM_RAMULATOR_TICKS_PER_DRAM_CYCLE for --backend ramulator2. "
             "Use 'auto' to derive Ramulator ticks per AccelSim DRAM tick from "
             "-gpgpu_clock_domains and Ramulator tCK."
+        ),
+    )
+    parser.add_argument(
+        "--ramulator-extra-latency",
+        default="0",
+        help=(
+            "Optional SGRAM_RAMULATOR_EXTRA_LATENCY in AccelSim cycles. "
+            "Use 0 for pure Ramulator2 service timing, or 'dram'/'dram_latency' "
+            "to reuse the generated config's -dram_latency as a common base "
+            "memory/return latency."
         ),
     )
     parser.add_argument(
@@ -2155,6 +2247,21 @@ def main() -> int:
         if parsed_inflight_read_limit < 0:
             print("--ramulator-inflight-read-limit must be non-negative", file=sys.stderr)
             return 2
+    if args.backend == "ramulator2":
+        normalized_extra_latency = args.ramulator_extra_latency.strip().lower()
+        if normalized_extra_latency not in {"dram", "dram_latency", "accelsim", "native"}:
+            try:
+                parsed_extra_latency = int(normalized_extra_latency, 0)
+            except ValueError:
+                print(
+                    "--ramulator-extra-latency must be an integer or one of "
+                    "'dram', 'dram_latency', 'accelsim', 'native'",
+                    file=sys.stderr,
+                )
+                return 2
+            if parsed_extra_latency < 0:
+                print("--ramulator-extra-latency must be non-negative", file=sys.stderr)
+                return 2
     try:
         summary_check_expected_partitions = resolve_summary_check_expected_partitions(
             args.summary_check_expected_partitions, args.backend, ramulator_config
@@ -2190,6 +2297,7 @@ def main() -> int:
         f"config_overrides={';'.join(config_overrides) or 'none'} "
         f"ramulator_config={ramulator_config if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_inflight_read_limit={args.ramulator_inflight_read_limit if args.backend == 'ramulator2' else 'n/a'} "
+        f"ramulator_extra_latency={args.ramulator_extra_latency if args.backend == 'ramulator2' else 'n/a'} "
         f"ramulator_ticks_per_dram_cycle={args.ramulator_ticks_per_dram_cycle} "
         f"ramulator_finalize_stats={args.ramulator_finalize_stats} "
         f"summary_check={args.summary_check} "
@@ -2219,6 +2327,7 @@ def main() -> int:
                 args.gpgpusim_host_timing,
                 ramulator_config,
                 args.ramulator_inflight_read_limit,
+                args.ramulator_extra_latency,
                 args.ramulator_ticks_per_dram_cycle,
                 args.ramulator_finalize_stats,
                 args.core_granularity_profile,
@@ -2275,6 +2384,7 @@ def main() -> int:
         "ramulator_read_buffer_size",
         "ramulator_write_buffer_size",
         "ramulator_inflight_read_limit",
+        "ramulator_extra_latency",
         "ramulator_ticks_per_dram_cycle",
         "ramulator_effective_ticks_per_dram_cycle",
         "ramulator_tick_source",
@@ -2307,6 +2417,14 @@ def main() -> int:
         "backend_global_completed_reads",
         "backend_global_accepted_writes",
         "backend_global_completed_writes",
+        "backend_global_read_latency_samples",
+        "backend_global_read_latency_sum",
+        "backend_global_read_latency_avg",
+        "backend_global_read_latency_p50",
+        "backend_global_read_latency_p90",
+        "backend_global_read_latency_p95",
+        "backend_global_read_latency_p99",
+        "backend_global_read_latency_max",
         "backend_accepted_reads_by_partition",
         "backend_accepted_writes_by_partition",
         "backend_rejected_by_partition",

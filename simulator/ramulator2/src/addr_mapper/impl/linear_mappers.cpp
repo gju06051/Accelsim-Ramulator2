@@ -152,6 +152,41 @@ class ExternalChannelRoBaRaCoCh final : public LinearMapperBase, public Implemen
     }
 };
 
+class ExternalChannelModuloRoBaRaCoCh final : public LinearMapperBase, public Implementation {
+  RAMULATOR_REGISTER_IMPLEMENTATION(IAddrMapper, ExternalChannelModuloRoBaRaCoCh, "ExternalChannelModuloRoBaRaCoCh", "Folds Request::source_id into the available physical channels and uses RoBaRaCoCh for lower levels.");
+
+  private:
+    int m_channel_start_bit = -1;
+
+  public:
+    void init() override { };
+
+    void setup(IFrontEnd* frontend, IMemorySystem* memory_system) override {
+      LinearMapperBase::setup(frontend, memory_system);
+      m_channel_start_bit = param<int>("channel_start_bit").default_val(-1);
+    }
+
+    void apply(Request& req) override {
+      req.addr_vec.resize(m_num_levels, -1);
+
+      int num_channels = m_dram->m_organization.count[0];
+      if (req.source_id < 0 || num_channels <= 0) {
+        throw std::runtime_error(fmt::format(
+            "ExternalChannelModuloRoBaRaCoCh requires non-negative source_id and positive channels, got source_id={} channels={}.",
+            req.source_id, num_channels));
+      }
+
+      Addr_t addr = lower_addr_without_external_channel(
+          req.addr, num_channels, m_channel_start_bit);
+
+      req.addr_vec[0] = req.source_id % num_channels;
+      req.addr_vec[m_addr_bits.size() - 1] = slice_lower_bits(addr, m_addr_bits[m_addr_bits.size() - 1]);
+      for (int i = 1; i <= m_row_bits_idx; i++) {
+        req.addr_vec[i] = slice_lower_bits(addr, m_addr_bits[i]);
+      }
+    }
+};
+
 class ExternalChannelGroupRoBaRaCoCh final : public LinearMapperBase, public Implementation {
   RAMULATOR_REGISTER_IMPLEMENTATION(IAddrMapper, ExternalChannelGroupRoBaRaCoCh, "ExternalChannelGroupRoBaRaCoCh", "Maps each Request::source_id to a group of physical channels and uses address bits to choose a channel within the group.");
 
