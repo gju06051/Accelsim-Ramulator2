@@ -18,6 +18,10 @@ __pycache__/
 *.trace
 
 # Local reference papers and generated/prepared trace artifacts
+*.tar
+*.tar.*
+*.tgz
+*.zip
 *.pdf
 gpu_benchmark/benchmarks/prepare/results/
 gpu_benchmark/benchmarks/prepare/coral2/
