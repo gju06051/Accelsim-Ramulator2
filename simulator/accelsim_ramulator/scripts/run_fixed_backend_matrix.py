@@ -694,13 +694,29 @@ def resolve_ramulator_inflight_read_limit(value: str, ramulator_config: Path) ->
     return parsed
 
 
-def resolve_summary_check_expected_partitions(value: str, backend: str, ramulator_config: Path) -> int | None:
+def infer_accelsim_mem_partitions(config_overrides: tuple[str, ...]) -> int | None:
+    for override in reversed(config_overrides):
+        match = re.search(r"(?:^|\s)-gpgpu_n_mem\s+(\d+)(?:\s|$)", override)
+        if match:
+            return int(match.group(1))
+    return None
+
+
+def resolve_summary_check_expected_partitions(
+    value: str,
+    backend: str,
+    ramulator_config: Path,
+    config_overrides: tuple[str, ...],
+) -> int | None:
     normalized = value.strip().lower()
     if normalized in {"", "none", "off"}:
         return None
     if normalized == "auto":
         if backend != "ramulator2":
             return None
+        accelsim_partitions = infer_accelsim_mem_partitions(config_overrides)
+        if accelsim_partitions is not None:
+            return accelsim_partitions
         return infer_ramulator_channels(ramulator_config)
     try:
         parsed = int(value, 0)
@@ -2264,7 +2280,10 @@ def main() -> int:
                 return 2
     try:
         summary_check_expected_partitions = resolve_summary_check_expected_partitions(
-            args.summary_check_expected_partitions, args.backend, ramulator_config
+            args.summary_check_expected_partitions,
+            args.backend,
+            ramulator_config,
+            config_overrides,
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

@@ -1,6 +1,6 @@
 # AccelSim + Ramulator2 Project Worklog
 
-Last updated: 2026-05-27
+Last updated: 2026-06-29
 
 This note is the compact project journal for the current AccelSim + Ramulator2
 integration repository. It records implementation state, validated operating
@@ -27,7 +27,12 @@ main research target.
 - The fixed-latency backend remains as a small integration sanity-check path.
 - A100 and H100 geometry variants exist in both historical runner override form
   and clean canonical config form.
-- H100 SXM Samsung-style HBM3SID configs are the current primary study target.
+- H100 SXM Samsung-style HBM3SID configs remain the current primary
+  benchmark-characterization target.
+- Conventional HBM4 baseline configs are available for H100 1/5 and full-stack
+  comparison runs. The repository default `HBM4_8000Mbps` preset now follows
+  the baseline HBM4 timing used by the SPIRE-HBM paper, not the SPIRE
+  sub-pseudo-channel architecture.
 - Main application benchmarks, optional application benchmarks, and system
   microbenchmarks are separated.
 - Benchmark selection is controlled by a user-editable TSV file instead of
@@ -142,6 +147,31 @@ main research target.
 - The root README and integration README now describe the fresh-clone rebuild
   flow.
 
+### HBM4 Baseline Update
+
+- Promoted the conventional HBM4 timing used by the SPIRE-HBM paper to the
+  repository's default HBM4 baseline preset:
+  `simulator/ramulator2/src/dram/impl/HBM4.cpp::HBM4_8000Mbps`.
+- The HBM4 baseline uses:
+  - `HBM4_32Gb_16Hi` organization.
+  - 32-bit pseudochannels.
+  - 4 SIDs / 16Hi.
+  - 2 bank groups x 8 banks per SID.
+  - 8.0Gbps/pin, `tCK=0.500ns`.
+  - Baseline read-to-read timing `tCCDS=2`, `tCCDR=3`, `tCCDL=5`.
+  - Open-row policy, all-bank refresh, FR-FCFS scheduling, and 64-entry
+    read/write queues per pseudochannel.
+- Kept the explicit `HBM4_SPIREBaseline_8000Mbps` name as a compatibility
+  alias.
+- Moved the Safari Ramulator2-derived exploratory 8.0Gbps preset to
+  `HBM4_Safari_8000Mbps` so it can still be used for comparisons without being
+  confused with the repository baseline.
+- Updated H100 HBM4 YAMLs:
+  - `configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml`
+  - `configs/ramulator/h100_sxm_hbm4_5stack_160ch.yaml`
+- The HBM4 YAMLs intentionally do not model SPIRE-HBM's sub-pseudo-channel
+  data path, SID-bit repurposing, or doubled burst length.
+
 ## Implementation Work Completed
 
 ### AccelSim/GPGPU-Sim Integration
@@ -174,6 +204,11 @@ main research target.
     and organization assumptions.
 - Added A100 HBM2e and HBM3/HBM4 comparison YAMLs for smoke and address-mapping
   checks.
+- Added H100 HBM4 baseline YAMLs:
+  - `h100_sxm_hbm4_1stack_32ch.yaml`: H100 1/5 geometry with 16 AccelSim memory
+    partitions mapped onto 32 HBM4 pseudochannels.
+  - `h100_sxm_hbm4_5stack_160ch.yaml`: full H100 geometry with 80 AccelSim
+    memory partitions mapped onto 160 HBM4 pseudochannels.
 
 ### Runner and Configuration Support
 
@@ -190,6 +225,11 @@ main research target.
   selected queue size.
 - Standardized current queue-size default around AccelSim/Ramulator agreement;
   q64 is the current H100 Samsung baseline used by the characterization table.
+- Updated automatic summary-check expected-partition resolution so `auto` uses
+  the AccelSim `-gpgpu_n_mem` partition count when the runner variant supplies
+  it. This avoids false P0 partition-count warnings for HBM4 configs where the
+  Ramulator2 pseudochannel count is 32 or 160 while AccelSim exposes 16 or 80
+  memory partitions.
 
 ## Current Validated Configuration Set
 
@@ -226,13 +266,47 @@ main research target.
   `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml`
 - Shape: 132 SMs, 80 memory partitions, 2 subpartitions/channel, 50 MiB L2.
 
+### H100 SXM HBM4 Baseline 1/5
+
+- AccelSim variant:
+  `h100_1stack`
+- Ramulator2 config:
+  `configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml`
+- Shape: 26 SMs, 16 AccelSim memory partitions, 2 subpartitions/channel,
+  10 MiB L2, mapped to 32 x 32-bit HBM4 pseudochannels.
+- Baseline model: conventional HBM4, `HBM4_32Gb_16Hi`,
+  `HBM4_8000Mbps`.
+- Latest smoke:
+  `results/h100_1stack_hbm4_baseline_smoke_20260629_v1/summary.csv`.
+  Bounded 5k-cycle `polybench_atax` run reached `MAX_CYCLE_OK` with
+  Ramulator2 stats and command stats present. The read gap is expected for the
+  bounded stop condition.
+
+### H100 SXM HBM4 Baseline Full
+
+- AccelSim variant:
+  `h100_full`
+- Ramulator2 config:
+  `configs/ramulator/h100_sxm_hbm4_5stack_160ch.yaml`
+- Shape: 132 SMs, 80 AccelSim memory partitions, 2 subpartitions/channel,
+  50 MiB L2, mapped to 160 x 32-bit HBM4 pseudochannels.
+- Baseline model: conventional HBM4, `HBM4_32Gb_16Hi`,
+  `HBM4_8000Mbps`.
+- Latest smoke:
+  `results/h100_full_hbm4_baseline_smoke_20260629_v1/summary.csv`.
+  Bounded 5k-cycle `polybench_atax` run reached `MAX_CYCLE_OK` with
+  Ramulator2 stats and command stats present. The read gap is expected for the
+  bounded stop condition.
+
 ### HBM3/HBM4 Comparison Paths
 
 - A100-side HBM3SID comparison YAMLs exist for 8-channel and 40-channel smoke
   checks.
-- HBM4 YAMLs exist for 8-channel and 40-channel comparison paths.
-- Treat HBM4 rows as comparison/smoke paths unless a specific run has been
-  promoted by the validation rules in `configs/CONFIG_MATRIX.md`.
+- HBM4 YAMLs exist for 8-channel and 40-channel A100-side comparison paths,
+  using the same conventional HBM4 baseline timing as the H100 HBM4 configs.
+- H100 HBM4 baseline rows above are smoke-validated with the current bridge
+  build. Treat final performance claims as pending until unbounded benchmark
+  runs are completed and checked with `summary_check.py`.
 
 ## Recent Validation Notes
 
@@ -249,6 +323,12 @@ main research target.
   - `micro_mem_bw`, q64, 1k cycles.
   - 16/16 backend partitions active.
   - Ramulator stats and command stats present.
+- Latest HBM4 baseline smokes:
+  - H100 1/5 HBM4 baseline, `polybench_atax`, q64, 5k cycles,
+    `tCK=0.500ns`, 16/16 backend partitions active.
+  - H100 full HBM4 baseline, `polybench_atax`, q64, 5k cycles,
+    `tCK=0.500ns`, 80/80 backend partitions active.
+  - Both bounded smokes leave expected read gaps at forced stop time.
 - `micro_l2_*` rows may be served mostly by cache; use `micro_mem_bw` and
   `micro_mem_lat` for DRAM-path backend checks.
 - Trace-driven rows should be checked for `backend_enabled_partitions`,

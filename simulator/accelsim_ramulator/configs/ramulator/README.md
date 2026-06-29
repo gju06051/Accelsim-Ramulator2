@@ -16,6 +16,8 @@ For the clean AccelSim config files that should be paired with these YAMLs, see
 | --- | --- |
 | `hbm4.yaml` | Existing 8-channel HBM4-style smoke config |
 | `hbm4_external.yaml` | External-channel HBM4 variant kept for compatibility |
+| `h100_sxm_hbm4_1stack_32ch.yaml` | H100 SXM-style 1-stack conventional HBM4 baseline with 32 pseudochannels |
+| `h100_sxm_hbm4_5stack_160ch.yaml` | H100 SXM-style 5-stack conventional HBM4 baseline with 160 pseudochannels |
 | `hbm3_sid_external_40ch.yaml` | HBM3 + SID 40-channel experimental config |
 | `hbm3_sid_external_8ch.yaml` | HBM3 + SID 8-channel config for 1-stack comparisons |
 | `h100_sxm_hbm3_sid_16ch.yaml` | H100 SXM-style 1-stack HBM3 config with 16 x 64-bit channels |
@@ -27,6 +29,21 @@ For the clean AccelSim config files that should be paired with these YAMLs, see
 | `a100_hbm2e_5stack.yaml` | A100 80GB HBM2e-style 5-stack / 40-channel config |
 | `a100_hbm2e_80gb.yaml` | A100 80GB HBM2e-style full 40-channel config |
 | `a100_hbm2e_1stack.yaml` | 8-channel A100 HBM2e-style smoke config for `a100_1stack` |
+
+## HBM4 Baseline Notes
+
+The HBM4 YAMLs use the conventional HBM4 baseline timing from the SPIRE-HBM
+paper, not the SPIRE sub-pseudo-channel architecture. The baseline keeps normal
+32-bit pseudochannels and models the paper's 8.0Gbps, 16Hi/4-SID HBM4 setup:
+
+- `preset: HBM4_32Gb_16Hi`
+- `timing.preset: HBM4_8000Mbps`
+- 2 bank groups x 8 banks per SID
+- open-row policy, all-bank refresh, FR-FCFS scheduling
+- 64-entry read/write queues per pseudochannel
+
+The SPIRE-specific sub-pCH data path, SID-bit repurposing, and doubled burst
+length are intentionally not modeled by these baseline configs.
 
 ## GDDR7 Timing Presets
 
@@ -120,6 +137,8 @@ has been checked against the current bridge build:
 | `hbm3_sid_external_40ch.yaml` | `a100_5stack` | `canonical/a100_hbm2e_full_40ch.gpgpusim.config` | 40 |
 | `h100_sxm_hbm3_sid_16ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 16 |
 | `h100_sxm_hbm3_sid_80ch.yaml` | `h100_full` | `canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | 80 |
+| `h100_sxm_hbm4_1stack_32ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 32 |
+| `h100_sxm_hbm4_5stack_160ch.yaml` | `h100_full` | `canonical/h100_sxm_hbm3sid_full_80ch.gpgpusim.config` | 160 |
 | `gddr7_32gbps_16ch.yaml` | `h100_1stack` | `canonical/h100_sxm_hbm3sid_1stack_16ch.gpgpusim.config` | 16 |
 | `rtx5090_gddr7_1of8_8ch.yaml` | `canonical` | `canonical/rtx5090_gddr7_1of8_8ch.gpgpusim.config` | 8 |
 | `rtx5090_gddr7_full_64ch.yaml` | `canonical` | `canonical/rtx5090_gddr7_full_64ch.gpgpusim.config` | 64 |

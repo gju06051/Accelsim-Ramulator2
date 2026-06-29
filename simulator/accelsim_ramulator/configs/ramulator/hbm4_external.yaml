@@ -9,11 +9,11 @@ MemorySystem:
   DRAM:
     impl: HBM4
     org:
-      preset: HBM4_8Gb
+      preset: HBM4_32Gb_16Hi
       channel_width: 32
       channel: 8
     timing:
-      preset: HBM4_4Gbps
+      preset: HBM4_8000Mbps
 
   Controller:
     impl: Generic

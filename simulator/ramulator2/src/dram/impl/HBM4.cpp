@@ -8,15 +8,36 @@ class HBM4 : public IDRAM, public Implementation {
 
   public:
     inline static const std::map<std::string, Organization> org_presets = {
-      //   name     density   DQ    Ch Pch SID Bg Ba   Ro     Co
-      {"HBM4_4Gb",   {4<<10,  128,  {1, 2,  4, 4,  4, 1<<10, 1<<8}}},
-      {"HBM4_8Gb",   {8<<10,  128,  {1, 2,  4, 4,  4, 1<<11, 1<<8}}},
-      {"HBM4_16Gb",  {16<<10, 128,  {1, 2,  4, 4,  4, 1<<12, 1<<8}}},
+        //   name              density   DQ  Ch Pch SID Bg Ba   Ro     Co
+        // Safari Ramulator 2.1 HBM4 uses 32Gb device presets with 32b
+        // pseudochannels, 2 bank groups, 8 banks, 16K rows, and 256
+        // column entries (the HBM column field already includes BL).
+        // This C++ port stores density as per-channel density to preserve
+        // the existing Ramulator 2.0 density consistency check.
+        {"HBM4_32Gb_4Hi",   {4<<10,  32, {1, 2,  1, 2,  8, 1<<14, 1<<8}}},
+        {"HBM4_32Gb_8Hi",   {8<<10,  32, {1, 2,  2, 2,  8, 1<<14, 1<<8}}},
+        {"HBM4_32Gb_16Hi",  {16<<10, 32, {1, 2,  4, 2,  8, 1<<14, 1<<8}}},
+        // Backward-compatible local names.
+        {"HBM4_4Gb",   {4<<10,  128,  {1, 2,  4, 4,  4, 1<<10, 1<<8}}},
+        {"HBM4_8Gb",   {8<<10,  128,  {1, 2,  4, 4,  4, 1<<11, 1<<8}}},
+        {"HBM4_16Gb",  {16<<10, 128,  {1, 2,  4, 4,  4, 1<<12, 1<<8}}},
     };
 
     inline static const std::map<std::string, std::vector<int>> timing_presets = {
-      //   name       rate   nBL  nCL  nRCDRD  nRCDWR  nRP  nRAS  nRC  nWR  nRTPS  nRTPL  nCWL  nCCDS  nCCDR  nCCDL  nRRDS  nRRDL  nWTRS  nWTRL  nRTW  nFAW  nRFC  nRFCSB  nREFI  nREFISB  nRREFD  tCK_ps
-      {"HBM4_4Gbps",  {4000,   4,  28,   28,     28,    26,   64,  90,  12,    4,     4,   12,    2,      3,      4,     4,     4,     8,     8,    8,    32,   -1,   320,   7800,     -1,      8,    500}},
+        //   name          rate  nBL  nCL  nRCDRD  nRCDWR  nRP  nRAS  nRC  nWR  nRTPS  nRTPL  nCWL  nCCDS  nCCDR  nCCDL  nRRDS  nRRDL  nWTRS  nWTRL  nRTW  nFAW  nRFC  nRFCSB  nREFI  nREFISB  nRREFD  nPPD  tCK_ps
+        // Conventional HBM4 baseline used by the SPIRE-HBM paper. This keeps
+        // the normal 32-DQ pseudochannel organization; it does not model
+        // SPIRE's sub-pseudo-channel data path.
+        {"HBM4_8000Mbps", {8000, 2, 32, 32, 32, 32, 58, 90, 60, 15, 15, 28, 2, 3, 5, 4, 8, 5, 20, 25, 32, -1, 560, -1, -1, 8, 2, 500}},
+        // Compatibility alias for older local configs that used the explicit
+        // paper-baseline name before HBM4_8000Mbps became the baseline preset.
+        {"HBM4_SPIREBaseline_8000Mbps", {8000, 2, 32, 32, 32, 32, 58, 90, 60, 15, 15, 28, 2, 3, 5, 4, 8, 5, 20, 25, 32, -1, 560, -1, -1, 8, 2, 500}},
+        // Safari Ramulator 2.1-derived exploratory presets, kept for
+        // comparison but not used as this repository's HBM4 baseline.
+        {"HBM4_Safari_8000Mbps",  {8000,  2,  20,   39,     19,    33,   57,  90,  42,   12,    12,   10,    2,      2,      4,     5,     7,     9,    13,   25,    30,   -1,   560,   -1,      -1,      8,    2,    500}},
+        {"HBM4_Safari_16000Mbps", {16000, 2,  40,   78,     38,    66,  114, 180,  84,   24,    24,   20,    2,      2,      4,    10,    14,    18,    26,   50,    60,   -1,  1120,   -1,      -1,     32,    2,    250}},
+        // Legacy exploratory local preset. Prefer HBM4_8000Mbps for new runs.
+        {"HBM4_4Gbps",     {4000,  4,  28,   28,     28,    26,   64,  90,  12,    4,     4,   12,    2,      3,      4,     4,     4,     8,     8,    8,    32,   -1,   320, 7800,      -1,      8,    2,    500}},
     };
 
 
@@ -84,15 +105,16 @@ class HBM4 : public IDRAM, public Implementation {
    *                   Timing
    ***********************************************/
     inline static constexpr ImplDef m_timings = {
-      "rate",
-      "nBL", "nCL", "nRCDRD", "nRCDWR", "nRP", "nRAS", "nRC", "nWR", "nRTPS", "nRTPL", "nCWL",
-      "nCCDS", "nCCDR", "nCCDL",
-      "nRRDS", "nRRDL",
-      "nWTRS", "nWTRL",
-      "nRTW",
-      "nFAW",
-      "nRFC", "nRFCSB", "nREFI", "nREFISB", "nRREFD",
-      "tCK_ps"
+        "rate",
+        "nBL", "nCL", "nRCDRD", "nRCDWR", "nRP", "nRAS", "nRC", "nWR", "nRTPS", "nRTPL", "nCWL",
+        "nCCDS", "nCCDR", "nCCDL",
+        "nRRDS", "nRRDL",
+        "nWTRS", "nWTRL",
+        "nRTW",
+        "nFAW",
+        "nRFC", "nRFCSB", "nREFI", "nREFISB", "nRREFD",
+        "nPPD",
+        "tCK_ps"
     };
 
 
@@ -287,46 +309,50 @@ class HBM4 : public IDRAM, public Implementation {
         }
       }
 
-      // Check for rate (in MT/s), and if provided, calculate and set tCK (in picosecond)
-      if (auto dq = param_group("timing").param<int>("rate").optional()) {
-        if (preset_provided) {
-          throw ConfigurationError("Cannot change the transfer rate of {} when using a speed preset !", get_name());
+        // HBM4 data rate is modeled as 4*fCK, so 8000Mbps maps to
+        // tCK=500ps and 16000Mbps maps to tCK=250ps.
+        if (auto dq = param_group("timing").param<int>("rate").optional()) {
+          if (preset_provided) {
+            throw ConfigurationError("Cannot change the transfer rate of {} when using a speed preset !", get_name());
+          }
+          m_timing_vals("rate") = *dq;
         }
-        m_timing_vals("rate") = *dq;
-      }
-      int tCK_ps = 1E6 / (m_timing_vals("rate") / 2);
-      m_timing_vals("tCK_ps") = tCK_ps;
+        int tCK_ps = (4000000 + m_timing_vals("rate") / 2) / m_timing_vals("rate");
+        m_timing_vals("tCK_ps") = tCK_ps;
 
       // Refresh timings
       // tRFC table (unit is nanosecond!)
-      constexpr int tRFC_TABLE[1][4] = {
-      //  2Gb   4Gb   8Gb  16Gb
-        { 160,  260,  350,  450},
-      };
+        constexpr int tRFC_TABLE[1][4] = {
+        //  4Gb   8Gb  16Gb  32Gb channel density
+          { 400,  450,  530,  530},
+        };
 
       // tRFC table (unit is nanosecond!)
-      constexpr int tREFISB_TABLE[1][4] = {
-      //  2Gb    4Gb    8Gb    16Gb
-        { 4875,  4875,  2438,  2438},
-      };
+        int density_id = [](int density_Mb) -> int {
+          switch (density_Mb) {
+            case 4096:  return 0;
+            case 8192:  return 1;
+            case 16384: return 2;
+            case 32768: return 3;
+            default:    return -1;
+          }
+        }(m_organization.density);
 
-      int density_id = [](int density_Mb) -> int {
-        switch (density_Mb) {
-          case 2048:  return 0;
-          case 4096:  return 1;
-          case 8192:  return 2;
-          case 16384: return 3;
-          default:    return -1;
-        }
-      }(m_organization.density);
-
-      m_timing_vals("nRFC")  = JEDEC_rounding(tRFC_TABLE[0][density_id], tCK_ps);
-      m_timing_vals("nREFISB")  = JEDEC_rounding(tRFC_TABLE[0][density_id], tCK_ps);
+        m_timing_vals("nRFC")  = JEDEC_rounding(tRFC_TABLE[0][density_id], tCK_ps);
+        m_timing_vals("nREFI") = JEDEC_rounding(3900, tCK_ps);
+        int banks_per_pseudochannel =
+            m_organization.count[m_levels["bank"]] *
+            m_organization.count[m_levels["bankgroup"]] *
+            m_organization.count[m_levels["sid"]];
+        m_timing_vals("nREFISB") =
+            JEDEC_rounding(3900.0f / banks_per_pseudochannel, tCK_ps);
+        m_timing_vals("nRREFD") =
+            std::max(3, static_cast<int>(JEDEC_rounding(8, tCK_ps)));
 
       // Overwrite timing parameters with any user-provided value
       // Rate and tCK should not be overwritten
-      for (int i = 1; i < m_timings.size() - 1; i++) {
-        auto timing_name = std::string(m_timings(i));
+        for (int i = 1; i < m_timings.size() - 1; i++) {
+          auto timing_name = std::string(m_timings(i));
 
         if (auto provided_timing = param_group("timing").param<int>(timing_name).optional()) {
           // Check if the user specifies in the number of cycles (e.g., nRCD)
@@ -356,30 +382,32 @@ class HBM4 : public IDRAM, public Implementation {
 
           /*** Pseudo Channel (Table 3 — Array Access Timings Counted Individually Per Pseudo Channel, JESD-235C) ***/
           // RAS <-> RAS
-          {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"ACT"}, .latency = V("nRRDS")},
-          /// HBM4-like baseline: 8 full-row activations per tFAW window.
-          {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"ACT"}, .latency = V("nFAW"), .window = 8},
+            {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"ACT"}, .latency = V("nRRDS")},
+            {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"ACT"}, .latency = V("nFAW"), .window = 4},
 
           /// ACT actually happens on the 2-nd cycle of ACT, so +1 cycle to nRRD
           {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"REFsb", "RFMsb"}, .latency = V("nRRDS") + 1},
           /// nRREFD is the latency between REFsb <-> REFsb to *different* banks
-          {.level = "pseudochannel", .preceding = {"REFsb", "RFMsb"}, .following = {"REFsb", "RFMsb"}, .latency = V("nRREFD")},
+            {.level = "pseudochannel", .preceding = {"REFsb", "RFMsb"}, .following = {"REFsb", "RFMsb"}, .latency = V("nRREFD")},
           /// nRREFD is the latency between REFsb <-> ACT to *different* banks. -1 as ACT happens on its 2nd cycle
           {.level = "pseudochannel", .preceding = {"REFsb", "RFMsb"}, .following = {"ACT"}, .latency = V("nRREFD") - 1},
 
-          // CAS <-> CAS
-          /// nCCDS is the minimal latency for column commands to different bank groups in the same SID.
-          {.level = "pseudochannel", .preceding = {"RD", "RDA"}, .following = {"RD", "RDA"}, .latency = V("nCCDS")},
-          {.level = "pseudochannel", .preceding = {"WR", "WRA"}, .following = {"WR", "WRA"}, .latency = V("nCCDS")},
-          /// RD <-> WR, Minimum Read to Write, Assuming tWPRE = 1 tCK
-          {.level = "pseudochannel", .preceding = {"RD", "RDA"}, .following = {"WR", "WRA"}, .latency = V("nCL") + V("nBL") + 2 - V("nCWL")},
+            // CAS <-> CAS
+            {.level = "pseudochannel", .preceding = {"RD", "RDA"}, .following = {"RD", "RDA"}, .latency = V("nBL")},
+            {.level = "pseudochannel", .preceding = {"WR", "WRA"}, .following = {"WR", "WRA"}, .latency = V("nBL")},
+            /// nCCDS is the minimal latency for column commands to different bank groups in the same SID.
+            {.level = "pseudochannel", .preceding = {"RD", "RDA"}, .following = {"RD", "RDA"}, .latency = V("nCCDS")},
+            {.level = "pseudochannel", .preceding = {"WR", "WRA"}, .following = {"WR", "WRA"}, .latency = V("nCCDS")},
+            /// RD <-> WR, Minimum Read to Write, Assuming tWPRE = 1 tCK
+            {.level = "pseudochannel", .preceding = {"RD", "RDA"}, .following = {"WR", "WRA"}, .latency = V("nRTW")},
           /// WR <-> RD, Minimum Read after Write
           {.level = "pseudochannel", .preceding = {"WR", "WRA"}, .following = {"RD", "RDA"}, .latency = V("nCWL") + V("nBL") + V("nWTRS")},
           /// CAS <-> PREab
           {.level = "pseudochannel", .preceding = {"RD"}, .following = {"PREA"}, .latency = V("nRTPS")},
           {.level = "pseudochannel", .preceding = {"WR"}, .following = {"PREA"}, .latency = V("nCWL") + V("nBL") + V("nWR")},
-          {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"PREA"}, .latency = V("nRAS")},
-          {.level = "pseudochannel", .preceding = {"PREA"}, .following = {"ACT"}, .latency = V("nRP")},
+            {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"PREA"}, .latency = V("nRAS")},
+            {.level = "pseudochannel", .preceding = {"PREA"}, .following = {"ACT"}, .latency = V("nRP")},
+            {.level = "pseudochannel", .preceding = {"PRE", "PREA"}, .following = {"PRE", "PREA"}, .latency = V("nPPD")},
           /// RAS <-> REF
           {.level = "pseudochannel", .preceding = {"ACT"}, .following = {"REFab", "RFMab"}, .latency = V("nRC")},
           {.level = "pseudochannel", .preceding = {"PRE", "PREA"}, .following = {"REFab", "RFMab"}, .latency = V("nRP")},

@@ -82,15 +82,21 @@ built:
 ./scripts/build_ramulator2_bridge.sh
 ```
 
-Enable the Ramulator2 HBM4 backend:
+Enable the Ramulator2 HBM4 baseline backend:
 
 ```bash
 export SGRAM_BACKEND=ramulator2
 export SGRAM_RAMULATOR_LIB=$PWD/build/ramulator2_bridge/libsgram_ramulator2_bridge.so
-export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/a100_hbm2e_5stack.yaml
-export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=5120
-export SGRAM_QUEUE_LIMIT=128
+export SGRAM_RAMULATOR_CONFIG=$PWD/configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml
+export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=2048
+export SGRAM_QUEUE_LIMIT=64
 ```
+
+The HBM4 baseline YAMLs model conventional HBM4 rather than the SPIRE-HBM
+sub-pseudo-channel architecture. The default `HBM4_8000Mbps` timing preset uses
+the SPIRE-HBM paper's baseline HBM4 timing with `HBM4_32Gb_16Hi`, 32-bit
+pseudochannels, 4 SIDs / 16Hi, 2 bank groups, 8 banks, 8.0Gbps/pin, open-row
+FR-FCFS scheduling, and 64-entry queues per pseudochannel.
 
 The Ramulator2 bridge is built as a separate shared library so the
 Accel-Sim/GPGPU-Sim C++17 build does not directly include or link Ramulator2's
@@ -217,7 +223,8 @@ Config selection notes:
 
 - `docs/configuration.md`: how to swap AccelSim and Ramulator2 config files
 - `configs/accelsim/README.md`: AccelSim base config and override fragments
-- `configs/ramulator/README.md`: Ramulator2 YAML choices, including A100 HBM2e
+- `configs/ramulator/README.md`: Ramulator2 YAML choices, including A100 HBM2e,
+  H100 HBM3SID, and the HBM4 baseline configs
 
 ## Milestones
 

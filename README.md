@@ -39,7 +39,7 @@ Ramulator2 bridge, runtime config files, benchmark runner, and project notes.
   by the rebuild script rather than tracked in Git.
 - The external memory backend path that connects AccelSim memory partitions to
   Ramulator2.
-- HBM2e, HBM3 SID, and HBM4-oriented Ramulator2 YAML configs.
+- HBM2e, HBM3 SID, and HBM4 baseline Ramulator2 YAML configs.
 - A100 and H100 AccelSim config variants, including H100 1/5 and full H100
   HBM3 layouts.
 - A curated main benchmark set, a separate microbenchmark system-check set, and
@@ -125,6 +125,8 @@ partition activity, and host-side simulator timing metrics.
 | A100 HBM2e 5-stack | `a100_5stack` | `configs/ramulator/a100_hbm2e_5stack.yaml` | 108 SMs, 40 x 128-bit channels, 40 MiB L2 |
 | H100 HBM3 1/5 | `h100_1stack` | `configs/ramulator/h100_sxm_hbm3_sid_16ch.yaml` | 26 SMs, 16 x 64-bit channels, 10 MiB L2 |
 | H100 HBM3 full | `h100_full` | `configs/ramulator/h100_sxm_hbm3_sid_80ch.yaml` | 132 SMs, 80 x 64-bit channels, 50 MiB L2 |
+| H100 HBM4 baseline 1/5 | `h100_1stack` | `configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml` | 26 SMs, 16 AccelSim memory partitions mapped to 32 x 32-bit HBM4 pseudochannels |
+| H100 HBM4 baseline full | `h100_full` | `configs/ramulator/h100_sxm_hbm4_5stack_160ch.yaml` | 132 SMs, 80 AccelSim memory partitions mapped to 160 x 32-bit HBM4 pseudochannels |
 
 The A100 L2 sizes come from the SM80_A100 L2 config used by the runner:
 256 KiB per L2 sub-partition. `a100_1stack` keeps 8 memory partitions with 4
@@ -135,6 +137,13 @@ with explicit balanced partition indexing/address mapping.
 The H100 variants keep the SM80 functional/PTX path for benchmark
 compatibility. They model H100-like performance geometry rather than changing
 compute capability.
+
+The HBM4 entries are conventional HBM4 baseline configs, not SPIRE-HBM
+sub-pseudo-channel configs. They use the SPIRE-HBM paper's baseline HBM4 timing
+as the repository default `HBM4_8000Mbps` preset, paired with
+`HBM4_32Gb_16Hi` organization: 32-bit pseudochannels, 4 SIDs / 16Hi, 2 bank
+groups, 8 banks, 8.0Gbps/pin, open-row FR-FCFS scheduling, and 64-entry
+read/write queues per pseudochannel.
 
 Additional config fragments are documented in:
 
