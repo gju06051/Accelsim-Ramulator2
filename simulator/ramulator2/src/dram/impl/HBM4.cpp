@@ -25,17 +25,13 @@ class HBM4 : public IDRAM, public Implementation {
 
     inline static const std::map<std::string, std::vector<int>> timing_presets = {
         //   name          rate  nBL  nCL  nRCDRD  nRCDWR  nRP  nRAS  nRC  nWR  nRTPS  nRTPL  nCWL  nCCDS  nCCDR  nCCDL  nRRDS  nRRDL  nWTRS  nWTRL  nRTW  nFAW  nRFC  nRFCSB  nREFI  nREFISB  nRREFD  nPPD  tCK_ps
-        // Conventional HBM4 baseline used by the SPIRE-HBM paper. This keeps
-        // the normal 32-DQ pseudochannel organization; it does not model
-        // SPIRE's sub-pseudo-channel data path.
-        {"HBM4_8000Mbps", {8000, 2, 32, 32, 32, 32, 58, 90, 60, 15, 15, 28, 2, 3, 5, 4, 8, 5, 20, 25, 32, -1, 560, -1, -1, 8, 2, 500}},
-        // Compatibility alias for older local configs that used the explicit
-        // paper-baseline name before HBM4_8000Mbps became the baseline preset.
+        // Ramulator 2.1 upstream HBM4 presets from python/ramulator/dram/hbm4.py.
+        {"HBM4_8000Mbps",  {8000,  2,  20,   39,     19,    33,   57,  90,  42,   12,    12,   10,    2,      2,      4,     5,     7,     9,    13,   25,    30,   -1,   560,   -1,      -1,      8,    2,    500}},
+        {"HBM4_16000Mbps", {16000, 2,  40,   78,     38,    66,  114, 180,  84,   24,    24,   20,    2,      2,      4,    10,    14,    18,    26,   50,    60,   -1,  1120,   -1,      -1,     32,    2,    250}},
+        // Optional conventional HBM4 baseline used by the SPIRE-HBM paper.
+        // This is kept for paper comparison only and does not model SPIRE's
+        // sub-pseudo-channel data path.
         {"HBM4_SPIREBaseline_8000Mbps", {8000, 2, 32, 32, 32, 32, 58, 90, 60, 15, 15, 28, 2, 3, 5, 4, 8, 5, 20, 25, 32, -1, 560, -1, -1, 8, 2, 500}},
-        // Safari Ramulator 2.1-derived exploratory presets, kept for
-        // comparison but not used as this repository's HBM4 baseline.
-        {"HBM4_Safari_8000Mbps",  {8000,  2,  20,   39,     19,    33,   57,  90,  42,   12,    12,   10,    2,      2,      4,     5,     7,     9,    13,   25,    30,   -1,   560,   -1,      -1,      8,    2,    500}},
-        {"HBM4_Safari_16000Mbps", {16000, 2,  40,   78,     38,    66,  114, 180,  84,   24,    24,   20,    2,      2,      4,    10,    14,    18,    26,   50,    60,   -1,  1120,   -1,      -1,     32,    2,    250}},
         // Legacy exploratory local preset. Prefer HBM4_8000Mbps for new runs.
         {"HBM4_4Gbps",     {4000,  4,  28,   28,     28,    26,   64,  90,  12,    4,     4,   12,    2,      3,      4,     4,     4,     8,     8,    8,    32,   -1,   320, 7800,      -1,      8,    2,    500}},
     };

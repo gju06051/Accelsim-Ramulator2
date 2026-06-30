@@ -32,18 +32,20 @@ For the clean AccelSim config files that should be paired with these YAMLs, see
 
 ## HBM4 Baseline Notes
 
-The HBM4 YAMLs use the conventional HBM4 baseline timing from the SPIRE-HBM
-paper, not the SPIRE sub-pseudo-channel architecture. The baseline keeps normal
-32-bit pseudochannels and models the paper's 8.0Gbps, 16Hi/4-SID HBM4 setup:
+The HBM4 YAMLs follow the Ramulator 2.1 upstream HBM4 configuration shape, not
+the SPIRE sub-pseudo-channel architecture. The baseline keeps normal 32-bit
+pseudochannels and models the upstream 8.0Gbps, 8Hi/2-SID HBM4 setup:
 
-- `preset: HBM4_32Gb_16Hi`
+- `preset: HBM4_32Gb_8Hi`
 - `timing.preset: HBM4_8000Mbps`
 - 2 bank groups x 8 banks per SID
 - open-row policy, all-bank refresh, FR-FCFS scheduling
 - 64-entry read/write queues per pseudochannel
 
-The SPIRE-specific sub-pCH data path, SID-bit repurposing, and doubled burst
-length are intentionally not modeled by these baseline configs.
+The SPIRE-specific sub-pCH data path, SID-bit repurposing, doubled burst
+length, and SPIRE paper timing are intentionally not modeled by these baseline
+configs. `HBM4_SPIREBaseline_8000Mbps` remains available only as an optional
+paper-comparison preset.
 
 ## GDDR7 Timing Presets
 

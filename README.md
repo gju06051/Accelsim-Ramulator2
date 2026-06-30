@@ -138,12 +138,11 @@ The H100 variants keep the SM80 functional/PTX path for benchmark
 compatibility. They model H100-like performance geometry rather than changing
 compute capability.
 
-The HBM4 entries are conventional HBM4 baseline configs, not SPIRE-HBM
-sub-pseudo-channel configs. They use the SPIRE-HBM paper's baseline HBM4 timing
-as the repository default `HBM4_8000Mbps` preset, paired with
-`HBM4_32Gb_16Hi` organization: 32-bit pseudochannels, 4 SIDs / 16Hi, 2 bank
-groups, 8 banks, 8.0Gbps/pin, open-row FR-FCFS scheduling, and 64-entry
-read/write queues per pseudochannel.
+The HBM4 entries follow the Ramulator 2.1 upstream HBM4 configuration shape,
+not the SPIRE-HBM sub-pseudo-channel architecture. They use the upstream
+`HBM4_8000Mbps` timing preset, paired with `HBM4_32Gb_8Hi` organization:
+32-bit pseudochannels, 2 SIDs / 8Hi, 2 bank groups, 8 banks, 8.0Gbps/pin,
+open-row FR-FCFS scheduling, and 64-entry read/write queues per pseudochannel.
 
 Additional config fragments are documented in:
 

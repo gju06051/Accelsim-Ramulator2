@@ -9,7 +9,7 @@ MemorySystem:
   DRAM:
     impl: HBM4
     org:
-      preset: HBM4_32Gb_16Hi
+      preset: HBM4_32Gb_8Hi
       channel_width: 32
       channel: 8
     timing:

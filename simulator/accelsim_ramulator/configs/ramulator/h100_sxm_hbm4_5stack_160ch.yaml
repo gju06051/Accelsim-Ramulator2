@@ -3,8 +3,8 @@
 # AccelSim keeps the H100 full geometry with 80 memory partitions. HBM4 can
 # expose 32 channels/stack, so five stacks provide 160 physical channels; each
 # AccelSim source id selects a two-channel group at 32B granularity.
-# This uses the conventional HBM4 baseline from the SPIRE-HBM paper:
-# 32b pseudochannels, 4 SIDs / 16Hi, 2 bank groups, 8 banks, 1KB rows,
+# This follows the Ramulator 2.1 upstream HBM4 configuration shape:
+# 32b pseudochannels, 2 SIDs / 8Hi, 2 bank groups, 8 banks, 1KB rows,
 # 8Gbps/pin, FR-FCFS, open-row, all-bank refresh, and 64-entry queues per pCH.
 
 Frontend:
@@ -18,7 +18,7 @@ MemorySystem:
   DRAM:
     impl: HBM4
     org:
-      preset: HBM4_32Gb_16Hi
+      preset: HBM4_32Gb_8Hi
       channel_width: 32
       channel: 160
     timing:

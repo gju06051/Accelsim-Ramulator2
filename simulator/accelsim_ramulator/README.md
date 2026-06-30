@@ -92,11 +92,12 @@ export SGRAM_RAMULATOR_INFLIGHT_READ_LIMIT=2048
 export SGRAM_QUEUE_LIMIT=64
 ```
 
-The HBM4 baseline YAMLs model conventional HBM4 rather than the SPIRE-HBM
-sub-pseudo-channel architecture. The default `HBM4_8000Mbps` timing preset uses
-the SPIRE-HBM paper's baseline HBM4 timing with `HBM4_32Gb_16Hi`, 32-bit
-pseudochannels, 4 SIDs / 16Hi, 2 bank groups, 8 banks, 8.0Gbps/pin, open-row
-FR-FCFS scheduling, and 64-entry queues per pseudochannel.
+The HBM4 baseline YAMLs follow the Ramulator 2.1 upstream HBM4 configuration
+shape rather than the SPIRE-HBM sub-pseudo-channel architecture. The default
+`HBM4_8000Mbps` timing preset uses the upstream timing values with
+`HBM4_32Gb_8Hi`, 32-bit pseudochannels, 2 SIDs / 8Hi, 2 bank groups, 8 banks,
+8.0Gbps/pin, open-row FR-FCFS scheduling, and 64-entry queues per
+pseudochannel.
 
 The Ramulator2 bridge is built as a separate shared library so the
 Accel-Sim/GPGPU-Sim C++17 build does not directly include or link Ramulator2's

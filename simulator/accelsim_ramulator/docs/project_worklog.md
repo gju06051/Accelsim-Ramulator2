@@ -1,6 +1,6 @@
 # AccelSim + Ramulator2 Project Worklog
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 This note is the compact project journal for the current AccelSim + Ramulator2
 integration repository. It records implementation state, validated operating
@@ -30,9 +30,9 @@ main research target.
 - H100 SXM Samsung-style HBM3SID configs remain the current primary
   benchmark-characterization target.
 - Conventional HBM4 baseline configs are available for H100 1/5 and full-stack
-  comparison runs. The repository default `HBM4_8000Mbps` preset now follows
-  the baseline HBM4 timing used by the SPIRE-HBM paper, not the SPIRE
-  sub-pseudo-channel architecture.
+  comparison runs. The repository default `HBM4_8000Mbps` preset follows
+  Ramulator 2.1 upstream HBM4 timing and organization assumptions, not the
+  SPIRE-HBM sub-pseudo-channel architecture.
 - Main application benchmarks, optional application benchmarks, and system
   microbenchmarks are separated.
 - Benchmark selection is controlled by a user-editable TSV file instead of
@@ -149,28 +149,26 @@ main research target.
 
 ### HBM4 Baseline Update
 
-- Promoted the conventional HBM4 timing used by the SPIRE-HBM paper to the
-  repository's default HBM4 baseline preset:
+- Set the repository's default HBM4 baseline preset to the Ramulator 2.1
+  upstream HBM4 timing values from `python/ramulator/dram/hbm4.py`:
   `simulator/ramulator2/src/dram/impl/HBM4.cpp::HBM4_8000Mbps`.
 - The HBM4 baseline uses:
-  - `HBM4_32Gb_16Hi` organization.
+  - `HBM4_32Gb_8Hi` organization for the H100 comparison YAMLs.
   - 32-bit pseudochannels.
-  - 4 SIDs / 16Hi.
+  - 2 SIDs / 8Hi.
   - 2 bank groups x 8 banks per SID.
   - 8.0Gbps/pin, `tCK=0.500ns`.
-  - Baseline read-to-read timing `tCCDS=2`, `tCCDR=3`, `tCCDL=5`.
+  - Upstream read-to-read timing `tCCDS=2`, `tCCDR=2`, `tCCDL=4`.
   - Open-row policy, all-bank refresh, FR-FCFS scheduling, and 64-entry
     read/write queues per pseudochannel.
-- Kept the explicit `HBM4_SPIREBaseline_8000Mbps` name as a compatibility
-  alias.
-- Moved the Safari Ramulator2-derived exploratory 8.0Gbps preset to
-  `HBM4_Safari_8000Mbps` so it can still be used for comparisons without being
-  confused with the repository baseline.
+- Kept the SPIRE paper's conventional HBM4 timing as the optional
+  `HBM4_SPIREBaseline_8000Mbps` preset for paper-specific comparison only.
 - Updated H100 HBM4 YAMLs:
   - `configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml`
   - `configs/ramulator/h100_sxm_hbm4_5stack_160ch.yaml`
 - The HBM4 YAMLs intentionally do not model SPIRE-HBM's sub-pseudo-channel
-  data path, SID-bit repurposing, or doubled burst length.
+  data path, SID-bit repurposing, doubled burst length, or SPIRE-specific
+  timing.
 
 ## Implementation Work Completed
 
@@ -274,10 +272,10 @@ main research target.
   `configs/ramulator/h100_sxm_hbm4_1stack_32ch.yaml`
 - Shape: 26 SMs, 16 AccelSim memory partitions, 2 subpartitions/channel,
   10 MiB L2, mapped to 32 x 32-bit HBM4 pseudochannels.
-- Baseline model: conventional HBM4, `HBM4_32Gb_16Hi`,
+- Baseline model: Ramulator 2.1 HBM4, `HBM4_32Gb_8Hi`,
   `HBM4_8000Mbps`.
 - Latest smoke:
-  `results/h100_1stack_hbm4_baseline_smoke_20260629_v1/summary.csv`.
+  `results/h100_1stack_ramulator21_hbm4_smoke_20260630_v1/summary.csv`.
   Bounded 5k-cycle `polybench_atax` run reached `MAX_CYCLE_OK` with
   Ramulator2 stats and command stats present. The read gap is expected for the
   bounded stop condition.
@@ -290,10 +288,10 @@ main research target.
   `configs/ramulator/h100_sxm_hbm4_5stack_160ch.yaml`
 - Shape: 132 SMs, 80 AccelSim memory partitions, 2 subpartitions/channel,
   50 MiB L2, mapped to 160 x 32-bit HBM4 pseudochannels.
-- Baseline model: conventional HBM4, `HBM4_32Gb_16Hi`,
+- Baseline model: Ramulator 2.1 HBM4, `HBM4_32Gb_8Hi`,
   `HBM4_8000Mbps`.
 - Latest smoke:
-  `results/h100_full_hbm4_baseline_smoke_20260629_v1/summary.csv`.
+  `results/h100_full_ramulator21_hbm4_smoke_20260630_v1/summary.csv`.
   Bounded 5k-cycle `polybench_atax` run reached `MAX_CYCLE_OK` with
   Ramulator2 stats and command stats present. The read gap is expected for the
   bounded stop condition.
